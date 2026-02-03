@@ -210,21 +210,29 @@ export function evaluateCircuitFull(
           // Custom module: lookup and evaluate
           const mod = modules.find((m) => m.id === node.moduleId);
           if (mod) {
-            // Build sub-circuit inputs from this node's input pins
+            // Instance pins have fresh IDs; map them to module definition
+            // pin IDs by index (same order guaranteed by addNode).
+            const instanceInputPins = node.pins.filter(
+              (p) => p.direction === "input",
+            );
+            const instanceOutputPins = node.pins.filter(
+              (p) => p.direction === "output",
+            );
+
+            // Build sub-circuit inputs keyed by definition pin IDs
             const subInputs: Record<PinId, boolean> = {};
-            for (const pin of node.pins) {
-              if (pin.direction === "input") {
-                const key = pinKey(node.id, pin.id);
-                const upstream = adj.reverse.get(key);
-                if (upstream) {
-                  subInputs[pin.id] =
-                    pinValues.get(
-                      pinKey(upstream.nodeId, upstream.pinId),
-                    ) ?? false;
-                } else {
-                  subInputs[pin.id] = false;
-                }
-              }
+            for (let i = 0; i < instanceInputPins.length; i++) {
+              const instancePin = instanceInputPins[i];
+              const defPin = mod.inputs[i];
+              if (!instancePin || !defPin) continue;
+
+              const key = pinKey(node.id, instancePin.id);
+              const upstream = adj.reverse.get(key);
+              subInputs[defPin.id] = upstream
+                ? (pinValues.get(
+                    pinKey(upstream.nodeId, upstream.pinId),
+                  ) ?? false)
+                : false;
             }
 
             if (mod.truthTable) {
@@ -233,11 +241,8 @@ export function evaluateCircuitFull(
                 .map((name) => (subInputs[name] ? "1" : "0"))
                 .join("");
               const outputStr = mod.truthTable.rows[inputKey] ?? "";
-              const outputPins = node.pins.filter(
-                (p) => p.direction === "output",
-              );
-              for (let i = 0; i < outputPins.length; i++) {
-                const outPin = outputPins[i];
+              for (let i = 0; i < instanceOutputPins.length; i++) {
+                const outPin = instanceOutputPins[i];
                 if (outPin) {
                   pinValues.set(
                     pinKey(node.id, outPin.id),
@@ -252,14 +257,15 @@ export function evaluateCircuitFull(
                 subInputs,
                 modules,
               );
-              const outputPins = node.pins.filter(
-                (p) => p.direction === "output",
-              );
-              for (const outPin of outputPins) {
-                pinValues.set(
-                  pinKey(node.id, outPin.id),
-                  subOutputs[outPin.id] ?? false,
-                );
+              for (let i = 0; i < instanceOutputPins.length; i++) {
+                const instancePin = instanceOutputPins[i];
+                const defPin = mod.outputs[i];
+                if (instancePin && defPin) {
+                  pinValues.set(
+                    pinKey(node.id, instancePin.id),
+                    subOutputs[defPin.id] ?? false,
+                  );
+                }
               }
             }
           }
