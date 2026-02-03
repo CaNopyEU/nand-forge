@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 5 (DONE)
-**Posledna zmena:** Iteracia 5 dokoncena
+**Aktualna iteracia:** 6 (DONE)
+**Posledna zmena:** Iteracia 6 dokoncena
 
 ### Progress tracker
 
@@ -26,7 +26,7 @@ Pred zaciatakom prace precitaj:
 | 3 | Truth table engine | ✅ DONE |
 | 4 | Canvas zaklad | ✅ DONE |
 | 5 | Wiring | ✅ DONE |
-| 6 | Live simulacia na canvase | ⬜ TODO |
+| 6 | Live simulacia na canvase | ✅ DONE |
 | 7 | Module system: ukladanie | ⬜ TODO |
 | 8 | Module system: kniznica a pouzitie | ⬜ TODO |
 | 9 | Editacia pouziteho modulu + kaskadovanie | ⬜ TODO |
@@ -109,6 +109,39 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 6)
+- Refaktorovane `src/engine/simulate.ts`:
+  - Nova funkcia `evaluateCircuitFull(circuit, inputs, modules)` — vracia `Map<string, boolean>` so VSETKYMI pin values (nodeId:pinId → value)
+  - `evaluateCircuit` deleguje na `evaluateCircuitFull` a extrahuje len output node values (zachovane API, existujuce testy OK)
+- Pridany `simulationVersion` do `src/store/circuit-store.ts`:
+  - Counter inkrementovany pri kazdej simulacne-relevantnej mutacii (addNode, removeNode, addEdge, removeEdge, toggleInputValue, toggleConstantValue, onNodesChange s remove, onEdgesChange s remove)
+  - Opraveny bug: `onNodesChange` s typom 'remove' teraz cisti pripojene edges (predtym ostali ovisete)
+- Pridany `ProbeNodeData` a `ProbeNodeType` do circuit-store, `addNode` podporuje typ `probe`
+- Vytvorene `src/store/simulation-store.ts` — Zustand store:
+  - `pinValues: Record<string, boolean>` — vsetky pin values po simulacii
+  - `edgeSignals: Record<string, boolean>` — signal pre kazdy edge (podla source output pin)
+  - `runSimulation(nodes, edges)` — konvertuje AppNode[]/RFEdge[] na engine Circuit, vola `evaluateCircuitFull`, uklada vysledky
+  - Interna funkcia `canvasToCircuit` — mapuje React Flow typy (circuitInput/circuitOutput/constant/probe/module) na engine typy (input/output/constant/probe/module)
+- Vytvorene `src/hooks/useSimulation.ts`:
+  - Sleduje `simulationVersion` z circuit store
+  - Pri zmene cita nodes/edges cez `getState()` (bez subscribovania na drag/pan)
+  - Vola `runSimulation` zo simulation store
+- Aktualizovane `src/components/Canvas/ManhattanEdge.tsx`:
+  - Cita signal z `useSimulationStore` podla edge ID namiesto edge data
+  - Farba: seda (#71717a) pre 0, zelena (#34d399) pre 1, modra (#60a5fa) pre selected
+- Aktualizovane `src/components/Canvas/OutputNode.tsx`:
+  - Cita signal z `useSimulationStore` podla `pinKey(nodeId, pinId)`
+  - LED svieti zelene pri signal=true, seda pri false
+- Vytvorene `src/components/Canvas/ProbeNode.tsx`:
+  - `React.memo` (P2), 1 target handle vlavo
+  - Zobrazuje aktualnu hodnotu (0/1) z simulation store
+  - Kompaktny debug nastroj — na rozdiel od Output nema meno a nesluzi ako interface pin
+- Aktualizovane `src/components/Canvas/Canvas.tsx`:
+  - Registrovany `probe: ProbeNode` v `nodeTypes` (mimo komponent, P1)
+  - Pridane tlacidlo "+ Probe" v paneli
+  - Volany `useSimulation()` hook v `CanvasInner`
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK, 37/37 testov OK
 
 ### Session 2026-02-03 (iteracia 5)
 - Vytvorene `src/components/Canvas/ManhattanEdge.tsx` — custom edge komponent:

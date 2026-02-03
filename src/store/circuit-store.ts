@@ -31,6 +31,10 @@ export type ConstantNodeData = {
   value: boolean;
 };
 
+export type ProbeNodeData = {
+  pinId: string;
+};
+
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
@@ -42,11 +46,13 @@ export type ModuleNodeData = {
 export type InputNodeType = Node<InputNodeData, "circuitInput">;
 export type OutputNodeType = Node<OutputNodeData, "circuitOutput">;
 export type ConstantNodeType = Node<ConstantNodeData, "constant">;
+export type ProbeNodeType = Node<ProbeNodeData, "probe">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
   | OutputNodeType
   | ConstantNodeType
+  | ProbeNodeType
   | ModuleNodeType;
 
 // === Store ===
@@ -55,11 +61,12 @@ interface CircuitStore {
   nodes: AppNode[];
   edges: RFEdge[];
   activeModuleId: string | null;
+  simulationVersion: number;
 
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
   addNode: (
-    type: "circuitInput" | "circuitOutput" | "constant" | "module",
+    type: AppNode["type"],
     position: XYPosition,
     moduleId?: string,
   ) => void;
@@ -75,16 +82,41 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
   nodes: [],
   edges: [],
   activeModuleId: null,
+  simulationVersion: 0,
 
   onNodesChange: (changes) =>
-    set((state) => ({
-      nodes: applyNodeChanges(changes, state.nodes),
-    })),
+    set((state) => {
+      const removedIds = new Set(
+        changes
+          .filter((c): c is NodeChange<AppNode> & { type: "remove" } => c.type === "remove")
+          .map((c) => c.id),
+      );
+      const newNodes = applyNodeChanges(changes, state.nodes);
+
+      if (removedIds.size === 0) {
+        return { nodes: newNodes };
+      }
+
+      // Clean up edges connected to removed nodes + bump simulation version
+      return {
+        nodes: newNodes,
+        edges: state.edges.filter(
+          (e) => !removedIds.has(e.source) && !removedIds.has(e.target),
+        ),
+        simulationVersion: state.simulationVersion + 1,
+      };
+    }),
 
   onEdgesChange: (changes) =>
-    set((state) => ({
-      edges: applyEdgeChanges(changes, state.edges),
-    })),
+    set((state) => {
+      const hasRemoval = changes.some((c) => c.type === "remove");
+      return {
+        edges: applyEdgeChanges(changes, state.edges),
+        ...(hasRemoval
+          ? { simulationVersion: state.simulationVersion + 1 }
+          : {}),
+      };
+    }),
 
   addNode: (type, position, moduleId) =>
     set((state) => {
@@ -116,6 +148,14 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             data: { label: "0", pinId: generateId(), value: false },
           };
           break;
+        case "probe":
+          node = {
+            id,
+            type: "probe",
+            position,
+            data: { pinId: generateId() },
+          };
+          break;
         case "module": {
           const mid = moduleId ?? BUILTIN_NAND_MODULE_ID;
           const isNand = mid === BUILTIN_NAND_MODULE_ID;
@@ -141,20 +181,30 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         }
       }
 
-      return { nodes: [...state.nodes, node] };
+      return {
+        nodes: [...state.nodes, node],
+        simulationVersion: state.simulationVersion + 1,
+      };
     }),
 
   removeNode: (id) =>
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
+      simulationVersion: state.simulationVersion + 1,
     })),
 
   addEdge: (edge) =>
-    set((state) => ({ edges: [...state.edges, edge] })),
+    set((state) => ({
+      edges: [...state.edges, edge],
+      simulationVersion: state.simulationVersion + 1,
+    })),
 
   removeEdge: (id) =>
-    set((state) => ({ edges: state.edges.filter((e) => e.id !== id) })),
+    set((state) => ({
+      edges: state.edges.filter((e) => e.id !== id),
+      simulationVersion: state.simulationVersion + 1,
+    })),
 
   toggleInputValue: (nodeId) =>
     set((state) => ({
@@ -162,6 +212,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         if (n.id !== nodeId || n.type !== "circuitInput") return n;
         return { ...n, data: { ...n.data, value: !n.data.value } };
       }),
+      simulationVersion: state.simulationVersion + 1,
     })),
 
   toggleConstantValue: (nodeId) =>
@@ -177,6 +228,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           },
         };
       }),
+      simulationVersion: state.simulationVersion + 1,
     })),
 
   updateNodeLabel: (nodeId, label) =>

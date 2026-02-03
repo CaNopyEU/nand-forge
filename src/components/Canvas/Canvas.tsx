@@ -13,9 +13,11 @@ import "@xyflow/react/dist/style.css";
 
 import { useCircuitStore, type AppNode } from "../../store/circuit-store.ts";
 import { useWiring } from "../../hooks/useWiring.ts";
+import { useSimulation } from "../../hooks/useSimulation.ts";
 import { InputNode } from "./InputNode.tsx";
 import { OutputNode } from "./OutputNode.tsx";
 import { ConstantNode } from "./ConstantNode.tsx";
+import { ProbeNode } from "./ProbeNode.tsx";
 import { ModuleNode } from "./ModuleNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 
@@ -24,6 +26,7 @@ const nodeTypes: NodeTypes = {
   circuitInput: InputNode,
   circuitOutput: OutputNode,
   constant: ConstantNode,
+  probe: ProbeNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -42,6 +45,7 @@ function CanvasInner() {
 
   const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
+  useSimulation();
 
   const handleAddNode = useCallback(
     (type: AppNode["type"]) => {
@@ -103,6 +107,12 @@ function CanvasInner() {
             onClick={() => handleAddNode("module")}
           >
             + NAND
+          </button>
+          <button
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+            onClick={() => handleAddNode("probe")}
+          >
+            + Probe
           </button>
         </div>
       </Panel>

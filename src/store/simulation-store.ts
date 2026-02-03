@@ -1,0 +1,163 @@
+import { create } from "zustand";
+import type { Edge as RFEdge } from "@xyflow/react";
+import type { Circuit, CircuitNode, Edge as EngineEdge } from "../engine/types.ts";
+import { evaluateCircuitFull, pinKey } from "../engine/simulate.ts";
+import type { AppNode } from "./circuit-store.ts";
+
+// === Store ===
+
+interface SimulationStore {
+  /** All computed pin values, keyed by "nodeId:pinId" */
+  pinValues: Record<string, boolean>;
+  /** Signal value per edge, keyed by edge ID */
+  edgeSignals: Record<string, boolean>;
+
+  runSimulation: (nodes: AppNode[], edges: RFEdge[]) => void;
+}
+
+export const useSimulationStore = create<SimulationStore>((set) => ({
+  pinValues: {},
+  edgeSignals: {},
+
+  runSimulation: (nodes, edges) => {
+    const { circuit, inputValues } = canvasToCircuit(nodes, edges);
+
+    if (circuit.nodes.length === 0) {
+      set({ pinValues: {}, edgeSignals: {} });
+      return;
+    }
+
+    try {
+      const pinMap = evaluateCircuitFull(circuit, inputValues);
+
+      const pinValues: Record<string, boolean> = {};
+      for (const [key, value] of pinMap) {
+        pinValues[key] = value;
+      }
+
+      // Derive edge signals: each edge carries the value of its source output pin
+      const edgeSignals: Record<string, boolean> = {};
+      for (const edge of edges) {
+        if (edge.sourceHandle) {
+          const key = pinKey(edge.source, edge.sourceHandle);
+          edgeSignals[edge.id] = pinValues[key] ?? false;
+        }
+      }
+
+      set({ pinValues, edgeSignals });
+    } catch {
+      // Circuit has a cycle or other evaluation error — clear values
+      set({ pinValues: {}, edgeSignals: {} });
+    }
+  },
+}));
+
+// === Canvas → Engine conversion ===
+
+function canvasToCircuit(
+  nodes: AppNode[],
+  edges: RFEdge[],
+): { circuit: Circuit; inputValues: Record<string, boolean> } {
+  const circuitNodes: CircuitNode[] = nodes.map((node) => {
+    switch (node.type) {
+      case "circuitInput":
+        return {
+          id: node.id,
+          type: "input" as const,
+          position: node.position,
+          rotation: 0 as const,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: node.data.label,
+              direction: "output" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
+      case "circuitOutput":
+        return {
+          id: node.id,
+          type: "output" as const,
+          position: node.position,
+          rotation: 0 as const,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: node.data.label,
+              direction: "input" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
+      case "constant":
+        return {
+          id: node.id,
+          type: "constant" as const,
+          position: node.position,
+          rotation: 0 as const,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: node.data.label,
+              direction: "output" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
+      case "probe":
+        return {
+          id: node.id,
+          type: "probe" as const,
+          position: node.position,
+          rotation: 0 as const,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: "P",
+              direction: "input" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
+      case "module":
+        return {
+          id: node.id,
+          type: "module" as const,
+          moduleId: node.data.moduleId,
+          position: node.position,
+          rotation: 0 as const,
+          pins: node.data.pins,
+        };
+    }
+  });
+
+  const circuitEdges: EngineEdge[] = edges
+    .filter((e) => e.sourceHandle && e.targetHandle)
+    .map((e) => ({
+      id: e.id,
+      fromNodeId: e.source,
+      fromPinId: e.sourceHandle!,
+      toNodeId: e.target,
+      toPinId: e.targetHandle!,
+    }));
+
+  const inputValues: Record<string, boolean> = {};
+  for (const node of nodes) {
+    if (node.type === "circuitInput") {
+      inputValues[node.data.pinId] = node.data.value;
+    } else if (node.type === "constant") {
+      inputValues[node.data.pinId] = node.data.value;
+    }
+  }
+
+  return {
+    circuit: {
+      id: "canvas",
+      name: "canvas",
+      nodes: circuitNodes,
+      edges: circuitEdges,
+    },
+    inputValues,
+  };
+}

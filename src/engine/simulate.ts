@@ -113,13 +113,13 @@ export function topologicalSort(circuit: Circuit): NodeId[] {
   return sorted;
 }
 
-// === Circuit evaluation ===
+// === Circuit evaluation (full — returns all pin values) ===
 
-export function evaluateCircuit(
+export function evaluateCircuitFull(
   circuit: Circuit,
   inputs: Record<PinId, boolean>,
   modules?: Module[],
-): Record<PinId, boolean> {
+): Map<string, boolean> {
   const adj = buildAdjacencyList(circuit);
   const order = topologicalSort(circuit);
   const pinValues = new Map<string, boolean>();
@@ -269,7 +269,18 @@ export function evaluateCircuit(
     }
   }
 
-  // Collect output values from output nodes
+  return pinValues;
+}
+
+// === Circuit evaluation (outputs only — preserves original API) ===
+
+export function evaluateCircuit(
+  circuit: Circuit,
+  inputs: Record<PinId, boolean>,
+  modules?: Module[],
+): Record<PinId, boolean> {
+  const pinValues = evaluateCircuitFull(circuit, inputs, modules);
+
   const result: Record<PinId, boolean> = {};
   for (const node of circuit.nodes) {
     if (node.type === "output") {

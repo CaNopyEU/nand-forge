@@ -1,9 +1,14 @@
 import { memo, useCallback, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useCircuitStore, type OutputNodeType } from "../../store/circuit-store.ts";
+import { useSimulationStore } from "../../store/simulation-store.ts";
+import { pinKey } from "../../engine/simulate.ts";
 
 function OutputNodeComponent({ id, data }: NodeProps<OutputNodeType>) {
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
+  const signal = useSimulationStore(
+    (s) => s.pinValues[pinKey(id, data.pinId)] ?? false,
+  );
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -42,7 +47,7 @@ function OutputNodeComponent({ id, data }: NodeProps<OutputNodeType>) {
 
       <div
         className={`h-3 w-3 rounded-full ${
-          false /* simulation value, wired in I6 */
+          signal
             ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
             : "bg-zinc-600"
         }`}
