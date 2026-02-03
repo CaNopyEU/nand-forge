@@ -3,8 +3,8 @@ import type {
   Circuit,
   CircuitNode,
   Edge,
+  Module,
   Pin,
-  PinId,
 } from "../../src/engine/types.ts";
 import {
   BUILTIN_NAND_MODULE_ID,
@@ -246,5 +246,98 @@ describe("evaluateCircuit", () => {
     const circuit = makeCircuit("unconnected", nodes, []);
 
     expect(evaluateCircuit(circuit, {})).toEqual({ out: false });
+  });
+
+  describe("module with truth table cache", () => {
+    // NOT module with pre-computed truth table
+    const notCircuit = makeCircuit("not-internal", [
+      makeInputNode("n1", "in", "A"),
+      makeNandNode("nand", "a", "b", "q"),
+      makeOutputNode("n3", "out", "Out"),
+    ], [
+      makeEdge("e1", "n1", "in", "nand", "a"),
+      makeEdge("e2", "n1", "in", "nand", "b"),
+      makeEdge("e3", "nand", "q", "n3", "out"),
+    ]);
+
+    const notModule: Module = {
+      id: "mod-not",
+      name: "NOT",
+      inputs: [makePin("in", "In", "input")],
+      outputs: [makePin("out", "Out", "output")],
+      circuit: notCircuit,
+      truthTable: {
+        inputNames: ["in"],
+        outputNames: ["out"],
+        rows: { "0": "1", "1": "0" },
+      },
+      createdAt: "",
+      updatedAt: "",
+    };
+
+    it("evaluates circuit using module truth table lookup", () => {
+      // Circuit: Input → NOT module → Output
+      const nodes: CircuitNode[] = [
+        makeInputNode("input", "x", "X"),
+        {
+          id: "not-node",
+          type: "module",
+          moduleId: "mod-not",
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          pins: [
+            makePin("in", "In", "input"),
+            makePin("out", "Out", "output"),
+          ],
+        },
+        makeOutputNode("output", "y", "Y"),
+      ];
+      const edges = [
+        makeEdge("e1", "input", "x", "not-node", "in"),
+        makeEdge("e2", "not-node", "out", "output", "y"),
+      ];
+      const circuit = makeCircuit("with-module", nodes, edges);
+
+      expect(evaluateCircuit(circuit, { x: true }, [notModule])).toEqual({ y: false });
+      expect(evaluateCircuit(circuit, { x: false }, [notModule])).toEqual({ y: true });
+    });
+
+    it("evaluates double NOT (module used twice) back to identity", () => {
+      const nodes: CircuitNode[] = [
+        makeInputNode("input", "x", "X"),
+        {
+          id: "not1",
+          type: "module",
+          moduleId: "mod-not",
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          pins: [
+            makePin("in", "In", "input"),
+            makePin("out", "Out", "output"),
+          ],
+        },
+        {
+          id: "not2",
+          type: "module",
+          moduleId: "mod-not",
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          pins: [
+            makePin("in", "In", "input"),
+            makePin("out", "Out", "output"),
+          ],
+        },
+        makeOutputNode("output", "y", "Y"),
+      ];
+      const edges = [
+        makeEdge("e1", "input", "x", "not1", "in"),
+        makeEdge("e2", "not1", "out", "not2", "in"),
+        makeEdge("e3", "not2", "out", "output", "y"),
+      ];
+      const circuit = makeCircuit("double-not", nodes, edges);
+
+      expect(evaluateCircuit(circuit, { x: true }, [notModule])).toEqual({ y: true });
+      expect(evaluateCircuit(circuit, { x: false }, [notModule])).toEqual({ y: false });
+    });
   });
 });

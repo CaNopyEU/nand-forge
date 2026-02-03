@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 2 (DONE)
-**Posledna zmena:** Iteracia 2 dokoncena
+**Aktualna iteracia:** 3 (DONE)
+**Posledna zmena:** Iteracia 3 dokoncena
 
 ### Progress tracker
 
@@ -23,7 +23,7 @@ Pred zaciatakom prace precitaj:
 |---|---|---|
 | 1 | Projekt setup + core typy | ✅ DONE |
 | 2 | Simulation engine | ✅ DONE |
-| 3 | Truth table engine | ⬜ TODO |
+| 3 | Truth table engine | ✅ DONE |
 | 4 | Canvas zaklad | ⬜ TODO |
 | 5 | Wiring | ⬜ TODO |
 | 6 | Live simulacia na canvase | ⬜ TODO |
@@ -109,6 +109,20 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 3)
+- Vytvorene `src/engine/truth-table.ts`:
+  - `generateTruthTable(circuit, modules)` — iteruje vsetky 2^n input kombinacie, vola `evaluateCircuit`, vracia `TruthTable | null`
+  - Threshold: > 16 inputov → vracia `null`
+  - `lookupTruthTable(table, inputs)` — O(1) lookup podla input kluca
+- Vytvorene `tests/engine/truth-table.test.ts` — 8 testov:
+  - generateTruthTable: NOT (2 riadky), XOR z 4 NANDov (4 riadky), threshold > 16 → null, presne 16 → OK, prazdny circuit
+  - lookupTruthTable: NOT lookup, XOR lookup, chybajuci riadok → false
+- Rozsirene `tests/engine/simulate.test.ts` o 2 testy (module s truth table cache):
+  - Input → NOT modul (s truth table) → Output
+  - Double NOT (2x modul) → identita
+- Poznamka: truth table cache lookup v `evaluateCircuit` bol uz implementovany v I2 (task 3.4 uz splneny)
+- Verifikacia: 37/37 testov OK, `tsc -b` zero errors
 
 ### Session 2026-02-03 (iteracia 2)
 - Vytvorene `src/engine/simulate.ts`:
