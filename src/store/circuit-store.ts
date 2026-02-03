@@ -96,6 +96,7 @@ interface CircuitStore {
     type: AppNode["type"],
     position: XYPosition,
     moduleId?: string,
+    moduleData?: { label: string; pins: Pin[] },
   ) => void;
   removeNode: (id: string) => void;
   addEdge: (edge: RFEdge) => void;
@@ -148,7 +149,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       };
     }),
 
-  addNode: (type, position, moduleId) =>
+  addNode: (type, position, moduleId, moduleData) =>
     set((state) => {
       const id = generateId();
 
@@ -189,23 +190,27 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         case "module": {
           const mid = moduleId ?? BUILTIN_NAND_MODULE_ID;
           const isNand = mid === BUILTIN_NAND_MODULE_ID;
-          const pins: Pin[] = isNand
-            ? [
-                { id: generateId(), name: "A", direction: "input", bits: 1 },
-                { id: generateId(), name: "B", direction: "input", bits: 1 },
-                {
-                  id: generateId(),
-                  name: "Out",
-                  direction: "output",
-                  bits: 1,
-                },
-              ]
-            : [];
+          // Use provided moduleData or fall back to NAND defaults
+          const pins: Pin[] = moduleData
+            ? moduleData.pins.map((p) => ({ ...p, id: generateId() }))
+            : isNand
+              ? [
+                  { id: generateId(), name: "A", direction: "input", bits: 1 },
+                  { id: generateId(), name: "B", direction: "input", bits: 1 },
+                  {
+                    id: generateId(),
+                    name: "Out",
+                    direction: "output",
+                    bits: 1,
+                  },
+                ]
+              : [];
+          const label = moduleData ? moduleData.label : isNand ? "NAND" : "Module";
           node = {
             id,
             type: "module",
             position,
-            data: { label: isNand ? "NAND" : "Module", moduleId: mid, pins },
+            data: { label, moduleId: mid, pins },
           };
           break;
         }

@@ -12,7 +12,8 @@ export function Toolbar() {
   const addModule = useModuleStore((s) => s.addModule);
   const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
+  const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
 
   // Resolve active module name
@@ -23,7 +24,7 @@ export function Toolbar() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const doSave = useCallback(() => {
     const result: SaveResult = saveCurrentModule();
 
     if (!result.success) {
@@ -38,7 +39,16 @@ export function Toolbar() {
     }
   }, [saveCurrentModule, showToast]);
 
-  const handleNewModule = useCallback((name: string) => {
+  const handleSave = useCallback(() => {
+    if (!activeModuleId) {
+      // No active module — ask for name, then save with current canvas
+      setDialogMode("save");
+      return;
+    }
+    doSave();
+  }, [activeModuleId, doSave]);
+
+  const handleDialogConfirm = useCallback((name: string) => {
     const id = generateId();
     const now = new Date().toISOString();
 
@@ -54,9 +64,19 @@ export function Toolbar() {
 
     addModule(newModule);
     setActiveModuleId(id);
-    clearCanvas();
-    setDialogOpen(false);
-  }, [addModule, setActiveModuleId, clearCanvas]);
+
+    if (dialogMode === "new") {
+      clearCanvas();
+    }
+
+    setDialogMode(null);
+
+    // If saving, trigger save now that activeModuleId is set
+    if (dialogMode === "save") {
+      // Need to call save after state update — use setTimeout(0)
+      setTimeout(() => doSave(), 0);
+    }
+  }, [addModule, setActiveModuleId, clearCanvas, dialogMode, doSave]);
 
   // Ctrl+S / Cmd+S keyboard shortcut
   useEffect(() => {
@@ -90,7 +110,7 @@ export function Toolbar() {
 
         <div className="ml-auto flex gap-2">
           <button
-            onClick={() => setDialogOpen(true)}
+            onClick={() => setDialogMode("new")}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
           >
             New Module
@@ -105,9 +125,9 @@ export function Toolbar() {
       </div>
 
       <NewModuleDialog
-        open={dialogOpen}
-        onConfirm={handleNewModule}
-        onCancel={() => setDialogOpen(false)}
+        open={dialogMode !== null}
+        onConfirm={handleDialogConfirm}
+        onCancel={() => setDialogMode(null)}
       />
 
       {toast && (

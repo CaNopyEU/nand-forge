@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, type DragEvent } from "react";
 import {
   ReactFlow,
   Background,
@@ -12,6 +12,9 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useCircuitStore, type AppNode } from "../../store/circuit-store.ts";
+import { getModuleById } from "../../store/module-store.ts";
+import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
+import type { Pin } from "../../engine/types.ts";
 import { useWiring } from "../../hooks/useWiring.ts";
 import { useSimulation } from "../../hooks/useSimulation.ts";
 import { InputNode } from "./InputNode.tsx";
@@ -61,6 +64,38 @@ function CanvasInner() {
     [screenToFlowPosition, addNode],
   );
 
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      const moduleId = e.dataTransfer.getData("application/nandforge-module");
+      if (!moduleId) return;
+
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+
+      if (moduleId === BUILTIN_NAND_MODULE_ID) {
+        addNode("module", position, BUILTIN_NAND_MODULE_ID);
+        return;
+      }
+
+      // Look up custom module for pin data
+      const mod = getModuleById(moduleId);
+      if (!mod) return;
+
+      const pins: Pin[] = [
+        ...mod.inputs.map((p) => ({ ...p, direction: "input" as const })),
+        ...mod.outputs.map((p) => ({ ...p, direction: "output" as const })),
+      ];
+
+      addNode("module", position, moduleId, { label: mod.name, pins });
+    },
+    [screenToFlowPosition, addNode],
+  );
+
   return (
     <ReactFlow
       nodes={nodes}
@@ -69,6 +104,8 @@ function CanvasInner() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       isValidConnection={isValidConnection}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}

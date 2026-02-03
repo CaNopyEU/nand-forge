@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Edge as RFEdge } from "@xyflow/react";
 import { evaluateCircuitFull, pinKey } from "../engine/simulate.ts";
 import { canvasToCircuit } from "../utils/canvas-to-circuit.ts";
+import { useModuleStore } from "./module-store.ts";
 import type { AppNode } from "./circuit-store.ts";
 
 // === Store ===
@@ -28,7 +29,8 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     }
 
     try {
-      const pinMap = evaluateCircuitFull(circuit, inputValues);
+      const modules = useModuleStore.getState().modules;
+      const pinMap = evaluateCircuitFull(circuit, inputValues, modules);
 
       const pinValues: Record<string, boolean> = {};
       for (const [key, value] of pinMap) {

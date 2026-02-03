@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 7 (DONE)
-**Posledna zmena:** Iteracia 7 dokoncena
+**Aktualna iteracia:** 8 (DONE)
+**Posledna zmena:** Iteracia 8 dokoncena
 
 ### Progress tracker
 
@@ -28,7 +28,7 @@ Pred zaciatakom prace precitaj:
 | 5 | Wiring | ✅ DONE |
 | 6 | Live simulacia na canvase | ✅ DONE |
 | 7 | Module system: ukladanie | ✅ DONE |
-| 8 | Module system: kniznica a pouzitie | ⬜ TODO |
+| 8 | Module system: kniznica a pouzitie | ✅ DONE |
 | 9 | Editacia pouziteho modulu + kaskadovanie | ⬜ TODO |
 | 10 | Rotacia | ⬜ TODO |
 | 11 | Truth table view | ⬜ TODO |
@@ -110,6 +110,34 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 8)
+- Vytvorene `src/components/Library/ModuleCard.tsx` — `React.memo` karta modulu:
+  - Zobrazuje nazov + pocet in/out pinov
+  - Draggable (`onDragStart` s `application/nandforge-module` dataTransfer)
+  - Klik na user-created modul → otvori na editaciu (NAND je needitovatelny)
+- Vytvorene `src/components/Library/LibraryPanel.tsx`:
+  - NAND vzdy prvy (built-in, virtualny Module objekt, needitovatelny, nemazatelny)
+  - Pod nim user-created moduly z module-store
+  - `handleOpen` — klik na modul → `setActiveModuleId` + `loadCircuit` s konverziou z engine typov
+- Vytvorene `src/utils/circuit-converters.ts` — konverzne utility:
+  - `circuitNodesToAppNodes(nodes, modules)` — engine CircuitNode[] → React Flow AppNode[]
+    - Spravne odvodi constant value z pin name ("0"/"1")
+    - Lookup module names pre module nody
+  - `circuitEdgesToRFEdges(edges)` — engine Edge[] → React Flow Edge[] s manhattan typom
+- Aktualizovane `src/store/circuit-store.ts`:
+  - `addNode` rozsireny o volitelny `moduleData?: { label, pins }` parameter
+  - Pre custom moduly: piny sa kopiuju s novymi ID (`generateId()`) a label z moduleData
+  - Umoznuje drag & drop custom modulov z library bez circular dependency
+- Aktualizovane `src/components/Canvas/Canvas.tsx`:
+  - Pridane `onDragOver` (prevent default, copy effect) a `onDrop` handlery
+  - Drop handler: cita moduleId z dataTransfer, lookup modul cez `getModuleById`, vytvori node s pinmi
+  - NAND drop pouziva existujuci built-in flow, custom moduly posielaju `moduleData`
+- Aktualizovane `src/store/simulation-store.ts`:
+  - Import `useModuleStore`, `runSimulation` teraz pasa `modules` do `evaluateCircuitFull`
+  - Custom module nody na canvase sa teraz spravne simuluju (truth table lookup alebo rekurzia)
+- Aktualizovane `src/App.tsx` — nahradeny placeholder library panel za `<LibraryPanel />` komponent
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK, 37/37 testov OK
 
 ### Session 2026-02-03 (iteracia 7)
 - Extrahovane `canvasToCircuit` z `simulation-store.ts` do `src/utils/canvas-to-circuit.ts` — shared utility pre simulation aj save flow
