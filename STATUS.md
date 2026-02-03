@@ -14,15 +14,15 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 1 (DONE)
-**Posledna zmena:** Iteracia 1 dokoncena
+**Aktualna iteracia:** 2 (DONE)
+**Posledna zmena:** Iteracia 2 dokoncena
 
 ### Progress tracker
 
 | Iteracia | Nazov | Status |
 |---|---|---|
 | 1 | Projekt setup + core typy | ✅ DONE |
-| 2 | Simulation engine | ⬜ TODO |
+| 2 | Simulation engine | ✅ DONE |
 | 3 | Truth table engine | ⬜ TODO |
 | 4 | Canvas zaklad | ⬜ TODO |
 | 5 | Wiring | ⬜ TODO |
@@ -108,7 +108,27 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 
 ## Poznamky z poslednej session
 
-_Tu sa budu pridavat poznamky z kazdeho pracovneho session._
+_Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 2)
+- Vytvorene `src/engine/simulate.ts`:
+  - `evaluateNand(a, b)` — `!(a && b)`
+  - `BUILTIN_NAND_MODULE_ID` = `"builtin:nand"`
+  - `pinKey(nodeId, pinId)` — kompozitny kluc pre mapy
+  - `buildAdjacencyList(circuit)` — forward (fan-out) + reverse (fan-in) mapy
+  - `topologicalSort(circuit)` — Kahnov algoritmus, throw pri cykle
+  - `evaluateCircuit(circuit, inputs, modules?)` — seed inputs, propagacia cez topo order, NAND eval, custom module support (truth table lookup + rekurzia)
+- Vytvorene `src/engine/validate.ts`:
+  - `hasCycle(circuit)` — DFS three-color (WHITE/GRAY/BLACK)
+  - `hasTransitiveSelfReference(moduleId, modules)` — BFS cez module grafy
+- Vytvorene `tests/engine/simulate.test.ts` — 17 testov:
+  - 4x NAND truth table, pinKey, adjacency list (forward, reverse, fan-out)
+  - topologicalSort dependency order
+  - evaluateCircuit: empty, pass-through, NOT (2 testy), AND (4 kombinacie), unconnected output
+- Vytvorene `tests/engine/validate.test.ts` — 10 testov:
+  - hasCycle: acyclic, cyclic A→B→C→A, self-loop, empty, disconnected
+  - hasTransitiveSelfReference: mutual A↔B, direct, no-ref, nonexistent, chain A→B→C→A
+- Verifikacia: 27/27 testov OK, `tsc -b` zero errors
 
 ### Session 2026-02-03 (planovanie)
 - Vytvoreny tech-spec.md s kompletnou MVP specifikaciou (13 iteracii, ~90 taskov)
