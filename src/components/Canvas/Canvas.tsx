@@ -75,6 +75,10 @@ function CanvasInner() {
       const moduleId = e.dataTransfer.getData("application/nandforge-module");
       if (!moduleId) return;
 
+      // Prevent inserting a module into itself
+      const activeModuleId = useCircuitStore.getState().activeModuleId;
+      if (moduleId === activeModuleId) return;
+
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
 
       if (moduleId === BUILTIN_NAND_MODULE_ID) {

@@ -89,6 +89,7 @@ interface CircuitStore {
   edges: RFEdge[];
   activeModuleId: string | null;
   simulationVersion: number;
+  isDirty: boolean;
 
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
@@ -107,6 +108,7 @@ interface CircuitStore {
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
+  markClean: () => void;
 }
 
 export const useCircuitStore = create<CircuitStore>((set) => ({
@@ -114,6 +116,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
   edges: [],
   activeModuleId: null,
   simulationVersion: 0,
+  isDirty: false,
 
   onNodesChange: (changes) =>
     set((state) => {
@@ -123,9 +126,13 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           .map((c) => c.id),
       );
       const newNodes = applyNodeChanges(changes, state.nodes);
+      const hasContentChange = changes.some((c) => c.type !== "select");
 
       if (removedIds.size === 0) {
-        return { nodes: newNodes };
+        return {
+          nodes: newNodes,
+          ...(hasContentChange ? { isDirty: true } : {}),
+        };
       }
 
       // Clean up edges connected to removed nodes + bump simulation version
@@ -135,6 +142,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           (e) => !removedIds.has(e.source) && !removedIds.has(e.target),
         ),
         simulationVersion: state.simulationVersion + 1,
+        isDirty: true,
       };
     }),
 
@@ -144,7 +152,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       return {
         edges: applyEdgeChanges(changes, state.edges),
         ...(hasRemoval
-          ? { simulationVersion: state.simulationVersion + 1 }
+          ? { simulationVersion: state.simulationVersion + 1, isDirty: true }
           : {}),
       };
     }),
@@ -219,6 +227,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       return {
         nodes: [...state.nodes, node],
         simulationVersion: state.simulationVersion + 1,
+        isDirty: true,
       };
     }),
 
@@ -227,18 +236,21 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   addEdge: (edge) =>
     set((state) => ({
       edges: [...state.edges, edge],
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   removeEdge: (id) =>
     set((state) => ({
       edges: state.edges.filter((e) => e.id !== id),
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   toggleInputValue: (nodeId) =>
@@ -248,6 +260,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         return { ...n, data: { ...n.data, value: !n.data.value } };
       }),
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   toggleConstantValue: (nodeId) =>
@@ -264,6 +277,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         };
       }),
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   updateNodeLabel: (nodeId, label) =>
@@ -273,6 +287,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           ? ({ ...n, data: { ...n.data, label } } as AppNode)
           : n,
       ),
+      isDirty: true,
     })),
 
   clearCanvas: () =>
@@ -280,6 +295,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       nodes: [],
       edges: [],
       simulationVersion: state.simulationVersion + 1,
+      isDirty: false,
     })),
 
   setActiveModuleId: (moduleId) =>
@@ -290,5 +306,9 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       nodes,
       edges,
       simulationVersion: state.simulationVersion + 1,
+      isDirty: false,
     })),
+
+  markClean: () =>
+    set({ isDirty: false }),
 }));

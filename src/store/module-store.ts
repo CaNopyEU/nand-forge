@@ -133,6 +133,9 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
       ),
     }));
 
+    // Mark canvas as clean after successful save
+    useCircuitStore.getState().markClean();
+
     return { success: true, warnings, errors };
   },
 }));
