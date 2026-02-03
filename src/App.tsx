@@ -1,12 +1,11 @@
 import Canvas from "./components/Canvas/Canvas.tsx";
+import { Toolbar } from "./components/Toolbar/Toolbar.tsx";
 
 export default function App() {
   return (
     <div className="flex h-screen flex-col bg-zinc-900 text-zinc-100">
       {/* Toolbar */}
-      <div className="flex h-10 items-center border-b border-zinc-700 px-4">
-        <span className="text-sm font-bold">NAND Forge</span>
-      </div>
+      <Toolbar />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Library panel — placeholder */}

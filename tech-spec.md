@@ -35,7 +35,7 @@ NAND → NOT → AND / OR → XOR → Half Adder → Full Adder → 8-bit Adder 
 - Multi-bit input/output (4-bit, 8-bit), bus wiring
 - Clock source, sekvencne obvody (flip-flopy)
 - Vizualne customizovanie blokov (farba, ikona)
-- Undo/redo
+- Undo/redo command pattern upgrade (snapshot verzia je v MVP I13)
 - Mobile/tablet podpora
 - Cloud ukladanie, zdielanie cez URL
 - Drill-down — dvojklik na modul otvori jeho vnutro
@@ -840,19 +840,32 @@ Vysledok: stav appky prezije refresh, moduly sa daju exportovat a importovat ako
 
 ---
 
-### Iteracia 13 — Polish a edge cases
+### Iteracia 13 — Undo/Redo (snapshot)
+
+Vysledok: Ctrl+Z a Ctrl+Shift+Z funguju. Jednoduchy snapshot-based pristup (nie command pattern — ten pride v post-MVP iteracii 18).
+
+| # | Task | Subor(y) | Popis |
+|---|---|---|---|
+| 13.1 | History store | `src/store/circuit-store.ts` | History stack: pole `{ nodes, edges }` snapshotov. `past: []`, `future: []`. Snapshot sa vytvori pred kazdou simulation-relevant mutaciou. Max ~50 snapshotov. |
+| 13.2 | Undo/Redo akcie | `src/store/circuit-store.ts` | `undo()`: posun aktualny stav do `future`, obnov posledny z `past`. `redo()`: opacne. |
+| 13.3 | Keyboard shortcuts | `src/components/Canvas/Canvas.tsx` | Ctrl+Z → undo, Ctrl+Shift+Z / Ctrl+Y → redo. |
+| 13.4 | Toolbar tlacidla | `src/App.tsx` | Undo/Redo tlacidla v toolbare. Disabled ked stack prazdny. |
+
+---
+
+### Iteracia 14 — Polish a edge cases
 
 Vysledok: appka je robustna, vizualne cista, pripravena na pouzitie.
 
 | # | Task | Subor(y) | Popis |
 |---|---|---|---|
-| 13.1 | Status bar | `src/components/StatusBar/StatusBar.tsx` | Spodny bar: pocet nodov, pocet wirov, nazov aktivneho modulu, stav simulacie |
-| 13.2 | Error toasty | `src/components/shared/Toast.tsx` | Jednotny system pre zobrazovanie warnings a errors (cycle detected, invalid connection, ...) |
-| 13.3 | Node mazanie s cleanup | `src/store/circuit-store.ts` | Delete nodu → automaticky zmaz vsetky pripojene wiry |
-| 13.4 | Empty state | `src/components/Canvas/Canvas.tsx` | Ak je canvas prazdny → zobraz hint "Drag components from library to start building" |
-| 13.5 | Keyboard shortcuts | `src/components/Canvas/Canvas.tsx` | Ctrl+S (save), Delete (zmaz), R (rotate) — sumar vsetkych shortcuts |
-| 13.6 | Performance audit | — | Test s 50+ nodmi: overit FPS, identifikovat bottlenecky, aplikovat P1–P5 ak treba |
-| 13.7 | Visual polish | vsetky komponenty | Konzistentny styling, hover stavy, transition animacie na wiroch |
+| 14.1 | Status bar | `src/components/StatusBar/StatusBar.tsx` | Spodny bar: pocet nodov, pocet wirov, nazov aktivneho modulu, stav simulacie |
+| 14.2 | Error toasty | `src/components/shared/Toast.tsx` | Jednotny system pre zobrazovanie warnings a errors (cycle detected, invalid connection, ...) |
+| 14.3 | Node mazanie s cleanup | `src/store/circuit-store.ts` | Delete nodu → automaticky zmaz vsetky pripojene wiry |
+| 14.4 | Empty state | `src/components/Canvas/Canvas.tsx` | Ak je canvas prazdny → zobraz hint "Drag components from library to start building" |
+| 14.5 | Keyboard shortcuts | `src/components/Canvas/Canvas.tsx` | Ctrl+S (save), Delete (zmaz), R (rotate) — sumar vsetkych shortcuts |
+| 14.6 | Performance audit | — | Test s 50+ nodmi: overit FPS, identifikovat bottlenecky, aplikovat P1–P5 ak treba |
+| 14.7 | Visual polish | vsetky komponenty | Konzistentny styling, hover stavy, transition animacie na wiroch |
 
 ---
 

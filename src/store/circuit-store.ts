@@ -55,6 +55,33 @@ export type AppNode =
   | ProbeNodeType
   | ModuleNodeType;
 
+// === Helpers ===
+
+export function extractInterface(nodes: AppNode[]): { inputs: Pin[]; outputs: Pin[] } {
+  const inputs: Pin[] = [];
+  const outputs: Pin[] = [];
+
+  for (const node of nodes) {
+    if (node.type === "circuitInput") {
+      inputs.push({
+        id: node.data.pinId,
+        name: node.data.label,
+        direction: "input",
+        bits: 1,
+      });
+    } else if (node.type === "circuitOutput") {
+      outputs.push({
+        id: node.data.pinId,
+        name: node.data.label,
+        direction: "output",
+        bits: 1,
+      });
+    }
+  }
+
+  return { inputs, outputs };
+}
+
 // === Store ===
 
 interface CircuitStore {
@@ -76,6 +103,9 @@ interface CircuitStore {
   toggleInputValue: (nodeId: string) => void;
   toggleConstantValue: (nodeId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
+  clearCanvas: () => void;
+  setActiveModuleId: (moduleId: string | null) => void;
+  loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
 }
 
 export const useCircuitStore = create<CircuitStore>((set) => ({
@@ -238,5 +268,22 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           ? ({ ...n, data: { ...n.data, label } } as AppNode)
           : n,
       ),
+    })),
+
+  clearCanvas: () =>
+    set((state) => ({
+      nodes: [],
+      edges: [],
+      simulationVersion: state.simulationVersion + 1,
+    })),
+
+  setActiveModuleId: (moduleId) =>
+    set({ activeModuleId: moduleId }),
+
+  loadCircuit: (nodes, edges) =>
+    set((state) => ({
+      nodes,
+      edges,
+      simulationVersion: state.simulationVersion + 1,
     })),
 }));

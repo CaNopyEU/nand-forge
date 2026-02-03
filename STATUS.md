@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 6 (DONE)
-**Posledna zmena:** Iteracia 6 dokoncena
+**Aktualna iteracia:** 7 (DONE)
+**Posledna zmena:** Iteracia 7 dokoncena
 
 ### Progress tracker
 
@@ -27,13 +27,14 @@ Pred zaciatakom prace precitaj:
 | 4 | Canvas zaklad | ✅ DONE |
 | 5 | Wiring | ✅ DONE |
 | 6 | Live simulacia na canvase | ✅ DONE |
-| 7 | Module system: ukladanie | ⬜ TODO |
+| 7 | Module system: ukladanie | ✅ DONE |
 | 8 | Module system: kniznica a pouzitie | ⬜ TODO |
 | 9 | Editacia pouziteho modulu + kaskadovanie | ⬜ TODO |
 | 10 | Rotacia | ⬜ TODO |
 | 11 | Truth table view | ⬜ TODO |
 | 12 | Persistencia + export/import | ⬜ TODO |
-| 13 | Polish a edge cases | ⬜ TODO |
+| 13 | Undo/Redo (snapshot) | ⬜ TODO |
+| 14 | Polish a edge cases | ⬜ TODO |
 
 Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 
@@ -102,13 +103,49 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 
 - React Flow vs vlastny SVG: rozhodnute v prospech React Flow, ale ak sa objavi blocker → fallback plan existuje
 - Web Worker pre simulaciu: zvazit az ked sa objavia performance problemy
-- Undo/Redo: post-MVP (iteracia 18), command pattern
+- Undo/Redo: MVP iteracia 13 = jednoduchy snapshot-based undo (history stack of {nodes, edges}). Post-MVP iteracia 18 = upgrade na command pattern (batch ops, memory-efektivnejsie)
 
 ---
 
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 7)
+- Extrahovane `canvasToCircuit` z `simulation-store.ts` do `src/utils/canvas-to-circuit.ts` — shared utility pre simulation aj save flow
+- Pridana pure funkcia `extractInterface(nodes)` do `circuit-store.ts` — extrahuje `{ inputs: Pin[], outputs: Pin[] }` z AppNode[]
+- Rozsireny `circuit-store.ts` o 3 nove akcie:
+  - `clearCanvas()` — reset nodes/edges na [], bump simulationVersion
+  - `setActiveModuleId(moduleId)` — nastavi aktualny modul
+  - `loadCircuit(nodes, edges)` — nahradi canvas obsah, bump simulationVersion
+- Vytvorene `src/store/module-store.ts` — Zustand store:
+  - `modules: Module[]` — zoznam ulozenych modulov
+  - CRUD akcie: `addModule`, `updateModule`, `deleteModule`
+  - Helper `getModuleById(id)` — cita cez `getState()`
+  - `saveCurrentModule()` — kompletny save flow s validaciou:
+    - Kontrola activeModuleId existencie
+    - Min 1 circuitInput + 1 circuitOutput node
+    - Nazov != "NAND" (case-insensitive)
+    - `hasTransitiveSelfReference` check z `engine/validate.ts`
+    - Warning (nie error) pre nepripojene Input/Output nody
+    - Vola `extractInterface` → interface piny
+    - Vola `canvasToCircuit` → engine circuit
+    - Generuje truth table ak <=16 inputov
+    - Vracia `{ success, warnings, errors }`
+- Vytvorene `src/components/Toolbar/Toolbar.tsx`:
+  - "NAND Forge" title + nazov aktivneho modulu (badge)
+  - "New Module" tlacidlo → otvori dialog
+  - "Save" tlacidlo → vola `saveCurrentModule()`
+  - `Ctrl+S` / `Cmd+S` keyboard shortcut (useEffect + keydown listener)
+  - Toast notifikacie (success/warning/error) s auto-dismiss po 3s
+- Vytvorene `src/components/Toolbar/NewModuleDialog.tsx`:
+  - Modal s input polom, auto-focus pri otvoreni
+  - Enter = submit, Escape = cancel
+  - Validacia: prazdny nazov, "NAND" guard
+  - "Create" + "Cancel" tlacidla
+- Aktualizovane `src/App.tsx` — nahradeny inline toolbar div za `<Toolbar />` komponent
+- Aktualizovane `src/store/simulation-store.ts` — importuje `canvasToCircuit` zo shared utility, odstranena lokalna kopia
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK, 37/37 testov OK
 
 ### Session 2026-02-03 (iteracia 6)
 - Refaktorovane `src/engine/simulate.ts`:
