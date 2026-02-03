@@ -1,0 +1,59 @@
+// === Identifiers ===
+export type NodeId = string;
+export type PinId = string;
+export type EdgeId = string;
+export type ModuleId = string;
+
+// === Pin ===
+export interface Pin {
+  id: PinId;
+  name: string;
+  direction: "input" | "output";
+  bits: 1;
+}
+
+// === Node on canvas ===
+export interface CircuitNode {
+  id: NodeId;
+  type: "input" | "output" | "constant" | "probe" | "module";
+  moduleId?: ModuleId;
+  position: { x: number; y: number };
+  rotation: 0 | 90 | 180 | 270;
+  pins: Pin[];
+}
+
+// === Wire between pins ===
+export interface Edge {
+  id: EdgeId;
+  fromNodeId: NodeId;
+  fromPinId: PinId;
+  toNodeId: NodeId;
+  toPinId: PinId;
+}
+
+// === Circuit — editable circuit on canvas ===
+export interface Circuit {
+  id: string;
+  name: string;
+  nodes: CircuitNode[];
+  edges: Edge[];
+}
+
+// === Module — saved reusable circuit ===
+export interface Module {
+  id: ModuleId;
+  name: string;
+  inputs: Pin[];
+  outputs: Pin[];
+  circuit: Circuit;
+  truthTable?: TruthTable;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// === Truth table ===
+export interface TruthTable {
+  inputNames: string[];
+  outputNames: string[];
+  rows: Record<string, string>;
+}
