@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 3 (DONE)
-**Posledna zmena:** Iteracia 3 dokoncena
+**Aktualna iteracia:** 4 (DONE)
+**Posledna zmena:** Iteracia 4 dokoncena
 
 ### Progress tracker
 
@@ -24,7 +24,7 @@ Pred zaciatakom prace precitaj:
 | 1 | Projekt setup + core typy | ✅ DONE |
 | 2 | Simulation engine | ✅ DONE |
 | 3 | Truth table engine | ✅ DONE |
-| 4 | Canvas zaklad | ⬜ TODO |
+| 4 | Canvas zaklad | ✅ DONE |
 | 5 | Wiring | ⬜ TODO |
 | 6 | Live simulacia na canvase | ⬜ TODO |
 | 7 | Module system: ukladanie | ⬜ TODO |
@@ -109,6 +109,30 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 4)
+- Vytvorene `src/store/circuit-store.ts` — Zustand store:
+  - Node/edge state s `applyNodeChanges`/`applyEdgeChanges`
+  - `addNode` pre 4 typy: `circuitInput`, `circuitOutput`, `constant`, `module` (NAND)
+  - `removeNode` s automatickym mazanim pripojenych edges
+  - `toggleInputValue`, `toggleConstantValue`, `updateNodeLabel`
+  - Typed AppNode union: `InputNodeType | OutputNodeType | ConstantNodeType | ModuleNodeType`
+- Vytvorene node komponenty (vsetky `React.memo` — P2):
+  - `InputNode.tsx` — toggle button (0/1), editovatelne meno (double-click), source handle vpravo
+  - `OutputNode.tsx` — LED indikator (placeholder), editovatelne meno, target handle vlavo
+  - `ConstantNode.tsx` — toggle 0/1 (amber), source handle vpravo
+  - `ModuleNode.tsx` — dynamicke handles z `pins[]`, pin mena vedla handleov, label v strede
+- Vytvorene `Canvas.tsx`:
+  - `ReactFlowProvider` + `ReactFlow` s gridom (dots), pan, zoom
+  - `nodeTypes` definovane mimo komponent (P1)
+  - Panel s docasnymi tlacidlami: + Input, + Output, + Constant, + NAND
+  - `screenToFlowPosition` pre umiestnenie novych nodov do stredu viewportu
+- Aktualizovane `App.tsx` — layout shell:
+  - Toolbar s nazvom "NAND Forge"
+  - Library panel (placeholder)
+  - Canvas area (flex-1)
+- Rozhodnutie: RF node typy pouzivaju `circuitInput`/`circuitOutput` (nie `input`/`output`) aby sa predislo kolizii s React Flow built-in typmi
+- Verifikacia: `tsc -b` zero errors, 37/37 testov OK
 
 ### Session 2026-02-03 (iteracia 3)
 - Vytvorene `src/engine/truth-table.ts`:
