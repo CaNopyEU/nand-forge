@@ -7,22 +7,31 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type NodeTypes,
+  type EdgeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { useCircuitStore, type AppNode } from "../../store/circuit-store.ts";
+import { useWiring } from "../../hooks/useWiring.ts";
 import { InputNode } from "./InputNode.tsx";
 import { OutputNode } from "./OutputNode.tsx";
 import { ConstantNode } from "./ConstantNode.tsx";
 import { ModuleNode } from "./ModuleNode.tsx";
+import { ManhattanEdge } from "./ManhattanEdge.tsx";
 
-// P1: nodeTypes defined outside component — stable reference
+// P1: nodeTypes & edgeTypes defined outside component — stable reference
 const nodeTypes: NodeTypes = {
   circuitInput: InputNode,
   circuitOutput: OutputNode,
   constant: ConstantNode,
   module: ModuleNode,
 } as NodeTypes;
+
+const edgeTypes: EdgeTypes = {
+  manhattan: ManhattanEdge,
+} as EdgeTypes;
+
+const defaultEdgeOptions = { type: "manhattan" as const };
 
 function CanvasInner() {
   const nodes = useCircuitStore((s) => s.nodes);
@@ -31,6 +40,7 @@ function CanvasInner() {
   const onEdgesChange = useCircuitStore((s) => s.onEdgesChange);
   const addNode = useCircuitStore((s) => s.addNode);
 
+  const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
 
   const handleAddNode = useCallback(
@@ -53,7 +63,11 @@ function CanvasInner() {
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
+      onConnect={onConnect}
+      isValidConnection={isValidConnection}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
       fitView
       deleteKeyCode={["Backspace", "Delete"]}
       className="bg-zinc-900"

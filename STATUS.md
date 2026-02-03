@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 4 (DONE)
-**Posledna zmena:** Iteracia 4 dokoncena
+**Aktualna iteracia:** 5 (DONE)
+**Posledna zmena:** Iteracia 5 dokoncena
 
 ### Progress tracker
 
@@ -25,7 +25,7 @@ Pred zaciatakom prace precitaj:
 | 2 | Simulation engine | ✅ DONE |
 | 3 | Truth table engine | ✅ DONE |
 | 4 | Canvas zaklad | ✅ DONE |
-| 5 | Wiring | ⬜ TODO |
+| 5 | Wiring | ✅ DONE |
 | 6 | Live simulacia na canvase | ⬜ TODO |
 | 7 | Module system: ukladanie | ⬜ TODO |
 | 8 | Module system: kniznica a pouzitie | ⬜ TODO |
@@ -109,6 +109,29 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-03 (iteracia 5)
+- Vytvorene `src/components/Canvas/ManhattanEdge.tsx` — custom edge komponent:
+  - `React.memo` (P2), SVG Z-shape path (horizontal → vertical → horizontal)
+  - Ak piny v rovnakej vyske → rovny wire (2-segmentovy)
+  - Farba podla signalu: `#71717a` (seda, 0/neznamy), `#34d399` (zelena, 1), `#60a5fa` (modra, selected)
+  - Signal sa cita z `data.signal` na edge — pripravene pre I6 (simulation store)
+  - Exportovany `ManhattanEdgeType` pre typovanie
+- Vytvorene `src/hooks/useWiring.ts` — wiring hook:
+  - `isValidConnection(connection)` — validacia pred pripojenim:
+    - Ziadne self-connections (source === target)
+    - Handles musia byt specifikovane
+    - Ziadne duplicitne edges (rovnaky source+sourceHandle → target+targetHandle)
+    - Kazdy input pin moze mat max 1 pripojeny wire (one driver per input)
+    - Cycle detection — BFS z target, ak dosiahneme source → cyklus → odmietnutie
+  - `onConnect(connection)` — vytvori edge s `generateId()` a typom `manhattan`
+  - Typ `IsValidConnection` z React Flow pre kompatibilitu s `Edge | Connection` union
+- Aktualizovane `src/components/Canvas/Canvas.tsx`:
+  - `edgeTypes` definovane mimo komponent (P1): `{ manhattan: ManhattanEdge }`
+  - `defaultEdgeOptions = { type: 'manhattan' }` — vsetky nove wiry su manhattan
+  - `onConnect` a `isValidConnection` z `useWiring()` hooku
+  - Wire selekcia a mazanie funguje cez existujuce `deleteKeyCode` + `onEdgesChange`
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK, 37/37 testov OK
 
 ### Session 2026-02-03 (iteracia 4)
 - Vytvorene `src/store/circuit-store.ts` — Zustand store:
