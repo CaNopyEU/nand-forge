@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 10 (DONE)
-**Posledna zmena:** Iteracia 10 dokoncena
+**Aktualna iteracia:** 11 (DONE)
+**Posledna zmena:** Iteracia 11 dokoncena
 
 ### Progress tracker
 
@@ -31,7 +31,7 @@ Pred zaciatakom prace precitaj:
 | 8 | Module system: kniznica a pouzitie | ✅ DONE |
 | 9 | Editacia pouziteho modulu + kaskadovanie | ✅ DONE |
 | 10 | Rotacia | ✅ DONE |
-| 11 | Truth table view | ⬜ TODO |
+| 11 | Truth table view | ✅ DONE |
 | 12 | Persistencia + export/import | ⬜ TODO |
 | 13 | Undo/Redo (snapshot) | ⬜ TODO |
 | 14 | Polish a edge cases | ⬜ TODO |
@@ -110,6 +110,26 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-04 (iteracia 11)
+- Vytvorene `src/components/TruthTable/TruthTableView.tsx` — modal komponent:
+  - Dropdown na vyber modulu (NAND built-in + vsetky user moduly z `useModuleStore`)
+  - Tabulka s hlavickou (input mena + output mena) a riadkami (vsetky kombinacie)
+  - Mapovanie pin IDs na display mena: `module.inputs.find(p => p.id === pinId)?.name`
+  - Farebne rozlisenie hodnot: `0` = `text-zinc-500`, `1` = `text-emerald-400 font-bold`
+  - Output stlpce oddelene thin left border separatorom
+  - Zebra striping na alternujucich riadkoch
+  - Hardcoded NAND truth table (`{ "00": "1", "01": "1", "10": "1", "11": "0" }`) — NAND ma prazdny circuit, generovanie by zlyhalo
+  - On-demand generovanie cez `generateTruthTable(module.circuit, modules)` pre moduly bez cachovaneho truth table (≤16 inputov)
+  - Info sprava "Too many inputs (N) — truth table requires ≤ 16 inputs" pre moduly s >16 inputmi
+  - Paginacia: `ROWS_PER_PAGE = 64`, ◀ ▶ navigacia, page reset pri zmene modulu
+  - Zatvaranie: X button, Escape, klik na overlay
+- Aktualizovane `src/components/Toolbar/Toolbar.tsx`:
+  - Novy state `showTruthTable: boolean`
+  - "Truth Table" tlacidlo v toolbar button row (pred New Module)
+  - Renderovany `<TruthTableView open={showTruthTable} onClose={...} />`
+- Ziadne nove testy — cisto UI komponent, engine logika pokryta existujucimi testami v `tests/engine/truth-table.test.ts`
+- Verifikacia: `tsc -b` zero errors, 67/67 testov OK
 
 ### Session 2026-02-04 (iteracia 10)
 - Vytvorene `src/utils/layout.ts` — pure utility funkcie pre rotaciu:

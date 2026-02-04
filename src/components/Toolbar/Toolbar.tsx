@@ -5,6 +5,7 @@ import { generateId } from "../../utils/id.ts";
 import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
+import { TruthTableView } from "../TruthTable/TruthTableView.tsx";
 
 export function Toolbar() {
   const activeModuleId = useCircuitStore((s) => s.activeModuleId);
@@ -19,6 +20,7 @@ export function Toolbar() {
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
   const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
+  const [showTruthTable, setShowTruthTable] = useState(false);
 
   // Resolve active module name
   const activeModule = activeModuleId ? getModuleById(activeModuleId) : undefined;
@@ -148,6 +150,12 @@ export function Toolbar() {
 
         <div className="ml-auto flex gap-2">
           <button
+            onClick={() => setShowTruthTable(true)}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+          >
+            Truth Table
+          </button>
+          <button
             onClick={() => setDialogMode("new")}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
           >
@@ -175,6 +183,8 @@ export function Toolbar() {
         onConfirm={handleSaveConfirm}
         onCancel={() => setSaveAnalysis(null)}
       />
+
+      <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} />
 
       {toast && (
         <div className={`fixed bottom-4 right-4 z-50 rounded px-4 py-2 text-xs text-white shadow-lg ${toastColor}`}>
