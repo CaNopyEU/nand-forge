@@ -6,7 +6,7 @@ import type {
   Module,
   Pin,
 } from "../../src/engine/types.ts";
-import { hasCycle, hasTransitiveSelfReference } from "../../src/engine/validate.ts";
+import { hasCycle, hasTransitiveSelfReference, diffInterface } from "../../src/engine/validate.ts";
 
 // === Test helpers ===
 
@@ -146,5 +146,101 @@ describe("hasTransitiveSelfReference", () => {
     ];
 
     expect(hasTransitiveSelfReference("modA", modules)).toBe(true);
+  });
+});
+
+// === diffInterface ===
+
+describe("diffInterface", () => {
+  function makeModuleWithPins(
+    inputs: Pin[],
+    outputs: Pin[],
+  ): Module {
+    return {
+      id: "mod",
+      name: "Mod",
+      inputs,
+      outputs,
+      circuit: makeCircuit([], []),
+      createdAt: "",
+      updatedAt: "",
+    };
+  }
+
+  it("returns empty diff when interface is unchanged", () => {
+    const mod = makeModuleWithPins(
+      [makePin("i1", "A", "input")],
+      [makePin("o1", "Out", "output")],
+    );
+    const diff = diffInterface(mod, {
+      inputs: [makePin("i1", "A", "input")],
+      outputs: [makePin("o1", "Out", "output")],
+    });
+    expect(diff.added).toHaveLength(0);
+    expect(diff.removed).toHaveLength(0);
+    expect(diff.renamed).toHaveLength(0);
+    expect(diff.isBreaking).toBe(false);
+  });
+
+  it("detects added pins", () => {
+    const mod = makeModuleWithPins(
+      [makePin("i1", "A", "input")],
+      [makePin("o1", "Out", "output")],
+    );
+    const diff = diffInterface(mod, {
+      inputs: [makePin("i1", "A", "input"), makePin("i2", "B", "input")],
+      outputs: [makePin("o1", "Out", "output")],
+    });
+    expect(diff.added).toHaveLength(1);
+    expect(diff.added[0]!.id).toBe("i2");
+    expect(diff.removed).toHaveLength(0);
+    expect(diff.isBreaking).toBe(false);
+  });
+
+  it("detects removed pins (breaking)", () => {
+    const mod = makeModuleWithPins(
+      [makePin("i1", "A", "input"), makePin("i2", "B", "input")],
+      [makePin("o1", "Out", "output")],
+    );
+    const diff = diffInterface(mod, {
+      inputs: [makePin("i1", "A", "input")],
+      outputs: [makePin("o1", "Out", "output")],
+    });
+    expect(diff.removed).toHaveLength(1);
+    expect(diff.removed[0]!.id).toBe("i2");
+    expect(diff.isBreaking).toBe(true);
+  });
+
+  it("detects renamed pins", () => {
+    const mod = makeModuleWithPins(
+      [makePin("i1", "A", "input")],
+      [makePin("o1", "Out", "output")],
+    );
+    const diff = diffInterface(mod, {
+      inputs: [makePin("i1", "X", "input")],
+      outputs: [makePin("o1", "Out", "output")],
+    });
+    expect(diff.renamed).toHaveLength(1);
+    expect(diff.renamed[0]!.oldName).toBe("A");
+    expect(diff.renamed[0]!.pin.name).toBe("X");
+    expect(diff.isBreaking).toBe(false);
+  });
+
+  it("detects mixed changes: add + remove + rename", () => {
+    const mod = makeModuleWithPins(
+      [makePin("i1", "A", "input"), makePin("i2", "B", "input")],
+      [makePin("o1", "Out", "output")],
+    );
+    const diff = diffInterface(mod, {
+      inputs: [makePin("i1", "Alpha", "input"), makePin("i3", "C", "input")],
+      outputs: [makePin("o1", "Out", "output")],
+    });
+    expect(diff.added).toHaveLength(1);
+    expect(diff.added[0]!.id).toBe("i3");
+    expect(diff.removed).toHaveLength(1);
+    expect(diff.removed[0]!.id).toBe("i2");
+    expect(diff.renamed).toHaveLength(1);
+    expect(diff.renamed[0]!.oldName).toBe("A");
+    expect(diff.isBreaking).toBe(true);
   });
 });

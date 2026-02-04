@@ -1,4 +1,45 @@
-import type { Circuit, Module, ModuleId, NodeId } from "./types.ts";
+import type { Circuit, Module, ModuleId, NodeId, Pin } from "./types.ts";
+
+// === Interface diff ===
+
+export interface InterfaceDiff {
+  added: Pin[];
+  removed: Pin[];
+  renamed: Array<{ pin: Pin; oldName: string }>;
+  isBreaking: boolean;
+}
+
+export function diffInterface(
+  oldModule: Module,
+  newInterface: { inputs: Pin[]; outputs: Pin[] },
+): InterfaceDiff {
+  const oldPins = [...oldModule.inputs, ...oldModule.outputs];
+  const newPins = [...newInterface.inputs, ...newInterface.outputs];
+
+  const oldById = new Map(oldPins.map((p) => [p.id, p]));
+  const newById = new Map(newPins.map((p) => [p.id, p]));
+
+  const added: Pin[] = [];
+  const removed: Pin[] = [];
+  const renamed: Array<{ pin: Pin; oldName: string }> = [];
+
+  for (const pin of newPins) {
+    const old = oldById.get(pin.id);
+    if (!old) {
+      added.push(pin);
+    } else if (old.name !== pin.name) {
+      renamed.push({ pin, oldName: old.name });
+    }
+  }
+
+  for (const pin of oldPins) {
+    if (!newById.has(pin.id)) {
+      removed.push(pin);
+    }
+  }
+
+  return { added, removed, renamed, isBreaking: removed.length > 0 };
+}
 
 // === Cycle detection (DFS three-color algorithm) ===
 

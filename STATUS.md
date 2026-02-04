@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 8 (DONE)
-**Posledna zmena:** Iteracia 8 dokoncena
+**Aktualna iteracia:** 9 (DONE)
+**Posledna zmena:** Iteracia 9 dokoncena
 
 ### Progress tracker
 
@@ -29,7 +29,7 @@ Pred zaciatakom prace precitaj:
 | 6 | Live simulacia na canvase | ✅ DONE |
 | 7 | Module system: ukladanie | ✅ DONE |
 | 8 | Module system: kniznica a pouzitie | ✅ DONE |
-| 9 | Editacia pouziteho modulu + kaskadovanie | ⬜ TODO |
+| 9 | Editacia pouziteho modulu + kaskadovanie | ✅ DONE |
 | 10 | Rotacia | ⬜ TODO |
 | 11 | Truth table view | ⬜ TODO |
 | 12 | Persistencia + export/import | ⬜ TODO |
@@ -110,6 +110,49 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-04 (iteracia 9)
+- Vytvorene `diffInterface()` v `src/engine/validate.ts`:
+  - Porovnava stare a nove rozhranie modulu (inputs + outputs)
+  - Matchuje piny podla ID (stabilne cez edity, lebo pinId patri InputNode/OutputNode)
+  - Vracia `InterfaceDiff`: `added`, `removed`, `renamed`, `isBreaking` (removed.length > 0)
+- Pridane standalone pure funkcie do `src/store/module-store.ts`:
+  - `getModulesDependingOn(moduleId, modules)` — priami dependenti (moduly pouzivajuce dany modul)
+  - `getTransitiveDependentsInOrder(moduleId, modules)` — BFS tranzitivni dependenti v dependency order (priame deti prvy, potom ich dependenti)
+  - `synchronizeInstancesInCircuit(parent, changedModuleId, oldDef, newDef)` — aktualizuje vsetky instance nody v parent circuite:
+    - Mapuje stare definition pin ID → instance pin (podla indexu)
+    - Pre prezivajuce piny: reuse instance pin ID (zachova wiry), update name/direction
+    - Pre nove piny: fresh generated ID
+    - Pre odstranene piny: najde instance pin IDs, filtruje edges
+  - `regenerateTruthTablesCascading(changedModuleId, modules)` — regeneruje truth table pre zmeneny modul + vsetkych tranzitivnych dependentov v spravnom poradi
+- Refaktorovany save flow v `src/store/module-store.ts`:
+  - `prepareSave()` → `SaveAnalysis` — validacia + diff detekcia + `needsConfirmation` ak breaking + su dependenti
+  - `executeSave(analysis)` → `SaveResult` — update definicie, synchronize instances, cascading truth tables, mark clean
+  - `saveCurrentModule()` — backward-compat wrapper (prepare + execute)
+  - `executeModuleDelete(moduleId)` — odstrani vsetky instance nody z parent circuitov + ich wiry, zmaze modul, regeneruje truth tables, ak editujeme mazany modul → clear canvas
+- Vytvorene `src/components/SaveModule/SaveWarningDialog.tsx`:
+  - Reusable warning dialog s props: `title`, `message`, `removedPins`, `affectedModules`, `onConfirm`, `onCancel`
+  - Zobrazuje zoznam removedPins a affectedModules
+  - Pouzity pre breaking save aj pre delete warning (s inou title/message)
+- Aktualizovane `src/components/Toolbar/Toolbar.tsx`:
+  - `doSave()` vola `prepareSave()` namiesto `saveCurrentModule()`
+  - Ak `needsConfirmation` → ulozi `saveAnalysis` do state → renderuje `SaveWarningDialog`
+  - Na confirm → `executeSave(analysis)` → toast
+  - Na cancel → `setSaveAnalysis(null)`
+- Aktualizovane `src/components/Library/ModuleCard.tsx`:
+  - Novy `onDelete` prop + "Del" button (vedla Edit, len pre non-builtin)
+  - Hover efekt na delete button: cerveny bg
+- Aktualizovane `src/components/Library/LibraryPanel.tsx`:
+  - `handleDelete(moduleId)` — ak ziadni dependenti → silent delete; ak su dependenti → warning dialog
+  - State `deleteTarget` pre delete warning dialog
+  - Pouziva `SaveWarningDialog` s title "Delete module?" a custom message
+- Pridane testy do `tests/engine/validate.test.ts` — 5 novych testov pre `diffInterface`:
+  - Nezmenene rozhranie, pridane piny, odstranene piny (breaking), premenovane piny, mixed changes
+- Vytvorene `tests/store/module-store.test.ts` — 10 novych testov:
+  - `getModulesDependingOn`: prazdne dependenty, priami dependenti, nevracia tranzitivne
+  - `getTransitiveDependentsInOrder`: prazdne, topologicke poradie (B pred C), neobsahuje root
+  - `synchronizeInstancesInCircuit`: zachovanie pin IDs, odstranenie edges, generovanie fresh IDs, nemodifikuje ine nody
+- Verifikacia: `tsc -b` zero errors, 52/52 testov OK
 
 ### Session 2026-02-03 (iteracia 8)
 - Vytvorene `src/components/Library/ModuleCard.tsx` — `React.memo` karta modulu:

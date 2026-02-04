@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCircuitStore } from "../../store/circuit-store.ts";
-import { useModuleStore, getModuleById, type SaveResult } from "../../store/module-store.ts";
+import { useModuleStore, getModuleById, type SaveAnalysis } from "../../store/module-store.ts";
 import { generateId } from "../../utils/id.ts";
 import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
+import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
 
 export function Toolbar() {
   const activeModuleId = useCircuitStore((s) => s.activeModuleId);
@@ -11,11 +12,13 @@ export function Toolbar() {
   const clearCanvas = useCircuitStore((s) => s.clearCanvas);
   const setActiveModuleId = useCircuitStore((s) => s.setActiveModuleId);
   const addModule = useModuleStore((s) => s.addModule);
-  const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
+  const prepareSave = useModuleStore((s) => s.prepareSave);
+  const executeSave = useModuleStore((s) => s.executeSave);
 
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
+  const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
 
   // Resolve active module name
   const activeModule = activeModuleId ? getModuleById(activeModuleId) : undefined;
@@ -26,7 +29,19 @@ export function Toolbar() {
   }, []);
 
   const doSave = useCallback(() => {
-    const result: SaveResult = saveCurrentModule();
+    const analysis = prepareSave();
+
+    if (!analysis.success) {
+      showToast("error", analysis.errors.join(" "));
+      return;
+    }
+
+    if (analysis.needsConfirmation) {
+      setSaveAnalysis(analysis);
+      return;
+    }
+
+    const result = executeSave(analysis);
 
     if (!result.success) {
       showToast("error", result.errors.join(" "));
@@ -38,7 +53,24 @@ export function Toolbar() {
     } else {
       showToast("success", "Module saved.");
     }
-  }, [saveCurrentModule, showToast]);
+  }, [prepareSave, executeSave, showToast]);
+
+  const handleSaveConfirm = useCallback(() => {
+    if (!saveAnalysis) return;
+    const result = executeSave(saveAnalysis);
+    setSaveAnalysis(null);
+
+    if (!result.success) {
+      showToast("error", result.errors.join(" "));
+      return;
+    }
+
+    if (result.warnings.length > 0) {
+      showToast("warning", `Saved with warnings: ${result.warnings.join(" ")}`);
+    } else {
+      showToast("success", "Module saved.");
+    }
+  }, [saveAnalysis, executeSave, showToast]);
 
   const handleSave = useCallback(() => {
     if (!activeModuleId) {
@@ -134,6 +166,14 @@ export function Toolbar() {
         open={dialogMode !== null}
         onConfirm={handleDialogConfirm}
         onCancel={() => setDialogMode(null)}
+      />
+
+      <SaveWarningDialog
+        open={saveAnalysis !== null}
+        removedPins={saveAnalysis?.diff?.removed ?? []}
+        affectedModules={saveAnalysis?.affectedModules ?? []}
+        onConfirm={handleSaveConfirm}
+        onCancel={() => setSaveAnalysis(null)}
       />
 
       {toast && (

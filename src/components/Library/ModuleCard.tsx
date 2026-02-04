@@ -5,11 +5,13 @@ import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
 interface ModuleCardProps {
   module: Module;
   onOpen: (moduleId: string) => void;
+  onDelete?: (moduleId: string) => void;
 }
 
 export const ModuleCard = React.memo(function ModuleCard({
   module,
   onOpen,
+  onDelete,
 }: ModuleCardProps) {
   const isBuiltin = module.id === BUILTIN_NAND_MODULE_ID;
   const inputCount = module.inputs.length;
@@ -32,16 +34,30 @@ export const ModuleCard = React.memo(function ModuleCard({
         {inputCount}in {outputCount}out
       </span>
       {!isBuiltin && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen(module.id);
-          }}
-          className="ml-1 rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-600 hover:text-zinc-200"
-          title="Edit module"
-        >
-          Edit
-        </button>
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(module.id);
+            }}
+            className="ml-1 rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-600 hover:text-zinc-200"
+            title="Edit module"
+          >
+            Edit
+          </button>
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(module.id);
+              }}
+              className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-red-600 hover:text-zinc-200"
+              title="Delete module"
+            >
+              Del
+            </button>
+          )}
+        </>
       )}
     </div>
   );
