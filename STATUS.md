@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 11 (DONE)
-**Posledna zmena:** Iteracia 11 dokoncena
+**Aktualna iteracia:** 12 (DONE)
+**Posledna zmena:** Iteracia 12 dokoncena
 
 ### Progress tracker
 
@@ -32,7 +32,7 @@ Pred zaciatakom prace precitaj:
 | 9 | Editacia pouziteho modulu + kaskadovanie | ✅ DONE |
 | 10 | Rotacia | ✅ DONE |
 | 11 | Truth table view | ✅ DONE |
-| 12 | Persistencia + export/import | ⬜ TODO |
+| 12 | Persistencia + export/import | ✅ DONE |
 | 13 | Undo/Redo (snapshot) | ⬜ TODO |
 | 14 | Polish a edge cases | ⬜ TODO |
 
@@ -110,6 +110,41 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-04 (iteracia 12)
+- Vytvorene `src/utils/persistence.ts` — kompletna persistence + export/import logika:
+  - `STORAGE_KEYS` — `nandforge:modules` a `nandforge:canvas`
+  - `saveModules(modules)` / `loadModules()` — JSON serialize/deserialize do localStorage s graceful error handling
+  - `saveCanvasState(state)` / `loadCanvasState()` — uklada `{ nodes, edges, activeModuleId }` ako `CanvasState`
+  - Inline `debounce(fn, ms)` utility (bez externej dependency)
+  - `initAutosave()` — subscribe na `useModuleStore` a `useCircuitStore` s 500ms debounce, automaticky uklada pri kazdej zmene
+  - `exportToJson(modules)` — vytvori `{ version: 1, modules }`, `Blob` → `URL.createObjectURL` → `<a>.click()` → download `nandforge-export.json`
+  - `importFromJson(file)` — `file.text()` → JSON parse → validacia struktury (modules array, kazdy modul ma id, name, inputs, outputs, circuit s nodes/edges) → return `{ modules }`
+- Aktualizovane `src/main.tsx`:
+  - Pred `createRoot`: `loadModules()` → `useModuleStore.setState`, `loadCanvasState()` → `useCircuitStore.setState` (s `isDirty: false`)
+  - Volany `initAutosave()` — stav sa automaticky uklada od startu
+- Vytvorene `src/components/UnsavedChangesDialog.tsx`:
+  - Props: `open`, `canSave`, `onSave`, `onDiscard`, `onCancel`
+  - 3 tlacidla: Save (podmienene na `canSave`), Discard (cervene), Cancel
+  - Styling konzistentny s `SaveWarningDialog` (overlay, rounded-lg, border-zinc-700, bg-zinc-800)
+  - Escape → cancel
+- Aktualizovane `src/components/Toolbar/Toolbar.tsx`:
+  - Novy state `pendingAction: "new" | null` pre unsaved changes flow
+  - "New Module" → ak `isDirty` → `UnsavedChangesDialog` (Save → `saveCurrentModule()` + open dialog, Discard → open dialog, Cancel → zavriet)
+  - "Export" tlacidlo → vola `exportToJson(modules)`
+  - "Import" tlacidlo → triggeruje hidden `<input type="file" accept=".json">` cez ref
+  - Import handler: `importFromJson(file)` → `useModuleStore.setState({ modules })` + `clearCanvas()` + `setActiveModuleId(null)` + toast "Imported N modules."
+  - Error handling pre import s toast notifikaciou
+  - Input ref reset po importe (umoznuje opakovany vyber rovnakeho suboru)
+- Aktualizovane `src/components/Library/LibraryPanel.tsx`:
+  - Novy state `pendingOpenId: string | null` pre unsaved changes flow
+  - `handleOpen` → ak `isDirty` → `setPendingOpenId` → `UnsavedChangesDialog`
+  - Save → `saveCurrentModule()` → ak success → `executeOpen(targetId)`
+  - Discard → `executeOpen(targetId)` priamo
+  - Cancel → `setPendingOpenId(null)`
+  - `executeOpen` extrahovany do `useCallback` pre reuse
+- Ziadne nove testy — cisto UI + localStorage/File API logika, existujuce testy neovplyvnene
+- Verifikacia: `tsc -b` zero errors, 67/67 testov OK
 
 ### Session 2026-02-04 (iteracia 11)
 - Vytvorene `src/components/TruthTable/TruthTableView.tsx` — modal komponent:

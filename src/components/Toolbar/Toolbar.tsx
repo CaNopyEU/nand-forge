@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useCircuitStore } from "../../store/circuit-store.ts";
 import { useModuleStore, getModuleById, type SaveAnalysis } from "../../store/module-store.ts";
 import { generateId } from "../../utils/id.ts";
@@ -6,6 +6,8 @@ import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
 import { TruthTableView } from "../TruthTable/TruthTableView.tsx";
+import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
+import { exportToJson, importFromJson } from "../../utils/persistence.ts";
 
 export function Toolbar() {
   const activeModuleId = useCircuitStore((s) => s.activeModuleId);
@@ -13,14 +15,19 @@ export function Toolbar() {
   const clearCanvas = useCircuitStore((s) => s.clearCanvas);
   const setActiveModuleId = useCircuitStore((s) => s.setActiveModuleId);
   const addModule = useModuleStore((s) => s.addModule);
+  const modules = useModuleStore((s) => s.modules);
   const prepareSave = useModuleStore((s) => s.prepareSave);
   const executeSave = useModuleStore((s) => s.executeSave);
+  const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
 
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
   const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
   const [showTruthTable, setShowTruthTable] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"new" | null>(null);
+
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve active module name
   const activeModule = activeModuleId ? getModuleById(activeModuleId) : undefined;
@@ -113,6 +120,62 @@ export function Toolbar() {
     }
   }, [addModule, setActiveModuleId, clearCanvas, dialogMode, doSave]);
 
+  // New Module with unsaved changes check
+  const handleNewModule = useCallback(() => {
+    if (isDirty) {
+      setPendingAction("new");
+      return;
+    }
+    setDialogMode("new");
+  }, [isDirty]);
+
+  const handleUnsavedSave = useCallback(() => {
+    const result = saveCurrentModule();
+    setPendingAction(null);
+    if (result.success) {
+      setDialogMode("new");
+    } else {
+      showToast("error", result.errors.join(" "));
+    }
+  }, [saveCurrentModule, showToast]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    setPendingAction(null);
+    setDialogMode("new");
+  }, []);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setPendingAction(null);
+  }, []);
+
+  // Export
+  const handleExport = useCallback(() => {
+    exportToJson(modules);
+  }, [modules]);
+
+  // Import
+  const handleImportClick = useCallback(() => {
+    importInputRef.current?.click();
+  }, []);
+
+  const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { modules: imported } = await importFromJson(file);
+      useModuleStore.setState({ modules: imported });
+      clearCanvas();
+      setActiveModuleId(null);
+      showToast("success", `Imported ${imported.length} modules.`);
+    } catch (err) {
+      showToast("error", err instanceof Error ? err.message : "Import failed.");
+    }
+
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  }, [clearCanvas, setActiveModuleId, showToast]);
+
   // Ctrl+S / Cmd+S keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -156,7 +219,26 @@ export function Toolbar() {
             Truth Table
           </button>
           <button
-            onClick={() => setDialogMode("new")}
+            onClick={handleExport}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+          >
+            Export
+          </button>
+          <button
+            onClick={handleImportClick}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+          >
+            Import
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={handleNewModule}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
           >
             New Module
@@ -185,6 +267,14 @@ export function Toolbar() {
       />
 
       <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} />
+
+      <UnsavedChangesDialog
+        open={pendingAction !== null}
+        canSave={activeModuleId !== null}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
+      />
 
       {toast && (
         <div className={`fixed bottom-4 right-4 z-50 rounded px-4 py-2 text-xs text-white shadow-lg ${toastColor}`}>

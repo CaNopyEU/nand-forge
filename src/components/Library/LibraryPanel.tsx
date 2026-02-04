@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useModuleStore, getModulesDependingOn } from "../../store/module-store.ts";
 import { useCircuitStore } from "../../store/circuit-store.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
@@ -6,6 +6,7 @@ import { circuitNodesToAppNodes, circuitEdgesToRFEdges } from "../../utils/circu
 import type { Module } from "../../engine/types.ts";
 import { ModuleCard } from "./ModuleCard.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
+import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
 
 const NAND_MODULE: Module = {
   id: BUILTIN_NAND_MODULE_ID,
@@ -25,12 +26,16 @@ const NAND_MODULE: Module = {
 export function LibraryPanel() {
   const modules = useModuleStore((s) => s.modules);
   const executeModuleDelete = useModuleStore((s) => s.executeModuleDelete);
+  const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
+  const activeModuleId = useCircuitStore((s) => s.activeModuleId);
+  const isDirty = useCircuitStore((s) => s.isDirty);
   const setActiveModuleId = useCircuitStore((s) => s.setActiveModuleId);
   const loadCircuit = useCircuitStore((s) => s.loadCircuit);
 
   const [deleteTarget, setDeleteTarget] = useState<{ module: Module; dependents: Module[] } | null>(null);
+  const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
 
-  const handleOpen = (moduleId: string) => {
+  const executeOpen = useCallback((moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId);
     if (!mod) return;
 
@@ -39,7 +44,36 @@ export function LibraryPanel() {
     const appNodes = circuitNodesToAppNodes(mod.circuit.nodes, modules);
     const rfEdges = circuitEdgesToRFEdges(mod.circuit.edges);
     loadCircuit(appNodes, rfEdges);
-  };
+  }, [modules, setActiveModuleId, loadCircuit]);
+
+  const handleOpen = useCallback((moduleId: string) => {
+    if (isDirty) {
+      setPendingOpenId(moduleId);
+      return;
+    }
+    executeOpen(moduleId);
+  }, [isDirty, executeOpen]);
+
+  const handleUnsavedSave = useCallback(() => {
+    const result = saveCurrentModule();
+    const targetId = pendingOpenId;
+    setPendingOpenId(null);
+    if (result.success && targetId) {
+      executeOpen(targetId);
+    }
+  }, [saveCurrentModule, pendingOpenId, executeOpen]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    const targetId = pendingOpenId;
+    setPendingOpenId(null);
+    if (targetId) {
+      executeOpen(targetId);
+    }
+  }, [pendingOpenId, executeOpen]);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setPendingOpenId(null);
+  }, []);
 
   const handleDelete = (moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId);
@@ -83,6 +117,14 @@ export function LibraryPanel() {
         affectedModules={deleteTarget?.dependents ?? []}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <UnsavedChangesDialog
+        open={pendingOpenId !== null}
+        canSave={activeModuleId !== null}
+        onSave={handleUnsavedSave}
+        onDiscard={handleUnsavedDiscard}
+        onCancel={handleUnsavedCancel}
       />
     </>
   );
