@@ -1,6 +1,7 @@
 import type { Edge as RFEdge } from "@xyflow/react";
 import type { CircuitNode, Edge as EngineEdge, Module } from "../engine/types.ts";
 import type { AppNode } from "../store/circuit-store.ts";
+import type { Rotation } from "../utils/layout.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../engine/simulate.ts";
 
 /**
@@ -24,6 +25,7 @@ export function circuitNodesToAppNodes(
             label: node.pins[0]?.name ?? "Input",
             pinId: node.pins[0]?.id ?? node.id,
             value: false,
+            rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       case "output":
@@ -34,6 +36,7 @@ export function circuitNodesToAppNodes(
           data: {
             label: node.pins[0]?.name ?? "Output",
             pinId: node.pins[0]?.id ?? node.id,
+            rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       case "constant": {
@@ -47,6 +50,7 @@ export function circuitNodesToAppNodes(
             label: pinName,
             pinId: node.pins[0]?.id ?? node.id,
             value,
+            rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       }
@@ -57,6 +61,7 @@ export function circuitNodesToAppNodes(
           position: node.position,
           data: {
             pinId: node.pins[0]?.id ?? node.id,
+            rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       case "module": {
@@ -73,6 +78,7 @@ export function circuitNodesToAppNodes(
             label,
             moduleId: mid,
             pins: node.pins,
+            rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       }

@@ -13,7 +13,7 @@ export function canvasToCircuit(
           id: node.id,
           type: "input" as const,
           position: node.position,
-          rotation: 0 as const,
+          rotation: node.data.rotation ?? 0,
           pins: [
             {
               id: node.data.pinId,
@@ -28,7 +28,7 @@ export function canvasToCircuit(
           id: node.id,
           type: "output" as const,
           position: node.position,
-          rotation: 0 as const,
+          rotation: node.data.rotation ?? 0,
           pins: [
             {
               id: node.data.pinId,
@@ -43,7 +43,7 @@ export function canvasToCircuit(
           id: node.id,
           type: "constant" as const,
           position: node.position,
-          rotation: 0 as const,
+          rotation: node.data.rotation ?? 0,
           pins: [
             {
               id: node.data.pinId,
@@ -58,7 +58,7 @@ export function canvasToCircuit(
           id: node.id,
           type: "probe" as const,
           position: node.position,
-          rotation: 0 as const,
+          rotation: node.data.rotation ?? 0,
           pins: [
             {
               id: node.data.pinId,
@@ -74,7 +74,7 @@ export function canvasToCircuit(
           type: "module" as const,
           moduleId: node.data.moduleId,
           position: node.position,
-          rotation: 0 as const,
+          rotation: node.data.rotation ?? 0,
           pins: node.data.pins,
         };
     }

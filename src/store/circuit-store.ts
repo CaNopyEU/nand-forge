@@ -11,6 +11,7 @@ import {
 import type { Pin } from "../engine/types.ts";
 import { generateId } from "../utils/id.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../engine/simulate.ts";
+import { type Rotation, nextRotation } from "../utils/layout.ts";
 
 // === Node data types ===
 
@@ -18,27 +19,32 @@ export type InputNodeData = {
   label: string;
   pinId: string;
   value: boolean;
+  rotation: Rotation;
 };
 
 export type OutputNodeData = {
   label: string;
   pinId: string;
+  rotation: Rotation;
 };
 
 export type ConstantNodeData = {
   label: string;
   pinId: string;
   value: boolean;
+  rotation: Rotation;
 };
 
 export type ProbeNodeData = {
   pinId: string;
+  rotation: Rotation;
 };
 
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
   pins: Pin[];
+  rotation: Rotation;
 };
 
 // === App node types ===
@@ -104,6 +110,7 @@ interface CircuitStore {
   removeEdge: (id: string) => void;
   toggleInputValue: (nodeId: string) => void;
   toggleConstantValue: (nodeId: string) => void;
+  rotateNode: (nodeId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
@@ -168,7 +175,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             id,
             type: "circuitInput",
             position,
-            data: { label: "Input", pinId: generateId(), value: false },
+            data: { label: "Input", pinId: generateId(), value: false, rotation: 0 },
           };
           break;
         case "circuitOutput":
@@ -176,7 +183,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             id,
             type: "circuitOutput",
             position,
-            data: { label: "Output", pinId: generateId() },
+            data: { label: "Output", pinId: generateId(), rotation: 0 },
           };
           break;
         case "constant":
@@ -184,7 +191,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             id,
             type: "constant",
             position,
-            data: { label: "0", pinId: generateId(), value: false },
+            data: { label: "0", pinId: generateId(), value: false, rotation: 0 },
           };
           break;
         case "probe":
@@ -192,7 +199,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             id,
             type: "probe",
             position,
-            data: { pinId: generateId() },
+            data: { pinId: generateId(), rotation: 0 },
           };
           break;
         case "module": {
@@ -218,7 +225,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
             id,
             type: "module",
             position,
-            data: { label, moduleId: mid, pins },
+            data: { label, moduleId: mid, pins, rotation: 0 },
           };
           break;
         }
@@ -277,6 +284,16 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         };
       }),
       simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    })),
+
+  rotateNode: (nodeId) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const cur = (n.data as { rotation?: Rotation }).rotation ?? 0;
+        return { ...n, data: { ...n.data, rotation: nextRotation(cur) } } as AppNode;
+      }),
       isDirty: true,
     })),
 

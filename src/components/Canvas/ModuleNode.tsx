@@ -1,25 +1,68 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { ModuleNodeType } from "../../store/circuit-store.ts";
+import {
+  getInputPosition,
+  getOutputPosition,
+  getHandleDistributionStyle,
+  isVerticalSide,
+} from "../../utils/layout.ts";
+
+/** CSS classes for pin-label placement depending on which side the handle sits on. */
+function labelClasses(side: Position): string {
+  switch (side) {
+    case Position.Left:
+      return "absolute left-1.5 text-[9px] text-zinc-400";
+    case Position.Right:
+      return "absolute right-1.5 text-[9px] text-zinc-400";
+    case Position.Top:
+      return "absolute top-0.5 text-[9px] text-zinc-400";
+    case Position.Bottom:
+      return "absolute bottom-0.5 text-[9px] text-zinc-400";
+  }
+}
+
+/** Inline style to position a pin label next to its handle. */
+function labelStyle(
+  side: Position,
+  index: number,
+  total: number,
+): React.CSSProperties {
+  const pct = `${((index + 1) / (total + 1)) * 100}%`;
+  if (isVerticalSide(side)) {
+    return { top: pct, transform: "translateY(-50%)" };
+  }
+  return { left: pct, transform: "translateX(-50%)" };
+}
 
 function ModuleNodeComponent({ data }: NodeProps<ModuleNodeType>) {
+  const rotation = data.rotation ?? 0;
+  const inputPos = getInputPosition(rotation);
+  const outputPos = getOutputPosition(rotation);
+
   const inputPins = data.pins.filter((p) => p.direction === "input");
   const outputPins = data.pins.filter((p) => p.direction === "output");
   const rows = Math.max(inputPins.length, outputPins.length, 1);
 
+  // When pins are on Top/Bottom (90°/270°), the node should be wider instead of taller.
+  const isHorizontalLayout = !isVerticalSide(inputPos);
+  const sizeStyle = isHorizontalLayout
+    ? { minWidth: `${rows * 24 + 16}px`, minHeight: "72px" }
+    : { minHeight: `${rows * 24 + 16}px`, minWidth: "72px" };
+
   return (
     <div
       className="relative rounded border border-zinc-600 bg-zinc-800 px-4"
-      style={{ minHeight: `${rows * 24 + 16}px`, minWidth: "72px" }}
+      style={sizeStyle}
     >
-      {/* Input handles (left) */}
+      {/* Input handles */}
       {inputPins.map((pin, i) => (
         <Handle
           key={pin.id}
           type="target"
-          position={Position.Left}
+          position={inputPos}
           id={pin.id}
-          style={{ top: `${((i + 1) / (inputPins.length + 1)) * 100}%` }}
+          style={getHandleDistributionStyle(inputPos, i, inputPins.length)}
         />
       ))}
 
@@ -28,40 +71,35 @@ function ModuleNodeComponent({ data }: NodeProps<ModuleNodeType>) {
         <span className="text-xs font-bold text-zinc-200">{data.label}</span>
       </div>
 
-      {/* Pin names */}
+      {/* Pin names — inputs */}
       {inputPins.map((pin, i) => (
         <span
           key={pin.id}
-          className="absolute left-1.5 text-[9px] text-zinc-400"
-          style={{
-            top: `${((i + 1) / (inputPins.length + 1)) * 100}%`,
-            transform: "translateY(-50%)",
-          }}
+          className={labelClasses(inputPos)}
+          style={labelStyle(inputPos, i, inputPins.length)}
         >
           {pin.name}
         </span>
       ))}
+      {/* Pin names — outputs */}
       {outputPins.map((pin, i) => (
         <span
           key={pin.id}
-          className="absolute right-1.5 text-[9px] text-zinc-400"
-          style={{
-            top: `${((i + 1) / (outputPins.length + 1)) * 100}%`,
-            transform: "translateY(-50%)",
-          }}
+          className={labelClasses(outputPos)}
+          style={labelStyle(outputPos, i, outputPins.length)}
         >
           {pin.name}
         </span>
       ))}
 
-      {/* Output handles (right) */}
+      {/* Output handles */}
       {outputPins.map((pin, i) => (
         <Handle
           key={pin.id}
           type="source"
-          position={Position.Right}
+          position={outputPos}
           id={pin.id}
-          style={{ top: `${((i + 1) / (outputPins.length + 1)) * 100}%` }}
+          style={getHandleDistributionStyle(outputPos, i, outputPins.length)}
         />
       ))}
     </div>

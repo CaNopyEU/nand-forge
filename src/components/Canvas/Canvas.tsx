@@ -1,4 +1,4 @@
-import { useCallback, type DragEvent } from "react";
+import { useCallback, useEffect, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import {
   ReactFlow,
   Background,
@@ -39,16 +39,50 @@ const edgeTypes: EdgeTypes = {
 
 const defaultEdgeOptions = { type: "manhattan" as const };
 
+type ContextMenuState = { nodeId: string; x: number; y: number } | null;
+
 function CanvasInner() {
   const nodes = useCircuitStore((s) => s.nodes);
   const edges = useCircuitStore((s) => s.edges);
   const onNodesChange = useCircuitStore((s) => s.onNodesChange);
   const onEdgesChange = useCircuitStore((s) => s.onEdgesChange);
   const addNode = useCircuitStore((s) => s.addNode);
+  const rotateNode = useCircuitStore((s) => s.rotateNode);
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
 
   const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
   useSimulation();
+
+  // Keyboard shortcut: R to rotate selected nodes
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "r" && e.key !== "R") return;
+      // Skip when user is typing in an input
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const selected = useCircuitStore.getState().nodes.filter((n) => n.selected);
+      if (selected.length === 0) return;
+
+      for (const node of selected) {
+        rotateNode(node.id);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [rotateNode]);
+
+  // Close context menu on Escape
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setContextMenu(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [contextMenu]);
 
   const handleAddNode = useCallback(
     (type: AppNode["type"]) => {
@@ -100,64 +134,98 @@ function CanvasInner() {
     [screenToFlowPosition, addNode],
   );
 
+  const handleNodeContextMenu = useCallback(
+    (e: ReactMouseEvent, node: AppNode) => {
+      e.preventDefault();
+      setContextMenu({ nodeId: node.id, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
+
+  const handlePaneClick = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      isValidConnection={isValidConnection}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      fitView
-      deleteKeyCode={["Backspace", "Delete"]}
-      className="bg-zinc-900"
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={20}
-        size={1}
-        color="#3f3f46"
-      />
-      <Panel position="top-left">
-        <div className="flex gap-1">
+    <>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onNodeContextMenu={handleNodeContextMenu}
+        onPaneClick={handlePaneClick}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView
+        deleteKeyCode={["Backspace", "Delete"]}
+        className="bg-zinc-900"
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={20}
+          size={1}
+          color="#3f3f46"
+        />
+        <Panel position="top-left">
+          <div className="flex gap-1">
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              onClick={() => handleAddNode("circuitInput")}
+            >
+              + Input
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              onClick={() => handleAddNode("circuitOutput")}
+            >
+              + Output
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              onClick={() => handleAddNode("constant")}
+            >
+              + Constant
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              onClick={() => handleAddNode("module")}
+            >
+              + NAND
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              onClick={() => handleAddNode("probe")}
+            >
+              + Probe
+            </button>
+          </div>
+        </Panel>
+      </ReactFlow>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 rounded border border-zinc-600 bg-zinc-800 py-1 shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
           <button
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-            onClick={() => handleAddNode("circuitInput")}
+            className="w-full px-4 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-700"
+            onClick={() => {
+              rotateNode(contextMenu.nodeId);
+              setContextMenu(null);
+            }}
           >
-            + Input
-          </button>
-          <button
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-            onClick={() => handleAddNode("circuitOutput")}
-          >
-            + Output
-          </button>
-          <button
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-            onClick={() => handleAddNode("constant")}
-          >
-            + Constant
-          </button>
-          <button
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-            onClick={() => handleAddNode("module")}
-          >
-            + NAND
-          </button>
-          <button
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-            onClick={() => handleAddNode("probe")}
-          >
-            + Probe
+            Rotate
           </button>
         </div>
-      </Panel>
-    </ReactFlow>
+      )}
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, type NodeProps } from "@xyflow/react";
 import { useCircuitStore, type InputNodeType } from "../../store/circuit-store.ts";
+import { getOutputPosition } from "../../utils/layout.ts";
 
 function InputNodeComponent({ id, data }: NodeProps<InputNodeType>) {
   const toggleInputValue = useCircuitStore((s) => s.toggleInputValue);
@@ -54,7 +55,7 @@ function InputNodeComponent({ id, data }: NodeProps<InputNodeType>) {
         </span>
       )}
 
-      <Handle type="source" position={Position.Right} id={data.pinId} />
+      <Handle type="source" position={getOutputPosition(data.rotation ?? 0)} id={data.pinId} />
     </div>
   );
 }

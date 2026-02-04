@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, type NodeProps } from "@xyflow/react";
 import { useCircuitStore, type OutputNodeType } from "../../store/circuit-store.ts";
+import { getInputPosition } from "../../utils/layout.ts";
 import { useSimulationStore } from "../../store/simulation-store.ts";
 import { pinKey } from "../../engine/simulate.ts";
 
@@ -20,7 +21,7 @@ function OutputNodeComponent({ id, data }: NodeProps<OutputNodeType>) {
 
   return (
     <div className="flex items-center gap-1.5 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5">
-      <Handle type="target" position={Position.Left} id={data.pinId} />
+      <Handle type="target" position={getInputPosition(data.rotation ?? 0)} id={data.pinId} />
 
       {editing ? (
         <input

@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 9 (DONE)
-**Posledna zmena:** Iteracia 9 dokoncena
+**Aktualna iteracia:** 10 (DONE)
+**Posledna zmena:** Iteracia 10 dokoncena
 
 ### Progress tracker
 
@@ -30,7 +30,7 @@ Pred zaciatakom prace precitaj:
 | 7 | Module system: ukladanie | ✅ DONE |
 | 8 | Module system: kniznica a pouzitie | ✅ DONE |
 | 9 | Editacia pouziteho modulu + kaskadovanie | ✅ DONE |
-| 10 | Rotacia | ⬜ TODO |
+| 10 | Rotacia | ✅ DONE |
 | 11 | Truth table view | ⬜ TODO |
 | 12 | Persistencia + export/import | ⬜ TODO |
 | 13 | Undo/Redo (snapshot) | ⬜ TODO |
@@ -110,6 +110,44 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-04 (iteracia 10)
+- Vytvorene `src/utils/layout.ts` — pure utility funkcie pre rotaciu:
+  - `Rotation` typ (`0 | 90 | 180 | 270`)
+  - `nextRotation(r)` — cyklicka rotacia 0→90→180→270→0
+  - `getInputPosition(r)` — strana pre target handles (0°=Left, 90°=Top, 180°=Right, 270°=Bottom)
+  - `getOutputPosition(r)` — strana pre source handles (0°=Right, 90°=Bottom, 180°=Left, 270°=Top)
+  - `isVerticalSide(pos)` — Left/Right = true (piny distribuovane vertikalne)
+  - `getHandleDistributionStyle(pos, index, total)` — inline style pre distribuciu handleov (top % alebo left %)
+- Aktualizovane `src/store/circuit-store.ts`:
+  - Pridany `rotation: Rotation` do vsetkych 5 node data typov (`InputNodeData`, `OutputNodeData`, `ConstantNodeData`, `ProbeNodeData`, `ModuleNodeData`)
+  - Nova akcia `rotateNode(nodeId)` — cita aktualnu rotaciu, aplikuje `nextRotation()`, nastavi `isDirty`
+  - `addNode` inicializuje `rotation: 0` pre vsetky node typy
+- Aktualizovane `src/utils/canvas-to-circuit.ts`:
+  - Vsetkych 5 case branches cita `node.data.rotation ?? 0` namiesto hardcoded `0`
+- Aktualizovane `src/utils/circuit-converters.ts`:
+  - Vsetkych 5 case branches v `circuitNodesToAppNodes` pridava `rotation: node.rotation ?? 0` do data objektu
+- Aktualizovane `src/components/Canvas/ModuleNode.tsx`:
+  - Dynamicke handle pozicie cez `getInputPosition`/`getOutputPosition`
+  - Label repozicioning: vertikalne strany → `left/right` + `top: %`, horizontalne strany → `top/bottom` + `left: %`
+  - Pri 90°/270° rotacii swap `minWidth`/`minHeight` pre sirsi node
+  - Handles distribuovane cez `getHandleDistributionStyle`
+- Aktualizovane 4 jednoduche node komponenty:
+  - `InputNode.tsx` — source handle pouziva `getOutputPosition(data.rotation)`
+  - `OutputNode.tsx` — target handle pouziva `getInputPosition(data.rotation)`
+  - `ConstantNode.tsx` — source handle pouziva `getOutputPosition(data.rotation)`
+  - `ProbeNode.tsx` — target handle pouziva `getInputPosition(data.rotation)`
+- Aktualizovane `src/components/Canvas/Canvas.tsx`:
+  - Keyboard shortcut `R` — rotuje vsetky selected nody (guard pre input/textarea focus)
+  - Context menu: `onNodeContextMenu` → right-click na node zobrazuje positioned `<div>` s "Rotate" tlacidlom
+  - Context menu sa zatvara na: pane click, Escape, po akcii
+- Vytvorene `tests/utils/layout.test.ts` — 15 testov:
+  - `nextRotation`: cely cyklus 0→90→180→270→0
+  - `getInputPosition`: 4 rotacie → spravne Position enum values
+  - `getOutputPosition`: 4 rotacie → spravne Position enum values
+  - `isVerticalSide`: Left/Right = true, Top/Bottom = false
+  - `getHandleDistributionStyle`: vertikalne strany → `{ top: pct }`, horizontalne strany → `{ left: pct }`
+- Verifikacia: `tsc -b` zero errors, 67/67 testov OK (15 novych + 52 existujucich)
 
 ### Session 2026-02-04 (iteracia 9)
 - Vytvorene `diffInterface()` v `src/engine/validate.ts`:

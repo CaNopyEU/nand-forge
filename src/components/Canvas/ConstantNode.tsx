@@ -1,6 +1,7 @@
 import { memo, useCallback } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, type NodeProps } from "@xyflow/react";
 import { useCircuitStore, type ConstantNodeType } from "../../store/circuit-store.ts";
+import { getOutputPosition } from "../../utils/layout.ts";
 
 function ConstantNodeComponent({ id, data }: NodeProps<ConstantNodeType>) {
   const toggleConstantValue = useCircuitStore((s) => s.toggleConstantValue);
@@ -23,7 +24,7 @@ function ConstantNodeComponent({ id, data }: NodeProps<ConstantNodeType>) {
       </button>
       <span className="text-xs text-zinc-400">const</span>
 
-      <Handle type="source" position={Position.Right} id={data.pinId} />
+      <Handle type="source" position={getOutputPosition(data.rotation ?? 0)} id={data.pinId} />
     </div>
   );
 }
