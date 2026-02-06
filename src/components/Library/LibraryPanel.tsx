@@ -114,6 +114,13 @@ export function LibraryPanel() {
     setDeleteTarget(null);
   };
 
+  const handleReorder = useCallback(
+    (moduleId: string, targetFolderId: string | null, insertIndex: number) => {
+      moveModuleToFolder(moduleId, targetFolderId, insertIndex);
+    },
+    [moveModuleToFolder],
+  );
+
   const handleAddFolder = useCallback(() => {
     addFolder(null, "New Folder");
   }, [addFolder]);
@@ -178,6 +185,7 @@ export function LibraryPanel() {
             onOpen={handleOpen}
             onDelete={handleDelete}
             forbiddenIds={forbiddenIds}
+            onReorder={handleReorder}
           />
         </div>
       </div>

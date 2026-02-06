@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import type { Module } from "../../engine/types.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
 
@@ -7,6 +7,10 @@ interface ModuleCardProps {
   onOpen: (moduleId: string) => void;
   onDelete?: (moduleId: string) => void;
   disabled?: boolean;
+  parentFolderId?: string | null;
+  indexInParent?: number;
+  locked?: boolean;
+  onReorder?: (moduleId: string, targetFolderId: string | null, insertIndex: number) => void;
 }
 
 export const ModuleCard = React.memo(function ModuleCard({
@@ -14,10 +18,16 @@ export const ModuleCard = React.memo(function ModuleCard({
   onOpen,
   onDelete,
   disabled,
+  parentFolderId,
+  indexInParent,
+  locked,
+  onReorder,
 }: ModuleCardProps) {
   const isBuiltin = module.id === BUILTIN_NAND_MODULE_ID;
   const inputCount = module.inputs.length;
   const outputCount = module.outputs.length;
+
+  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(null);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (disabled) {
@@ -29,11 +39,49 @@ export const ModuleCard = React.memo(function ModuleCard({
     e.dataTransfer.effectAllowed = "copyMove";
   };
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (locked || indexInParent === undefined || !onReorder) return;
+    if (!e.dataTransfer.types.includes("application/nandforge-library-item")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    setDropPosition(e.clientY < midY ? "before" : "after");
+  }, [locked, indexInParent, onReorder]);
+
+  const handleDragLeave = useCallback(() => {
+    setDropPosition(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropPosition(null);
+    if (locked || indexInParent === undefined || !onReorder) return;
+    const draggedId = e.dataTransfer.getData("application/nandforge-library-item");
+    if (!draggedId || draggedId === module.id) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const pos = e.clientY < midY ? "before" : "after";
+    const targetIndex = pos === "before" ? indexInParent : indexInParent + 1;
+    onReorder(draggedId, parentFolderId ?? null, targetIndex);
+  }, [locked, indexInParent, onReorder, parentFolderId, module.id]);
+
+  const dropClass = dropPosition === "before"
+    ? "border-t-2 border-t-blue-500"
+    : dropPosition === "after"
+      ? "border-b-2 border-b-blue-500"
+      : "";
+
   return (
     <div
       draggable={!disabled}
       onDragStart={handleDragStart}
-      className={`flex items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"} ${dropClass}`}
       title={disabled ? "Cannot place — would create circular dependency" : "Drag to canvas"}
     >
       <span className="flex-1 font-medium">{module.name}</span>

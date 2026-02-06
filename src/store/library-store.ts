@@ -32,7 +32,7 @@ interface LibraryStore {
   deleteFolder: (folderId: string) => void;
   toggleCollapse: (folderId: string) => void;
   addModuleRef: (moduleId: ModuleId) => void;
-  moveModuleToFolder: (moduleId: ModuleId, targetFolderId: string | null) => void;
+  moveModuleToFolder: (moduleId: ModuleId, targetFolderId: string | null, insertIndex?: number) => void;
   syncModules: (moduleIds: Set<ModuleId>) => void;
 }
 
@@ -76,6 +76,49 @@ function addModuleToFolder(
       return { ...n, children: [...n.children, { type: "module" as const, moduleId }] };
     }
     return { ...n, children: addModuleToFolder(n.children, moduleId, folderId) };
+  });
+}
+
+function findModulePosition(
+  nodes: LibraryNode[],
+  moduleId: ModuleId,
+  parentFolderId: string | null = null,
+): { folderId: string | null; index: number } | null {
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]!;
+    if (node.type === "module" && node.moduleId === moduleId) {
+      return { folderId: parentFolderId, index: i };
+    }
+    if (node.type === "folder") {
+      const found = findModulePosition(node.children, moduleId, node.id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function insertModuleAt(
+  nodes: LibraryNode[],
+  moduleId: ModuleId,
+  folderId: string | null,
+  index: number,
+): LibraryNode[] {
+  const ref: LibraryModuleRef = { type: "module", moduleId };
+  if (folderId === null) {
+    const clamped = Math.min(Math.max(0, index), nodes.length);
+    const result = [...nodes];
+    result.splice(clamped, 0, ref);
+    return result;
+  }
+  return nodes.map((n) => {
+    if (n.type !== "folder") return n;
+    if (n.id === folderId) {
+      const clamped = Math.min(Math.max(0, index), n.children.length);
+      const children = [...n.children];
+      children.splice(clamped, 0, ref);
+      return { ...n, children };
+    }
+    return { ...n, children: insertModuleAt(n.children, moduleId, folderId, index) };
   });
 }
 
@@ -179,17 +222,29 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     }));
   },
 
-  moveModuleToFolder: (moduleId, targetFolderId) => {
+  moveModuleToFolder: (moduleId, targetFolderId, insertIndex?) => {
     if (get().locked) return;
     let tree = get().tree;
-    // Remove from current location
-    tree = removeModuleRef(tree, moduleId);
-    // Insert at target
-    if (targetFolderId) {
-      tree = addModuleToFolder(tree, moduleId, targetFolderId);
+
+    if (insertIndex !== undefined) {
+      // Positional insert — adjust index if moving within same container
+      const pos = findModulePosition(tree, moduleId);
+      let adjustedIndex = insertIndex;
+      if (pos && pos.folderId === targetFolderId && pos.index < insertIndex) {
+        adjustedIndex--;
+      }
+      tree = removeModuleRef(tree, moduleId);
+      tree = insertModuleAt(tree, moduleId, targetFolderId, adjustedIndex);
     } else {
-      tree = [...tree, { type: "module" as const, moduleId }];
+      // Append (original behavior)
+      tree = removeModuleRef(tree, moduleId);
+      if (targetFolderId) {
+        tree = addModuleToFolder(tree, moduleId, targetFolderId);
+      } else {
+        tree = [...tree, { type: "module" as const, moduleId }];
+      }
     }
+
     set({ tree });
   },
 

@@ -7,6 +7,7 @@ interface LibraryTreeProps {
   onOpen: (moduleId: string) => void;
   onDelete: (moduleId: string) => void;
   forbiddenIds: Set<string>;
+  onReorder: (moduleId: string, targetFolderId: string | null, insertIndex: number) => void;
 }
 
 function RenderNode({
@@ -14,11 +15,19 @@ function RenderNode({
   onOpen,
   onDelete,
   forbiddenIds,
+  parentFolderId,
+  indexInParent,
+  locked,
+  onReorder,
 }: {
   node: LibraryNode;
   onOpen: (moduleId: string) => void;
   onDelete: (moduleId: string) => void;
   forbiddenIds: Set<string>;
+  parentFolderId: string | null;
+  indexInParent: number;
+  locked: boolean;
+  onReorder: (moduleId: string, targetFolderId: string | null, insertIndex: number) => void;
 }) {
   if (node.type === "module") {
     const mod = getModuleById(node.moduleId);
@@ -29,6 +38,10 @@ function RenderNode({
         onOpen={onOpen}
         onDelete={onDelete}
         disabled={forbiddenIds.has(mod.id)}
+        parentFolderId={parentFolderId}
+        indexInParent={indexInParent}
+        locked={locked}
+        onReorder={onReorder}
       />
     );
   }
@@ -38,6 +51,9 @@ function RenderNode({
       folderId={node.id}
       name={node.name}
       collapsed={node.collapsed}
+      parentFolderId={parentFolderId}
+      indexInParent={indexInParent}
+      onReorder={onReorder}
     >
       {node.children.map((child, i) => (
         <RenderNode
@@ -46,14 +62,19 @@ function RenderNode({
           onOpen={onOpen}
           onDelete={onDelete}
           forbiddenIds={forbiddenIds}
+          parentFolderId={node.id}
+          indexInParent={i}
+          locked={locked}
+          onReorder={onReorder}
         />
       ))}
     </FolderNode>
   );
 }
 
-export function LibraryTree({ onOpen, onDelete, forbiddenIds }: LibraryTreeProps) {
+export function LibraryTree({ onOpen, onDelete, forbiddenIds, onReorder }: LibraryTreeProps) {
   const tree = useLibraryStore((s) => s.tree);
+  const locked = useLibraryStore((s) => s.locked);
 
   return (
     <>
@@ -64,6 +85,10 @@ export function LibraryTree({ onOpen, onDelete, forbiddenIds }: LibraryTreeProps
           onOpen={onOpen}
           onDelete={onDelete}
           forbiddenIds={forbiddenIds}
+          parentFolderId={null}
+          indexInParent={i}
+          locked={locked}
+          onReorder={onReorder}
         />
       ))}
     </>
