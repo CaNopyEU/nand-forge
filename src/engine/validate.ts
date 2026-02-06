@@ -85,6 +85,41 @@ export function hasCycle(circuit: Circuit): boolean {
   return false;
 }
 
+// === Forbidden module IDs (prevents circular dependencies on canvas) ===
+
+/**
+ * Returns the set of module IDs that cannot be placed inside `moduleId`
+ * without creating a circular dependency. This includes `moduleId` itself
+ * plus all modules that transitively depend on it (ancestors in the
+ * dependency graph).
+ */
+export function getForbiddenModuleIds(
+  moduleId: ModuleId,
+  modules: Module[],
+): Set<ModuleId> {
+  const forbidden = new Set<ModuleId>([moduleId]);
+
+  // BFS: find all modules whose circuit (transitively) uses moduleId
+  // i.e., ancestors — modules that depend on moduleId
+  const queue: ModuleId[] = [moduleId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    for (const mod of modules) {
+      if (forbidden.has(mod.id)) continue;
+      const usesCurrentId = mod.circuit.nodes.some(
+        (n) => n.type === "module" && n.moduleId === currentId,
+      );
+      if (usesCurrentId) {
+        forbidden.add(mod.id);
+        queue.push(mod.id);
+      }
+    }
+  }
+
+  return forbidden;
+}
+
 // === Transitive self-reference detection ===
 
 export function hasTransitiveSelfReference(

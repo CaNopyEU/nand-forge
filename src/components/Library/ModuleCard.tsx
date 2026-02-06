@@ -6,28 +6,35 @@ interface ModuleCardProps {
   module: Module;
   onOpen: (moduleId: string) => void;
   onDelete?: (moduleId: string) => void;
+  disabled?: boolean;
 }
 
 export const ModuleCard = React.memo(function ModuleCard({
   module,
   onOpen,
   onDelete,
+  disabled,
 }: ModuleCardProps) {
   const isBuiltin = module.id === BUILTIN_NAND_MODULE_ID;
   const inputCount = module.inputs.length;
   const outputCount = module.outputs.length;
 
   const handleDragStart = (e: React.DragEvent) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("application/nandforge-module", module.id);
-    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData("application/nandforge-library-item", module.id);
+    e.dataTransfer.effectAllowed = "copyMove";
   };
 
   return (
     <div
-      draggable
+      draggable={!disabled}
       onDragStart={handleDragStart}
-      className="flex cursor-grab items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 active:cursor-grabbing"
-      title="Drag to canvas"
+      className={`flex items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}`}
+      title={disabled ? "Cannot place — would create circular dependency" : "Drag to canvas"}
     >
       <span className="flex-1 font-medium">{module.name}</span>
       <span className="text-[10px] text-zinc-500">

@@ -97,5 +97,6 @@ export function circuitEdgesToRFEdges(edges: EngineEdge[]): RFEdge[] {
     target: e.toNodeId,
     targetHandle: e.toPinId,
     type: "manhattan" as const,
+    ...(e.color ? { data: { color: e.color } } : {}),
   }));
 }

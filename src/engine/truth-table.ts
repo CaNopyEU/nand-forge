@@ -63,6 +63,39 @@ export function generateTruthTable(
   return { inputNames: inputPinIds, outputNames: outputPinIds, rows };
 }
 
+// === Async truth table generation via Web Worker ===
+
+let worker: Worker | null = null;
+let nextRequestId = 0;
+
+function getWorker(): Worker {
+  if (!worker) {
+    worker = new Worker(
+      new URL("./truth-table.worker.ts", import.meta.url),
+      { type: "module" },
+    );
+  }
+  return worker;
+}
+
+export function generateTruthTableAsync(
+  circuit: Circuit,
+  modules: Module[],
+): Promise<TruthTable | null> {
+  const id = nextRequestId++;
+  return new Promise((resolve) => {
+    const w = getWorker();
+    const handler = (e: MessageEvent) => {
+      if (e.data.id === id) {
+        w.removeEventListener("message", handler);
+        resolve(e.data.truthTable ?? null);
+      }
+    };
+    w.addEventListener("message", handler);
+    w.postMessage({ id, circuit, modules });
+  });
+}
+
 export function lookupTruthTable(
   table: TruthTable,
   inputs: Record<string, boolean>,

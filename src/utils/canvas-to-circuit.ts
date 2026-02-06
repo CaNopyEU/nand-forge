@@ -88,6 +88,7 @@ export function canvasToCircuit(
       fromPinId: e.sourceHandle!,
       toNodeId: e.target,
       toPinId: e.targetHandle!,
+      ...(e.data?.["color"] ? { color: e.data["color"] as string } : {}),
     }));
 
   const inputValues: Record<string, boolean> = {};

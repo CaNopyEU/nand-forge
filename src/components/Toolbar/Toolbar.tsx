@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useCircuitStore } from "../../store/circuit-store.ts";
 import { useModuleStore, getModuleById, type SaveAnalysis } from "../../store/module-store.ts";
+import { useLibraryStore } from "../../store/library-store.ts";
 import { generateId } from "../../utils/id.ts";
 import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
@@ -19,6 +20,7 @@ export function Toolbar() {
   const prepareSave = useModuleStore((s) => s.prepareSave);
   const executeSave = useModuleStore((s) => s.executeSave);
   const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
+  const truthTableGenerating = useModuleStore((s) => s.truthTableGenerating);
 
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
@@ -163,8 +165,16 @@ export function Toolbar() {
     if (!file) return;
 
     try {
-      const { modules: imported } = await importFromJson(file);
+      const { modules: imported, library } = await importFromJson(file);
       useModuleStore.setState({ modules: imported });
+      // Restore library tree or auto-generate flat tree
+      if (library) {
+        useLibraryStore.setState({ tree: library });
+      } else {
+        useLibraryStore.setState({
+          tree: imported.map((m) => ({ type: "module" as const, moduleId: m.id })),
+        });
+      }
       clearCanvas();
       setActiveModuleId(null);
       showToast("success", `Imported ${imported.length} modules.`);
@@ -209,6 +219,13 @@ export function Toolbar() {
 
         {!activeModule && isDirty && (
           <span className="ml-3 text-xs text-zinc-500">unsaved circuit</span>
+        )}
+
+        {truthTableGenerating && (
+          <span className="ml-2 flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-zinc-500 border-t-zinc-300" />
+            TT
+          </span>
         )}
 
         <div className="ml-auto flex gap-2">
@@ -266,7 +283,7 @@ export function Toolbar() {
         onCancel={() => setSaveAnalysis(null)}
       />
 
-      <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} />
+      <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} defaultModuleId={activeModuleId ?? undefined} />
 
       <UnsavedChangesDialog
         open={pendingAction !== null}

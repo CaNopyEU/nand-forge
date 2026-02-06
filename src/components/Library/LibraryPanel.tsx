@@ -1,10 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useModuleStore, getModulesDependingOn } from "../../store/module-store.ts";
 import { useCircuitStore } from "../../store/circuit-store.ts";
+import { useLibraryStore } from "../../store/library-store.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
 import { circuitNodesToAppNodes, circuitEdgesToRFEdges } from "../../utils/circuit-converters.ts";
+import { getForbiddenModuleIds } from "../../engine/validate.ts";
 import type { Module } from "../../engine/types.ts";
 import { ModuleCard } from "./ModuleCard.tsx";
+import { LibraryTree } from "./LibraryTree.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
 import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
 
@@ -31,9 +34,25 @@ export function LibraryPanel() {
   const isDirty = useCircuitStore((s) => s.isDirty);
   const setActiveModuleId = useCircuitStore((s) => s.setActiveModuleId);
   const loadCircuit = useCircuitStore((s) => s.loadCircuit);
+  const addFolder = useLibraryStore((s) => s.addFolder);
+  const syncModules = useLibraryStore((s) => s.syncModules);
+  const moveModuleToFolder = useLibraryStore((s) => s.moveModuleToFolder);
+  const locked = useLibraryStore((s) => s.locked);
+  const toggleLock = useLibraryStore((s) => s.toggleLock);
 
   const [deleteTarget, setDeleteTarget] = useState<{ module: Module; dependents: Module[] } | null>(null);
   const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
+
+  const forbiddenIds = useMemo(
+    () => activeModuleId ? getForbiddenModuleIds(activeModuleId, modules) : new Set<string>(),
+    [activeModuleId, modules],
+  );
+
+  // Sync library tree when modules change
+  useEffect(() => {
+    const moduleIds = new Set(modules.map((m) => m.id));
+    syncModules(moduleIds);
+  }, [modules, syncModules]);
 
   const executeOpen = useCallback((moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId);
@@ -82,12 +101,10 @@ export function LibraryPanel() {
     const dependents = getModulesDependingOn(moduleId, modules);
 
     if (dependents.length === 0) {
-      // No dependents — delete silently
       executeModuleDelete(moduleId);
       return;
     }
 
-    // Has dependents — show warning
     setDeleteTarget({ module: mod, dependents });
   };
 
@@ -97,15 +114,71 @@ export function LibraryPanel() {
     setDeleteTarget(null);
   };
 
+  const handleAddFolder = useCallback(() => {
+    addFolder(null, "New Folder");
+  }, [addFolder]);
+
+  const [rootDragOver, setRootDragOver] = useState(false);
+
+  const handleRootDragOver = useCallback((e: React.DragEvent) => {
+    if (locked) return;
+    if (e.dataTransfer.types.includes("application/nandforge-library-item")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setRootDragOver(true);
+    }
+  }, [locked]);
+
+  const handleRootDragLeave = useCallback(() => {
+    setRootDragOver(false);
+  }, []);
+
+  const handleRootDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setRootDragOver(false);
+      const moduleId = e.dataTransfer.getData("application/nandforge-library-item");
+      if (moduleId) {
+        moveModuleToFolder(moduleId, null);
+      }
+    },
+    [moveModuleToFolder],
+  );
+
   return (
     <>
       <div className="flex w-44 flex-col border-r border-zinc-700 p-2">
-        <span className="text-xs font-semibold text-zinc-400">Library</span>
-        <div className="mt-2 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-zinc-400">Library</span>
+          <div className="flex gap-1">
+            <button
+              onClick={toggleLock}
+              className={`rounded px-1 text-[10px] ${locked ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"}`}
+              title={locked ? "Unlock library (enable D&D reordering)" : "Lock library (prevent D&D reordering)"}
+            >
+              {locked ? "\u{1F512}" : "\u{1F513}"}
+            </button>
+            <button
+              onClick={handleAddFolder}
+              className="rounded px-1 text-[10px] text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300"
+              title="Add folder"
+            >
+              + Folder
+            </button>
+          </div>
+        </div>
+        <div
+          className={`mt-2 flex flex-1 flex-col gap-1 overflow-y-auto ${rootDragOver ? "bg-blue-900/20 rounded" : ""}`}
+          onDragOver={handleRootDragOver}
+          onDragLeave={handleRootDragLeave}
+          onDrop={handleRootDrop}
+        >
           <ModuleCard module={NAND_MODULE} onOpen={() => {}} />
-          {modules.map((mod) => (
-            <ModuleCard key={mod.id} module={mod} onOpen={handleOpen} onDelete={handleDelete} />
-          ))}
+          <LibraryTree
+            onOpen={handleOpen}
+            onDelete={handleDelete}
+            forbiddenIds={forbiddenIds}
+          />
         </div>
       </div>
 

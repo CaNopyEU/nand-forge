@@ -2,7 +2,16 @@ import { memo } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { useSimulationStore } from "../../store/simulation-store.ts";
 
-export type ManhattanEdgeType = Edge<Record<string, unknown>, "manhattan">;
+function lightenColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const mix = (c: number) => Math.round(c * 0.6 + 255 * 0.4);
+  return `#${mix(r).toString(16).padStart(2, "0")}${mix(g).toString(16).padStart(2, "0")}${mix(b).toString(16).padStart(2, "0")}`;
+}
+
+export type ManhattanEdgeData = { color?: string };
+export type ManhattanEdgeType = Edge<ManhattanEdgeData, "manhattan">;
 
 function ManhattanEdgeComponent({
   id,
@@ -11,6 +20,7 @@ function ManhattanEdgeComponent({
   targetX,
   targetY,
   selected,
+  data,
 }: EdgeProps<ManhattanEdgeType>) {
   const signal = useSimulationStore((s) => s.edgeSignals[id] ?? false);
 
@@ -20,7 +30,15 @@ function ManhattanEdgeComponent({
       ? `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`
       : `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
 
-  const color = selected ? "#60a5fa" : signal ? "#34d399" : "#71717a";
+  const customColor = data?.color;
+  let color: string;
+  if (selected) {
+    color = "#60a5fa";
+  } else if (customColor) {
+    color = signal ? lightenColor(customColor) : customColor;
+  } else {
+    color = signal ? "#34d399" : "#71717a";
+  }
 
   return (
     <BaseEdge

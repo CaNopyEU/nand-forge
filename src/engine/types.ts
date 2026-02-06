@@ -29,6 +29,7 @@ export interface Edge {
   fromPinId: PinId;
   toNodeId: NodeId;
   toPinId: PinId;
+  color?: string;
 }
 
 // === Circuit — editable circuit on canvas ===
@@ -47,6 +48,7 @@ export interface Module {
   outputs: Pin[];
   circuit: Circuit;
   truthTable?: TruthTable;
+  pinOrder?: { inputIds: PinId[]; outputIds: PinId[] };
   createdAt: string;
   updatedAt: string;
 }

@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useModuleStore } from "../../store/module-store.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
-import { generateTruthTable } from "../../engine/truth-table.ts";
+import { generateTruthTableAsync } from "../../engine/truth-table.ts";
 import type { Module, TruthTable } from "../../engine/types.ts";
+import { DraggableHeader } from "./DraggableHeader.tsx";
 
 const ROWS_PER_PAGE = 64;
 
@@ -30,14 +31,30 @@ const NAND_TRUTH_TABLE: TruthTable = {
 interface TruthTableViewProps {
   open: boolean;
   onClose: () => void;
+  defaultModuleId?: string;
 }
 
-export function TruthTableView({ open, onClose }: TruthTableViewProps) {
+export function TruthTableView({ open, onClose, defaultModuleId }: TruthTableViewProps) {
   const modules = useModuleStore((s) => s.modules);
+  const truthTableGenerating = useModuleStore((s) => s.truthTableGenerating);
+  const reorderPins = useModuleStore((s) => s.reorderPins);
   const allModules: Module[] = [NAND_MODULE, ...modules];
 
   const [selectedId, setSelectedId] = useState<string>(BUILTIN_NAND_MODULE_ID);
   const [page, setPage] = useState(0);
+  const [prevOpen, setPrevOpen] = useState(false);
+  const [asyncTruthTable, setAsyncTruthTable] = useState<TruthTable | null>(null);
+  const [computing, setComputing] = useState(false);
+
+  // When dialog opens, select the default module
+  if (open && !prevOpen) {
+    const targetId = defaultModuleId && allModules.some((m) => m.id === defaultModuleId)
+      ? defaultModuleId
+      : BUILTIN_NAND_MODULE_ID;
+    if (selectedId !== targetId) setSelectedId(targetId);
+    if (page !== 0) setPage(0);
+  }
+  if (open !== prevOpen) setPrevOpen(open);
 
   // Reset page when module changes
   useEffect(() => {
@@ -63,49 +80,101 @@ export function TruthTableView({ open, onClose }: TruthTableViewProps) {
 
   const selectedModule = allModules.find((m) => m.id === selectedId);
 
-  const { truthTable, tooManyInputs } = useMemo(() => {
-    if (!selectedModule) return { truthTable: null, tooManyInputs: false };
+  // Resolve truth table: cached, NAND hardcoded, or async on-demand
+  const isNand = selectedModule?.id === BUILTIN_NAND_MODULE_ID;
+  const tooManyInputs = selectedModule ? selectedModule.inputs.length > 16 && !isNand : false;
+  const cachedTruthTable = isNand
+    ? NAND_TRUTH_TABLE
+    : selectedModule?.truthTable ?? null;
 
-    // NAND special case
-    if (selectedModule.id === BUILTIN_NAND_MODULE_ID) {
-      return { truthTable: NAND_TRUTH_TABLE, tooManyInputs: false };
+  // Async on-demand generation when no cached TT available
+  useEffect(() => {
+    if (!open || !selectedModule || isNand || tooManyInputs || cachedTruthTable) {
+      setAsyncTruthTable(null);
+      setComputing(false);
+      return;
     }
 
-    // Module already has truth table
-    if (selectedModule.truthTable) {
-      return { truthTable: selectedModule.truthTable, tooManyInputs: false };
-    }
+    let cancelled = false;
+    setComputing(true);
+    setAsyncTruthTable(null);
 
-    // Too many inputs
-    if (selectedModule.inputs.length > 16) {
-      return { truthTable: null, tooManyInputs: true };
-    }
+    generateTruthTableAsync(selectedModule.circuit, modules).then((tt) => {
+      if (!cancelled) {
+        setAsyncTruthTable(tt);
+        setComputing(false);
+      }
+    });
 
-    // Generate on-demand
-    const generated = generateTruthTable(selectedModule.circuit, modules);
-    return { truthTable: generated, tooManyInputs: false };
-  }, [selectedModule, modules]);
+    return () => { cancelled = true; };
+  }, [open, selectedModule, isNand, tooManyInputs, cachedTruthTable, modules]);
+
+  const truthTable = cachedTruthTable ?? asyncTruthTable;
+  const isLoading = computing || (truthTableGenerating && !truthTable && selectedModule && !isNand && !tooManyInputs);
+
+  const canReorder = selectedModule && !isNand && selectedModule.id !== BUILTIN_NAND_MODULE_ID;
+
+  // Build display order from module's inputs/outputs (user-sorted),
+  // mapping to truth table's inputNames/outputNames (circuit order).
+  // This ensures columns display in the user's chosen order while
+  // correctly remapping each row's bit positions.
+  const displayInputIds = canReorder && selectedModule
+    ? selectedModule.inputs.map((p) => p.id)
+    : truthTable?.inputNames ?? [];
+  const displayOutputIds = canReorder && selectedModule
+    ? selectedModule.outputs.map((p) => p.id)
+    : truthTable?.outputNames ?? [];
+
+  // Index mapping: displayIndex → truthTable data index
+  const inputIndexMap = truthTable
+    ? displayInputIds.map((id) => truthTable.inputNames.indexOf(id))
+    : [];
+  const outputIndexMap = truthTable
+    ? displayOutputIds.map((id) => truthTable.outputNames.indexOf(id))
+    : [];
+
+  const handleReorderInputs = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!selectedModule) return;
+      const ids = [...displayInputIds];
+      const [moved] = ids.splice(fromIndex, 1);
+      ids.splice(toIndex, 0, moved!);
+      reorderPins(selectedModule.id, "input", ids);
+    },
+    [selectedModule, displayInputIds, reorderPins],
+  );
+
+  const handleReorderOutputs = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (!selectedModule) return;
+      const ids = [...displayOutputIds];
+      const [moved] = ids.splice(fromIndex, 1);
+      ids.splice(toIndex, 0, moved!);
+      reorderPins(selectedModule.id, "output", ids);
+    },
+    [selectedModule, displayOutputIds, reorderPins],
+  );
 
   if (!open) return null;
 
-  // Map pin IDs to display names
-  const inputHeaders = truthTable?.inputNames.map((pinId) => {
+  // Map pin IDs to display names (in display order)
+  const inputHeaders = displayInputIds.map((pinId) => {
     if (!selectedModule) return pinId;
     const pin = selectedModule.inputs.find((p) => p.id === pinId);
     return pin?.name ?? pinId;
-  }) ?? [];
+  });
 
-  const outputHeaders = truthTable?.outputNames.map((pinId) => {
+  const outputHeaders = displayOutputIds.map((pinId) => {
     if (!selectedModule) return pinId;
     const pin = selectedModule.outputs.find((p) => p.id === pinId);
     return pin?.name ?? pinId;
-  }) ?? [];
+  });
 
-  // Build rows
+  // Build rows with remapped bit positions
   const allRows = truthTable
     ? Object.entries(truthTable.rows).map(([inputKey, outputValue]) => ({
-        inputs: inputKey.split(""),
-        outputs: outputValue.split(""),
+        inputs: inputIndexMap.map((i) => (i >= 0 ? inputKey[i] ?? "0" : "0")),
+        outputs: outputIndexMap.map((i) => (i >= 0 ? outputValue[i] ?? "0" : "0")),
       }))
     : [];
 
@@ -157,27 +226,56 @@ export function TruthTableView({ open, onClose }: TruthTableViewProps) {
           </p>
         )}
 
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-zinc-200" />
+            <span className="ml-2 text-xs text-zinc-400">Generating truth table...</span>
+          </div>
+        )}
+
         {truthTable && (
           <div className="overflow-auto flex-1">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-zinc-600">
-                  {inputHeaders.map((name, i) => (
-                    <th
-                      key={`in-${i}`}
-                      className="px-3 py-1.5 text-center font-semibold text-zinc-300"
-                    >
-                      {name}
-                    </th>
-                  ))}
-                  {outputHeaders.map((name, i) => (
-                    <th
-                      key={`out-${i}`}
-                      className={`px-3 py-1.5 text-center font-semibold text-zinc-300 ${i === 0 ? "border-l border-zinc-600" : ""}`}
-                    >
-                      {name}
-                    </th>
-                  ))}
+                  {inputHeaders.map((name, i) =>
+                    canReorder ? (
+                      <DraggableHeader
+                        key={`in-${i}`}
+                        index={i}
+                        name={name}
+                        direction="input"
+                        isFirstOutput={false}
+                        onReorder={handleReorderInputs}
+                      />
+                    ) : (
+                      <th
+                        key={`in-${i}`}
+                        className="px-3 py-1.5 text-center font-semibold text-zinc-300"
+                      >
+                        {name}
+                      </th>
+                    ),
+                  )}
+                  {outputHeaders.map((name, i) =>
+                    canReorder ? (
+                      <DraggableHeader
+                        key={`out-${i}`}
+                        index={i}
+                        name={name}
+                        direction="output"
+                        isFirstOutput={i === 0}
+                        onReorder={handleReorderOutputs}
+                      />
+                    ) : (
+                      <th
+                        key={`out-${i}`}
+                        className={`px-3 py-1.5 text-center font-semibold text-zinc-300 ${i === 0 ? "border-l border-zinc-600" : ""}`}
+                      >
+                        {name}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>

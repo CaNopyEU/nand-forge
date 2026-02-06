@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import type { Module, ModuleId, Pin } from "../engine/types.ts";
+import type { Module, ModuleId, Pin, PinId } from "../engine/types.ts";
 import { hasTransitiveSelfReference, diffInterface, type InterfaceDiff } from "../engine/validate.ts";
-import { generateTruthTable } from "../engine/truth-table.ts";
+import { generateTruthTable, generateTruthTableAsync } from "../engine/truth-table.ts";
 import { canvasToCircuit } from "../utils/canvas-to-circuit.ts";
 import { useCircuitStore, extractInterface } from "./circuit-store.ts";
 import { generateId } from "../utils/id.ts";
@@ -28,9 +28,11 @@ export interface SaveAnalysis {
 
 interface ModuleStore {
   modules: Module[];
+  truthTableGenerating: boolean;
   addModule: (module: Module) => void;
   updateModule: (id: ModuleId, module: Module) => void;
   deleteModule: (id: ModuleId) => void;
+  reorderPins: (moduleId: ModuleId, direction: "input" | "output", orderedIds: PinId[]) => void;
   prepareSave: () => SaveAnalysis;
   executeSave: (analysis: SaveAnalysis) => SaveResult;
   saveCurrentModule: () => SaveResult;
@@ -169,8 +171,38 @@ export function regenerateTruthTablesCascading(
   return currentModules;
 }
 
+// === Async cascading truth table regeneration ===
+
+async function regenerateTruthTablesCascadingAsync(
+  changedModuleId: ModuleId,
+  modules: Module[],
+): Promise<Module[]> {
+  const order = getTransitiveDependentsInOrder(changedModuleId, modules);
+  const changedModule = modules.find((m) => m.id === changedModuleId);
+  const toRegenerate = changedModule ? [changedModule, ...order] : order;
+
+  let currentModules = [...modules];
+
+  for (const mod of toRegenerate) {
+    const latestMod = currentModules.find((m) => m.id === mod.id);
+    if (!latestMod) continue;
+
+    const truthTable =
+      latestMod.inputs.length <= 16
+        ? (await generateTruthTableAsync(latestMod.circuit, currentModules)) ?? undefined
+        : undefined;
+
+    currentModules = currentModules.map((m) =>
+      m.id === mod.id ? { ...m, truthTable } : m,
+    );
+  }
+
+  return currentModules;
+}
+
 export const useModuleStore = create<ModuleStore>((set, get) => ({
   modules: [],
+  truthTableGenerating: false,
 
   addModule: (module) =>
     set((state) => ({ modules: [...state.modules, module] })),
@@ -184,6 +216,40 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
     set((state) => ({
       modules: state.modules.filter((m) => m.id !== id),
     })),
+
+  reorderPins: (moduleId, direction, orderedIds) => {
+    const modules = get().modules;
+    const mod = modules.find((m) => m.id === moduleId);
+    if (!mod) return;
+
+    const pinMap = new Map(
+      (direction === "input" ? mod.inputs : mod.outputs).map((p) => [p.id, p]),
+    );
+    const reordered = orderedIds
+      .map((id) => pinMap.get(id))
+      .filter((p): p is Pin => p !== undefined);
+
+    const pinOrder = mod.pinOrder ?? {
+      inputIds: mod.inputs.map((p) => p.id),
+      outputIds: mod.outputs.map((p) => p.id),
+    };
+
+    const updatedModule: Module = direction === "input"
+      ? { ...mod, inputs: reordered, pinOrder: { ...pinOrder, inputIds: orderedIds } }
+      : { ...mod, outputs: reordered, pinOrder: { ...pinOrder, outputIds: orderedIds } };
+
+    set({
+      modules: modules.map((m) => (m.id === moduleId ? updatedModule : m)),
+    });
+
+    // Regenerate truth table async
+    set({ truthTableGenerating: true });
+    regenerateTruthTablesCascadingAsync(moduleId, get().modules).then(
+      (modulesWithTT) => {
+        set({ modules: modulesWithTT, truthTableGenerating: false });
+      },
+    );
+  },
 
   prepareSave: () => {
     const { activeModuleId, nodes, edges } = useCircuitStore.getState();
@@ -250,22 +316,23 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
       return { success: false, warnings, errors, needsConfirmation: false };
     }
 
-    // Extract interface
-    const { inputs, outputs } = extractInterface(nodes);
+    // Extract interface (respecting existing pin order)
+    const { inputs, outputs } = extractInterface(nodes, existingModule.pinOrder);
 
-    // Generate truth table if small enough (<=16 inputs)
-    let truthTable = undefined;
-    if (inputs.length <= 16) {
-      truthTable = generateTruthTable(circuit, get().modules) ?? undefined;
-    }
+    // Preserve/update pinOrder
+    const pinOrder = {
+      inputIds: inputs.map((p) => p.id),
+      outputIds: outputs.map((p) => p.id),
+    };
 
-    // Build prepared module
+    // Build prepared module (truth table computed async post-save)
     const preparedModule: Module = {
       ...existingModule,
       inputs,
       outputs,
       circuit,
-      truthTable,
+      truthTable: undefined,
+      pinOrder,
       updatedAt: new Date().toISOString(),
     };
 
@@ -326,14 +393,19 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
       );
     }
 
-    // 3. Cascading truth table regeneration
-    updatedModules = regenerateTruthTablesCascading(moduleId, updatedModules);
-
-    // 4. Apply to store
+    // 3. Apply to store immediately (optimistic save)
     set({ modules: updatedModules });
 
-    // 5. Mark canvas as clean
+    // 4. Mark canvas as clean
     useCircuitStore.getState().markClean();
+
+    // 5. Async cascading truth table regeneration
+    set({ truthTableGenerating: true });
+    regenerateTruthTablesCascadingAsync(moduleId, updatedModules).then(
+      (modulesWithTT) => {
+        set({ modules: modulesWithTT, truthTableGenerating: false });
+      },
+    );
 
     return { success: true, warnings, errors };
   },

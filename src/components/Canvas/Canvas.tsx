@@ -8,12 +8,14 @@ import {
   useReactFlow,
   type NodeTypes,
   type EdgeTypes,
+  type Edge as RFEdge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { useCircuitStore, type AppNode } from "../../store/circuit-store.ts";
-import { getModuleById } from "../../store/module-store.ts";
+import { getModuleById, useModuleStore } from "../../store/module-store.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
+import { getForbiddenModuleIds } from "../../engine/validate.ts";
 import type { Pin } from "../../engine/types.ts";
 import { useWiring } from "../../hooks/useWiring.ts";
 import { useSimulation } from "../../hooks/useSimulation.ts";
@@ -23,6 +25,7 @@ import { ConstantNode } from "./ConstantNode.tsx";
 import { ProbeNode } from "./ProbeNode.tsx";
 import { ModuleNode } from "./ModuleNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
+import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
 
 // P1: nodeTypes & edgeTypes defined outside component — stable reference
 const nodeTypes: NodeTypes = {
@@ -48,8 +51,10 @@ function CanvasInner() {
   const onEdgesChange = useCircuitStore((s) => s.onEdgesChange);
   const addNode = useCircuitStore((s) => s.addNode);
   const rotateNode = useCircuitStore((s) => s.rotateNode);
+  const setEdgeColor = useCircuitStore((s) => s.setEdgeColor);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
 
   const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
@@ -109,9 +114,12 @@ function CanvasInner() {
       const moduleId = e.dataTransfer.getData("application/nandforge-module");
       if (!moduleId) return;
 
-      // Prevent inserting a module into itself
+      // Prevent circular dependencies
       const activeModuleId = useCircuitStore.getState().activeModuleId;
-      if (moduleId === activeModuleId) return;
+      if (activeModuleId) {
+        const forbidden = getForbiddenModuleIds(activeModuleId, useModuleStore.getState().modules);
+        if (forbidden.has(moduleId)) return;
+      }
 
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
 
@@ -142,8 +150,28 @@ function CanvasInner() {
     [],
   );
 
+  const handleEdgeContextMenu = useCallback(
+    (e: ReactMouseEvent, edge: RFEdge) => {
+      e.preventDefault();
+      setContextMenu(null);
+      setEdgeColorMenu({ edgeId: edge.id, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
+
+  const handleEdgeColorSelect = useCallback(
+    (color: string | undefined) => {
+      if (edgeColorMenu) {
+        setEdgeColor(edgeColorMenu.edgeId, color);
+      }
+      setEdgeColorMenu(null);
+    },
+    [edgeColorMenu, setEdgeColor],
+  );
+
   const handlePaneClick = useCallback(() => {
     setContextMenu(null);
+    setEdgeColorMenu(null);
   }, []);
 
   return (
@@ -158,6 +186,7 @@ function CanvasInner() {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onNodeContextMenu={handleNodeContextMenu}
+        onEdgeContextMenu={handleEdgeContextMenu}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -224,6 +253,16 @@ function CanvasInner() {
             Rotate
           </button>
         </div>
+      )}
+
+      {/* Edge color picker */}
+      {edgeColorMenu && (
+        <EdgeColorPicker
+          x={edgeColorMenu.x}
+          y={edgeColorMenu.y}
+          onSelect={handleEdgeColorSelect}
+          onClose={() => setEdgeColorMenu(null)}
+        />
       )}
     </>
   );

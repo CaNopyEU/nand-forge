@@ -1,8 +1,10 @@
 import type { Module } from "../engine/types.ts";
 import type { AppNode } from "../store/circuit-store.ts";
 import type { Edge as RFEdge } from "@xyflow/react";
+import type { LibraryNode } from "../store/library-store.ts";
 import { useModuleStore } from "../store/module-store.ts";
 import { useCircuitStore } from "../store/circuit-store.ts";
+import { useLibraryStore } from "../store/library-store.ts";
 
 // === Types ===
 
@@ -17,6 +19,7 @@ export interface CanvasState {
 const STORAGE_KEYS = {
   modules: "nandforge:modules",
   canvas: "nandforge:canvas",
+  library: "nandforge:library",
 } as const;
 
 // === localStorage helpers ===
@@ -61,6 +64,26 @@ export function loadCanvasState(): CanvasState | null {
   }
 }
 
+export function saveLibraryTree(tree: LibraryNode[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.library, JSON.stringify(tree));
+  } catch {
+    // Silently fail
+  }
+}
+
+export function loadLibraryTree(): LibraryNode[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.library);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed as LibraryNode[];
+  } catch {
+    return null;
+  }
+}
+
 // === Debounce ===
 
 function debounce(fn: () => void, ms: number): () => void {
@@ -83,14 +106,20 @@ export function initAutosave(): void {
     saveCanvasState({ nodes, edges, activeModuleId });
   }, 500);
 
+  const debouncedSaveLibrary = debounce(() => {
+    saveLibraryTree(useLibraryStore.getState().tree);
+  }, 500);
+
   useModuleStore.subscribe(debouncedSaveModules);
   useCircuitStore.subscribe(debouncedSaveCanvas);
+  useLibraryStore.subscribe(debouncedSaveLibrary);
 }
 
 // === Export ===
 
 export function exportToJson(modules: Module[]): void {
-  const payload = { version: 1, modules };
+  const library = useLibraryStore.getState().tree;
+  const payload = { version: 2, modules, library };
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -105,7 +134,7 @@ export function exportToJson(modules: Module[]): void {
 
 // === Import ===
 
-export async function importFromJson(file: File): Promise<{ modules: Module[] }> {
+export async function importFromJson(file: File): Promise<{ modules: Module[]; library?: LibraryNode[] }> {
   const text = await file.text();
 
   let parsed: unknown;
@@ -138,5 +167,9 @@ export async function importFromJson(file: File): Promise<{ modules: Module[] }>
     if (!Array.isArray(circuit["edges"])) throw new Error(`Module at index ${i}: circuit is missing "edges".`);
   }
 
-  return { modules: modulesArr as Module[] };
+  // Library tree (optional, backward-compatible)
+  const libraryArr = data["library"];
+  const library = Array.isArray(libraryArr) ? (libraryArr as LibraryNode[]) : undefined;
+
+  return { modules: modulesArr as Module[], library };
 }

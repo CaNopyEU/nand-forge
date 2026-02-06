@@ -63,7 +63,10 @@ export type AppNode =
 
 // === Helpers ===
 
-export function extractInterface(nodes: AppNode[]): { inputs: Pin[]; outputs: Pin[] } {
+export function extractInterface(
+  nodes: AppNode[],
+  existingOrder?: { inputIds: string[]; outputIds: string[] },
+): { inputs: Pin[]; outputs: Pin[] } {
   const inputs: Pin[] = [];
   const outputs: Pin[] = [];
 
@@ -83,6 +86,27 @@ export function extractInterface(nodes: AppNode[]): { inputs: Pin[]; outputs: Pi
         bits: 1,
       });
     }
+  }
+
+  if (existingOrder) {
+    const sortByOrder = (pins: Pin[], order: string[]): Pin[] => {
+      const indexMap = new Map(order.map((id, i) => [id, i]));
+      const ordered: Pin[] = [];
+      const remaining: Pin[] = [];
+      for (const pin of pins) {
+        const idx = indexMap.get(pin.id);
+        if (idx !== undefined) {
+          ordered[idx] = pin;
+        } else {
+          remaining.push(pin);
+        }
+      }
+      return [...ordered.filter(Boolean), ...remaining];
+    };
+    return {
+      inputs: sortByOrder(inputs, existingOrder.inputIds),
+      outputs: sortByOrder(outputs, existingOrder.outputIds),
+    };
   }
 
   return { inputs, outputs };
@@ -112,6 +136,7 @@ interface CircuitStore {
   toggleConstantValue: (nodeId: string) => void;
   rotateNode: (nodeId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
+  setEdgeColor: (edgeId: string, color: string | undefined) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
@@ -133,7 +158,9 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
           .map((c) => c.id),
       );
       const newNodes = applyNodeChanges(changes, state.nodes);
-      const hasContentChange = changes.some((c) => c.type !== "select");
+      const hasContentChange = changes.some(
+        (c) => c.type !== "select" && c.type !== "dimensions",
+      );
 
       if (removedIds.size === 0) {
         return {
@@ -303,6 +330,16 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         n.id === nodeId
           ? ({ ...n, data: { ...n.data, label } } as AppNode)
           : n,
+      ),
+      isDirty: true,
+    })),
+
+  setEdgeColor: (edgeId, color) =>
+    set((state) => ({
+      edges: state.edges.map((e) =>
+        e.id === edgeId
+          ? { ...e, data: { ...e.data, color } }
+          : e,
       ),
       isDirty: true,
     })),
