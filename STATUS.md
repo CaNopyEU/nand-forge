@@ -14,8 +14,8 @@ Pred zaciatakom prace precitaj:
 ## Aktualny stav
 
 **Faza:** Implementacia
-**Aktualna iteracia:** 12 (DONE)
-**Posledna zmena:** Iteracia 12 dokoncena
+**Aktualna iteracia:** 13 (DONE)
+**Posledna zmena:** Iteracia 13 dokoncena
 
 ### Progress tracker
 
@@ -33,7 +33,7 @@ Pred zaciatakom prace precitaj:
 | 10 | Rotacia | ✅ DONE |
 | 11 | Truth table view | ✅ DONE |
 | 12 | Persistencia + export/import | ✅ DONE |
-| 13 | Undo/Redo (snapshot) | ⬜ TODO |
+| 13 | Undo/Redo (snapshot) | ✅ DONE |
 | 14 | Polish a edge cases | ⬜ TODO |
 
 Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
@@ -110,6 +110,54 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-06 (iteracia 13)
+- Implementovany snapshot-based undo/redo v `src/store/circuit-store.ts`:
+  - Novy typ `Snapshot = { nodes: AppNode[]; edges: RFEdge[] }`
+  - Stav: `past: Snapshot[]` (max 50), `future: Snapshot[]`
+  - Helper `pushSnapshot(state)` — ulozi aktualny `{nodes, edges}` do `past`, vycisti `future`
+  - `pushSnapshot` volany automaticky pred kazdou content-changing mutaciou:
+    - `addNode`, `removeNode`, `addEdge`, `removeEdge`
+    - `toggleInputValue`, `toggleConstantValue`, `rotateNode`
+    - `updateNodeLabel`, `setEdgeColor`
+    - `onNodesChange` pri removal, `onEdgesChange` pri removal
+  - `undo()` — ak `past` neprazdny: presun aktualny stav do `future`, obnov posledny z `past`, bump `simulationVersion`
+  - `redo()` — ak `future` neprazdny: presun aktualny stav do `past`, obnov prvy z `future`, bump `simulationVersion`
+  - `takeSnapshot()` — public akcia pre externych volajucich (napr. drag start)
+  - `clearCanvas()` a `loadCircuit()` resetuju `past` a `future` na `[]` (zmena kontextu)
+- Aktualizovane `src/components/Canvas/Canvas.tsx`:
+  - Keyboard shortcut `Ctrl+Z` → `undo()`, `Ctrl+Shift+Z` / `Ctrl+Y` → `redo()` (guard pre input/textarea/select focus)
+  - `onNodeDragStart` callback vola `takeSnapshot()` — drag nodov je undoable
+- Aktualizovane `src/components/Toolbar/Toolbar.tsx`:
+  - Nove tlacidla "Undo" a "Redo" medzi module info a right-side buttons
+  - `disabled` styling ked prislusny stack prazdny (`past.length === 0` / `future.length === 0`)
+  - Title atributy s keyboard shortcut hintami
+- Persistence: `past`/`future` sa NEPERSISTUJU — `saveCanvasState()` v `persistence.ts` explicitne destrukturuje len `{nodes, edges, activeModuleId}`
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK
+
+### Session 2026-02-06 (library D&D positional reordering — bonus)
+- Aktualizovane `src/store/library-store.ts`:
+  - `moveModuleToFolder` rozsireny o volitelny `insertIndex?: number` parameter
+  - Nove helpery: `findModulePosition(tree, moduleId)` — najde container a index modulu v strome
+  - `insertModuleAt(tree, moduleId, folderId, index)` — vlozi module ref na presnu poziciu
+  - Same-container index adjustment: ak modul bol pred cielovym indexom, dekrementuj index
+- Aktualizovane `src/components/Library/ModuleCard.tsx`:
+  - Nove props: `parentFolderId`, `indexInParent`, `locked`, `onReorder`
+  - Top/bottom half detection cez `getBoundingClientRect()` + `e.clientY`
+  - `dropPosition: "before" | "after" | null` state s vizualnym indikatorom (`border-t-2 border-t-blue-500` / `border-b-2 border-b-blue-500`)
+  - Na drop: vola `onReorder(draggedId, parentFolderId, index)` s vypocitanym insert indexom
+- Aktualizovane `src/components/Library/FolderNode.tsx`:
+  - Tri-zone detection: top 25% = "before", middle 50% = "inside", bottom 25% = "after"
+  - Nove props: `parentFolderId`, `indexInParent`, `onReorder`
+  - Vizualne indikatory: blue top/bottom border pre before/after, blue ring pre inside
+  - Na drop: "before"/"after" → `onReorder`, "inside" → `moveModuleToFolder` (append)
+- Aktualizovane `src/components/Library/LibraryTree.tsx`:
+  - Novy prop `onReorder` na `LibraryTreeProps`
+  - `RenderNode` dostava a propaguje `parentFolderId`, `indexInParent`, `locked`, `onReorder` do `ModuleCard` a `FolderNode`
+- Aktualizovane `src/components/Library/LibraryPanel.tsx`:
+  - Novy `handleReorder` callback volajuci `moveModuleToFolder(moduleId, targetFolderId, insertIndex)`
+  - Wired cez `<LibraryTree onReorder={handleReorder} />`
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK
 
 ### Session 2026-02-04 (iteracia 12)
 - Vytvorene `src/utils/persistence.ts` — kompletna persistence + export/import logika:

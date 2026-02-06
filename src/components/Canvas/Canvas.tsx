@@ -52,6 +52,9 @@ function CanvasInner() {
   const addNode = useCircuitStore((s) => s.addNode);
   const rotateNode = useCircuitStore((s) => s.rotateNode);
   const setEdgeColor = useCircuitStore((s) => s.setEdgeColor);
+  const undo = useCircuitStore((s) => s.undo);
+  const redo = useCircuitStore((s) => s.redo);
+  const takeSnapshot = useCircuitStore((s) => s.takeSnapshot);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
@@ -78,6 +81,30 @@ function CanvasInner() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [rotateNode]);
+
+  // Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Shift+Z / Ctrl+Y (redo)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
+
+  // Snapshot before node drag for undo support
+  const handleNodeDragStart = useCallback(() => {
+    takeSnapshot();
+  }, [takeSnapshot]);
 
   // Close context menu on Escape
   useEffect(() => {
@@ -185,6 +212,7 @@ function CanvasInner() {
         isValidConnection={isValidConnection}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onNodeDragStart={handleNodeDragStart}
         onNodeContextMenu={handleNodeContextMenu}
         onEdgeContextMenu={handleEdgeContextMenu}
         onPaneClick={handlePaneClick}

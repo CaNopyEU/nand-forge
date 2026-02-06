@@ -21,6 +21,10 @@ export function Toolbar() {
   const executeSave = useModuleStore((s) => s.executeSave);
   const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
   const truthTableGenerating = useModuleStore((s) => s.truthTableGenerating);
+  const undo = useCircuitStore((s) => s.undo);
+  const redo = useCircuitStore((s) => s.redo);
+  const canUndo = useCircuitStore((s) => s.past.length > 0);
+  const canRedo = useCircuitStore((s) => s.future.length > 0);
 
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
@@ -227,6 +231,25 @@ export function Toolbar() {
             TT
           </span>
         )}
+
+        <div className="ml-4 flex gap-1">
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Undo (Ctrl+Z)"
+          >
+            Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            Redo
+          </button>
+        </div>
 
         <div className="ml-auto flex gap-2">
           <button

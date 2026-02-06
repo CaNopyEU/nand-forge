@@ -112,6 +112,22 @@ export function extractInterface(
   return { inputs, outputs };
 }
 
+// === History ===
+
+type Snapshot = { nodes: AppNode[]; edges: RFEdge[] };
+
+const MAX_HISTORY = 50;
+
+function pushSnapshot(state: { nodes: AppNode[]; edges: RFEdge[]; past: Snapshot[] }): {
+  past: Snapshot[];
+  future: Snapshot[];
+} {
+  return {
+    past: [...state.past.slice(-(MAX_HISTORY - 1)), { nodes: state.nodes, edges: state.edges }],
+    future: [],
+  };
+}
+
 // === Store ===
 
 interface CircuitStore {
@@ -120,6 +136,8 @@ interface CircuitStore {
   activeModuleId: string | null;
   simulationVersion: number;
   isDirty: boolean;
+  past: Snapshot[];
+  future: Snapshot[];
 
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
@@ -141,14 +159,19 @@ interface CircuitStore {
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
   markClean: () => void;
+  undo: () => void;
+  redo: () => void;
+  takeSnapshot: () => void;
 }
 
-export const useCircuitStore = create<CircuitStore>((set) => ({
+export const useCircuitStore = create<CircuitStore>((set, get) => ({
   nodes: [],
   edges: [],
   activeModuleId: null,
   simulationVersion: 0,
   isDirty: false,
+  past: [],
+  future: [],
 
   onNodesChange: (changes) =>
     set((state) => {
@@ -169,8 +192,9 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         };
       }
 
-      // Clean up edges connected to removed nodes + bump simulation version
+      // Snapshot before removal + clean up edges connected to removed nodes
       return {
+        ...pushSnapshot(state),
         nodes: newNodes,
         edges: state.edges.filter(
           (e) => !removedIds.has(e.source) && !removedIds.has(e.target),
@@ -183,11 +207,15 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
   onEdgesChange: (changes) =>
     set((state) => {
       const hasRemoval = changes.some((c) => c.type === "remove");
+      const newEdges = applyEdgeChanges(changes, state.edges);
+      if (!hasRemoval) {
+        return { edges: newEdges };
+      }
       return {
-        edges: applyEdgeChanges(changes, state.edges),
-        ...(hasRemoval
-          ? { simulationVersion: state.simulationVersion + 1, isDirty: true }
-          : {}),
+        ...pushSnapshot(state),
+        edges: newEdges,
+        simulationVersion: state.simulationVersion + 1,
+        isDirty: true,
       };
     }),
 
@@ -259,6 +287,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       }
 
       return {
+        ...pushSnapshot(state),
         nodes: [...state.nodes, node],
         simulationVersion: state.simulationVersion + 1,
         isDirty: true,
@@ -267,6 +296,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   removeNode: (id) =>
     set((state) => ({
+      ...pushSnapshot(state),
       nodes: state.nodes.filter((n) => n.id !== id),
       edges: state.edges.filter((e) => e.source !== id && e.target !== id),
       simulationVersion: state.simulationVersion + 1,
@@ -275,6 +305,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   addEdge: (edge) =>
     set((state) => ({
+      ...pushSnapshot(state),
       edges: [...state.edges, edge],
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
@@ -282,6 +313,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   removeEdge: (id) =>
     set((state) => ({
+      ...pushSnapshot(state),
       edges: state.edges.filter((e) => e.id !== id),
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
@@ -289,6 +321,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   toggleInputValue: (nodeId) =>
     set((state) => ({
+      ...pushSnapshot(state),
       nodes: state.nodes.map((n) => {
         if (n.id !== nodeId || n.type !== "circuitInput") return n;
         return { ...n, data: { ...n.data, value: !n.data.value } };
@@ -299,6 +332,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   toggleConstantValue: (nodeId) =>
     set((state) => ({
+      ...pushSnapshot(state),
       nodes: state.nodes.map((n) => {
         if (n.id !== nodeId || n.type !== "constant") return n;
         return {
@@ -316,6 +350,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   rotateNode: (nodeId) =>
     set((state) => ({
+      ...pushSnapshot(state),
       nodes: state.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         const cur = (n.data as { rotation?: Rotation }).rotation ?? 0;
@@ -326,6 +361,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   updateNodeLabel: (nodeId, label) =>
     set((state) => ({
+      ...pushSnapshot(state),
       nodes: state.nodes.map((n) =>
         n.id === nodeId
           ? ({ ...n, data: { ...n.data, label } } as AppNode)
@@ -336,6 +372,7 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   setEdgeColor: (edgeId, color) =>
     set((state) => ({
+      ...pushSnapshot(state),
       edges: state.edges.map((e) =>
         e.id === edgeId
           ? { ...e, data: { ...e.data, color } }
@@ -348,6 +385,8 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
     set((state) => ({
       nodes: [],
       edges: [],
+      past: [],
+      future: [],
       simulationVersion: state.simulationVersion + 1,
       isDirty: false,
     })),
@@ -359,10 +398,43 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
     set((state) => ({
       nodes,
       edges,
+      past: [],
+      future: [],
       simulationVersion: state.simulationVersion + 1,
       isDirty: false,
     })),
 
   markClean: () =>
     set({ isDirty: false }),
+
+  undo: () => {
+    const state = get();
+    if (state.past.length === 0) return;
+    const previous = state.past[state.past.length - 1]!;
+    set({
+      past: state.past.slice(0, -1),
+      future: [{ nodes: state.nodes, edges: state.edges }, ...state.future],
+      nodes: previous.nodes,
+      edges: previous.edges,
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    });
+  },
+
+  redo: () => {
+    const state = get();
+    if (state.future.length === 0) return;
+    const next = state.future[0]!;
+    set({
+      past: [...state.past, { nodes: state.nodes, edges: state.edges }],
+      future: state.future.slice(1),
+      nodes: next.nodes,
+      edges: next.edges,
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    });
+  },
+
+  takeSnapshot: () =>
+    set((state) => pushSnapshot(state)),
 }));
