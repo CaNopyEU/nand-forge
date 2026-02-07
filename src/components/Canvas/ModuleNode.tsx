@@ -1,6 +1,8 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { ModuleNodeType } from "../../store/circuit-store.ts";
+import { useSimulationStore } from "../../store/simulation-store.ts";
+import { pinKey } from "../../engine/simulate.ts";
 import {
   getInputPosition,
   getOutputPosition,
@@ -35,7 +37,8 @@ function labelStyle(
   return { left: pct, transform: "translateX(-50%)" };
 }
 
-function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
+function ModuleNodeComponent({ id, data, selected }: NodeProps<ModuleNodeType>) {
+  const pinValues = useSimulationStore((s) => s.pinValues);
   const rotation = data.rotation ?? 0;
   const inputPos = getInputPosition(rotation);
   const outputPos = getOutputPosition(rotation);
@@ -56,15 +59,22 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
       style={sizeStyle}
     >
       {/* Input handles */}
-      {inputPins.map((pin, i) => (
-        <Handle
-          key={pin.id}
-          type="target"
-          position={inputPos}
-          id={pin.id}
-          style={getHandleDistributionStyle(inputPos, i, inputPins.length)}
-        />
-      ))}
+      {inputPins.map((pin, i) => {
+        const signal = pinValues[pinKey(id, pin.id)] ?? false;
+        return (
+          <Handle
+            key={pin.id}
+            type="target"
+            position={inputPos}
+            id={pin.id}
+            style={{
+              ...getHandleDistributionStyle(inputPos, i, inputPins.length),
+              background: signal ? "#34d399" : "#52525b",
+              boxShadow: signal ? "0 0 4px rgba(52,211,153,0.6)" : "none",
+            }}
+          />
+        );
+      })}
 
       {/* Label */}
       <div className="flex h-full items-center justify-center py-2">
@@ -93,15 +103,22 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
       ))}
 
       {/* Output handles */}
-      {outputPins.map((pin, i) => (
-        <Handle
-          key={pin.id}
-          type="source"
-          position={outputPos}
-          id={pin.id}
-          style={getHandleDistributionStyle(outputPos, i, outputPins.length)}
-        />
-      ))}
+      {outputPins.map((pin, i) => {
+        const signal = pinValues[pinKey(id, pin.id)] ?? false;
+        return (
+          <Handle
+            key={pin.id}
+            type="source"
+            position={outputPos}
+            id={pin.id}
+            style={{
+              ...getHandleDistributionStyle(outputPos, i, outputPins.length),
+              background: signal ? "#34d399" : "#52525b",
+              boxShadow: signal ? "0 0 4px rgba(52,211,153,0.6)" : "none",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
