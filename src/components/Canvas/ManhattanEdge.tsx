@@ -23,6 +23,7 @@ function ManhattanEdgeComponent({
   data,
 }: EdgeProps<ManhattanEdgeType>) {
   const signal = useSimulationStore((s) => s.edgeSignals[id] ?? false);
+  const unstable = useSimulationStore((s) => s.unstableEdges[id] ?? false);
 
   const midX = (sourceX + targetX) / 2;
   const path =
@@ -32,7 +33,9 @@ function ManhattanEdgeComponent({
 
   const customColor = data?.color;
   let color: string;
-  if (selected) {
+  if (unstable) {
+    color = "#f87171";
+  } else if (selected) {
     color = "#60a5fa";
   } else if (customColor) {
     color = signal ? lightenColor(customColor) : customColor;
@@ -44,7 +47,12 @@ function ManhattanEdgeComponent({
     <BaseEdge
       id={id}
       path={path}
-      style={{ stroke: color, strokeWidth: selected ? 2.5 : 2, transition: "stroke 0.15s ease" }}
+      style={{
+        stroke: color,
+        strokeWidth: selected ? 2.5 : 2,
+        transition: "stroke 0.15s ease",
+        animation: unstable ? "wire-pulse 0.5s infinite" : undefined,
+      }}
     />
   );
 }

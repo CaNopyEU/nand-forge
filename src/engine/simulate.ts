@@ -6,6 +6,7 @@ import type {
   NodeId,
   PinId,
 } from "./types.ts";
+import { evaluateCircuitIterative } from "./simulate-iterative.ts";
 
 // === Constants ===
 
@@ -113,6 +114,134 @@ export function topologicalSort(circuit: Circuit): NodeId[] {
   return sorted;
 }
 
+// === Single-node evaluation (shared by topological and iterative evaluators) ===
+
+export function evaluateNode(
+  node: CircuitNode,
+  adj: AdjacencyList,
+  pinValues: Map<string, boolean>,
+  modules?: Module[],
+): void {
+  switch (node.type) {
+    case "input":
+    case "constant":
+    case "clock":
+    case "button":
+      // Already seeded — nothing to do
+      break;
+
+    case "output":
+    case "probe": {
+      for (const pin of node.pins) {
+        if (pin.direction === "input") {
+          const key = pinKey(node.id, pin.id);
+          const upstream = adj.reverse.get(key);
+          if (upstream) {
+            pinValues.set(
+              key,
+              pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ??
+                false,
+            );
+          } else {
+            pinValues.set(key, false);
+          }
+        }
+      }
+      break;
+    }
+
+    case "module": {
+      if (node.moduleId === BUILTIN_NAND_MODULE_ID) {
+        const inputPins = node.pins.filter(
+          (p) => p.direction === "input",
+        );
+        const outputPins = node.pins.filter(
+          (p) => p.direction === "output",
+        );
+
+        const resolveInput = (pin: { id: PinId }): boolean => {
+          const key = pinKey(node.id, pin.id);
+          const upstream = adj.reverse.get(key);
+          if (upstream) {
+            return (
+              pinValues.get(
+                pinKey(upstream.nodeId, upstream.pinId),
+              ) ?? false
+            );
+          }
+          return false;
+        };
+
+        const a = inputPins[0] ? resolveInput(inputPins[0]) : false;
+        const b = inputPins[1] ? resolveInput(inputPins[1]) : false;
+        const result = evaluateNand(a, b);
+
+        for (const outPin of outputPins) {
+          pinValues.set(pinKey(node.id, outPin.id), result);
+        }
+      } else if (node.moduleId && modules) {
+        const mod = modules.find((m) => m.id === node.moduleId);
+        if (mod) {
+          const instanceInputPins = node.pins.filter(
+            (p) => p.direction === "input",
+          );
+          const instanceOutputPins = node.pins.filter(
+            (p) => p.direction === "output",
+          );
+
+          const subInputs: Record<PinId, boolean> = {};
+          for (let i = 0; i < instanceInputPins.length; i++) {
+            const instancePin = instanceInputPins[i];
+            const defPin = mod.inputs[i];
+            if (!instancePin || !defPin) continue;
+
+            const key = pinKey(node.id, instancePin.id);
+            const upstream = adj.reverse.get(key);
+            subInputs[defPin.id] = upstream
+              ? (pinValues.get(
+                  pinKey(upstream.nodeId, upstream.pinId),
+                ) ?? false)
+              : false;
+          }
+
+          if (mod.truthTable) {
+            const inputKey = mod.truthTable.inputNames
+              .map((name) => (subInputs[name] ? "1" : "0"))
+              .join("");
+            const outputStr = mod.truthTable.rows[inputKey] ?? "";
+            for (let i = 0; i < instanceOutputPins.length; i++) {
+              const outPin = instanceOutputPins[i];
+              if (outPin) {
+                pinValues.set(
+                  pinKey(node.id, outPin.id),
+                  outputStr[i] === "1",
+                );
+              }
+            }
+          } else {
+            const subOutputs = evaluateCircuit(
+              mod.circuit,
+              subInputs,
+              modules,
+            );
+            for (let i = 0; i < instanceOutputPins.length; i++) {
+              const instancePin = instanceOutputPins[i];
+              const defPin = mod.outputs[i];
+              if (instancePin && defPin) {
+                pinValues.set(
+                  pinKey(node.id, instancePin.id),
+                  subOutputs[defPin.id] ?? false,
+                );
+              }
+            }
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
 // === Circuit evaluation (full — returns all pin values) ===
 
 export function evaluateCircuitFull(
@@ -148,146 +277,28 @@ export function evaluateCircuitFull(
   for (const nodeId of order) {
     const node = nodeMap.get(nodeId);
     if (!node) continue;
-
-    switch (node.type) {
-      case "input":
-      case "constant":
-      case "clock":
-      case "button":
-        // Already seeded
-        break;
-
-      case "output":
-      case "probe": {
-        // Read value from upstream pin via reverse map
-        for (const pin of node.pins) {
-          if (pin.direction === "input") {
-            const key = pinKey(node.id, pin.id);
-            const upstream = adj.reverse.get(key);
-            if (upstream) {
-              pinValues.set(
-                key,
-                pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ??
-                  false,
-              );
-            } else {
-              pinValues.set(key, false);
-            }
-          }
-        }
-        break;
-      }
-
-      case "module": {
-        if (node.moduleId === BUILTIN_NAND_MODULE_ID) {
-          // Resolve input pins
-          const inputPins = node.pins.filter(
-            (p) => p.direction === "input",
-          );
-          const outputPins = node.pins.filter(
-            (p) => p.direction === "output",
-          );
-
-          const resolveInput = (pin: { id: PinId }): boolean => {
-            const key = pinKey(node.id, pin.id);
-            const upstream = adj.reverse.get(key);
-            if (upstream) {
-              return (
-                pinValues.get(
-                  pinKey(upstream.nodeId, upstream.pinId),
-                ) ?? false
-              );
-            }
-            return false;
-          };
-
-          const a = inputPins[0] ? resolveInput(inputPins[0]) : false;
-          const b = inputPins[1] ? resolveInput(inputPins[1]) : false;
-          const result = evaluateNand(a, b);
-
-          for (const outPin of outputPins) {
-            pinValues.set(pinKey(node.id, outPin.id), result);
-          }
-        } else if (node.moduleId && modules) {
-          // Custom module: lookup and evaluate
-          const mod = modules.find((m) => m.id === node.moduleId);
-          if (mod) {
-            // Instance pins have fresh IDs; map them to module definition
-            // pin IDs by index (same order guaranteed by addNode).
-            const instanceInputPins = node.pins.filter(
-              (p) => p.direction === "input",
-            );
-            const instanceOutputPins = node.pins.filter(
-              (p) => p.direction === "output",
-            );
-
-            // Build sub-circuit inputs keyed by definition pin IDs
-            const subInputs: Record<PinId, boolean> = {};
-            for (let i = 0; i < instanceInputPins.length; i++) {
-              const instancePin = instanceInputPins[i];
-              const defPin = mod.inputs[i];
-              if (!instancePin || !defPin) continue;
-
-              const key = pinKey(node.id, instancePin.id);
-              const upstream = adj.reverse.get(key);
-              subInputs[defPin.id] = upstream
-                ? (pinValues.get(
-                    pinKey(upstream.nodeId, upstream.pinId),
-                  ) ?? false)
-                : false;
-            }
-
-            if (mod.truthTable) {
-              // Use truth table for lookup
-              const inputKey = mod.truthTable.inputNames
-                .map((name) => (subInputs[name] ? "1" : "0"))
-                .join("");
-              const outputStr = mod.truthTable.rows[inputKey] ?? "";
-              for (let i = 0; i < instanceOutputPins.length; i++) {
-                const outPin = instanceOutputPins[i];
-                if (outPin) {
-                  pinValues.set(
-                    pinKey(node.id, outPin.id),
-                    outputStr[i] === "1",
-                  );
-                }
-              }
-            } else {
-              // Recursive evaluation
-              const subOutputs = evaluateCircuit(
-                mod.circuit,
-                subInputs,
-                modules,
-              );
-              for (let i = 0; i < instanceOutputPins.length; i++) {
-                const instancePin = instanceOutputPins[i];
-                const defPin = mod.outputs[i];
-                if (instancePin && defPin) {
-                  pinValues.set(
-                    pinKey(node.id, instancePin.id),
-                    subOutputs[defPin.id] ?? false,
-                  );
-                }
-              }
-            }
-          }
-        }
-        break;
-      }
-    }
+    evaluateNode(node, adj, pinValues, modules);
   }
 
   return pinValues;
 }
 
 // === Circuit evaluation (outputs only — preserves original API) ===
+// Falls back to iterative evaluation for cyclic sub-circuits.
 
 export function evaluateCircuit(
   circuit: Circuit,
   inputs: Record<PinId, boolean>,
   modules?: Module[],
 ): Record<PinId, boolean> {
-  const pinValues = evaluateCircuitFull(circuit, inputs, modules);
+  let pinValues: Map<string, boolean>;
+  try {
+    pinValues = evaluateCircuitFull(circuit, inputs, modules);
+  } catch {
+    // Cyclic sub-circuit — fall back to iterative evaluator
+    const iterResult = evaluateCircuitIterative(circuit, inputs, modules, new Map());
+    pinValues = iterResult.pinValues;
+  }
 
   const result: Record<PinId, boolean> = {};
   for (const node of circuit.nodes) {

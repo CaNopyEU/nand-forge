@@ -1,10 +1,12 @@
 import { useCircuitStore } from "../../store/circuit-store.ts";
 import { getModuleById } from "../../store/module-store.ts";
+import { useSimulationStore } from "../../store/simulation-store.ts";
 
 export function StatusBar() {
   const nodeCount = useCircuitStore((s) => s.nodes.length);
   const edgeCount = useCircuitStore((s) => s.edges.length);
   const activeModuleId = useCircuitStore((s) => s.activeModuleId);
+  const oscillating = useSimulationStore((s) => s.oscillating);
 
   const moduleName = activeModuleId
     ? getModuleById(activeModuleId)?.name
@@ -19,6 +21,12 @@ export function StatusBar() {
         <>
           <span className="mx-1.5">&middot;</span>
           <span>{moduleName}</span>
+        </>
+      )}
+      {oscillating && (
+        <>
+          <span className="mx-1.5">&middot;</span>
+          <span className="text-red-400">Oscillation detected</span>
         </>
       )}
     </div>

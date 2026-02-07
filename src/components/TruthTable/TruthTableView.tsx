@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useModuleStore } from "../../store/module-store.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
 import { generateTruthTableAsync } from "../../engine/truth-table.ts";
+import { hasCycle } from "../../engine/validate.ts";
 import type { Module, TruthTable } from "../../engine/types.ts";
 import { DraggableHeader } from "./DraggableHeader.tsx";
 
@@ -83,13 +84,14 @@ export function TruthTableView({ open, onClose, defaultModuleId }: TruthTableVie
   // Resolve truth table: cached, NAND hardcoded, or async on-demand
   const isNand = selectedModule?.id === BUILTIN_NAND_MODULE_ID;
   const tooManyInputs = selectedModule ? selectedModule.inputs.length > 16 && !isNand : false;
+  const isSequential = selectedModule && !isNand ? hasCycle(selectedModule.circuit) : false;
   const cachedTruthTable = isNand
     ? NAND_TRUTH_TABLE
     : selectedModule?.truthTable ?? null;
 
   // Async on-demand generation when no cached TT available
   useEffect(() => {
-    if (!open || !selectedModule || isNand || tooManyInputs || cachedTruthTable) {
+    if (!open || !selectedModule || isNand || tooManyInputs || isSequential || cachedTruthTable) {
       setAsyncTruthTable(null);
       setComputing(false);
       return;
@@ -223,6 +225,12 @@ export function TruthTableView({ open, onClose, defaultModuleId }: TruthTableVie
         {tooManyInputs && selectedModule && (
           <p className="text-xs text-zinc-400">
             Too many inputs ({selectedModule.inputs.length}) — truth table requires ≤ 16 inputs
+          </p>
+        )}
+
+        {isSequential && (
+          <p className="text-xs text-zinc-400">
+            Truth tables are not available for sequential circuits.
           </p>
         )}
 

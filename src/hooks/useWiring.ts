@@ -43,8 +43,10 @@ export function useWiring() {
       );
       if (inputOccupied) return false;
 
-      // 5. Cycle detection — can we reach source from target via existing edges?
-      if (wouldCreateCycle(source, target, edges)) return false;
+      // 5. Cycle detection — skip if circuit has a clock node (feedback loops allowed)
+      const nodes = useCircuitStore.getState().nodes;
+      const hasClock = nodes.some((n) => n.type === "clock");
+      if (!hasClock && wouldCreateCycle(source, target, edges)) return false;
 
       return true;
     },
