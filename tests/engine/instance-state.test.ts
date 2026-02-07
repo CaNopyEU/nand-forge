@@ -312,7 +312,6 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
     // D → NAND1.A, Enable → NAND1.B, NAND1.Out → SR.S
     // NOT(D) → NAND2.A (via NAND(D,D)), Enable → NAND2.B, NAND2.Out → SR.R
     function makeDLatchModule(): Module {
-      const srMod = makeSRLatchModule();
       return {
         id: "mod-d-latch",
         name: "D Latch",

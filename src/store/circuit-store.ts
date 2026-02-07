@@ -84,26 +84,26 @@ export function extractInterface(
   nodes: AppNode[],
   existingOrder?: { inputIds: string[]; outputIds: string[] },
 ): { inputs: Pin[]; outputs: Pin[] } {
-  const inputs: Pin[] = [];
-  const outputs: Pin[] = [];
+  // Sort input/output nodes by Y position (top to bottom) for consistent pin order
+  const inputNodes = nodes
+    .filter((n) => n.type === "circuitInput")
+    .sort((a, b) => (a.position.y ?? 0) - (b.position.y ?? 0));
+  const outputNodes = nodes
+    .filter((n) => n.type === "circuitOutput")
+    .sort((a, b) => (a.position.y ?? 0) - (b.position.y ?? 0));
 
-  for (const node of nodes) {
-    if (node.type === "circuitInput") {
-      inputs.push({
-        id: node.data.pinId,
-        name: node.data.label,
-        direction: "input",
-        bits: 1,
-      });
-    } else if (node.type === "circuitOutput") {
-      outputs.push({
-        id: node.data.pinId,
-        name: node.data.label,
-        direction: "output",
-        bits: 1,
-      });
-    }
-  }
+  const inputs: Pin[] = inputNodes.map((node) => ({
+    id: node.data.pinId,
+    name: node.data.label,
+    direction: "input" as const,
+    bits: 1 as const,
+  }));
+  const outputs: Pin[] = outputNodes.map((node) => ({
+    id: node.data.pinId,
+    name: node.data.label,
+    direction: "output" as const,
+    bits: 1 as const,
+  }));
 
   if (existingOrder) {
     const sortByOrder = (pins: Pin[], order: string[]): Pin[] => {

@@ -10,7 +10,6 @@ import { generateId } from "../utils/id.ts";
  * 1. No self-connections (source node === target node)
  * 2. No duplicate edges (same source+sourceHandle → target+targetHandle)
  * 3. Each input pin can only have one incoming wire
- * 4. No cycles — adding this edge must not create a directed cycle
  */
 export function useWiring() {
   const addEdge = useCircuitStore((s) => s.addEdge);
@@ -43,11 +42,6 @@ export function useWiring() {
       );
       if (inputOccupied) return false;
 
-      // 5. Cycle detection — skip if circuit has a clock node (feedback loops allowed)
-      const nodes = useCircuitStore.getState().nodes;
-      const hasClock = nodes.some((n) => n.type === "clock");
-      if (!hasClock && wouldCreateCycle(source, target, edges)) return false;
-
       return true;
     },
     [],
@@ -73,38 +67,3 @@ export function useWiring() {
   return { onConnect, isValidConnection };
 }
 
-/**
- * Check if adding an edge from `source` to `target` would create a cycle.
- * Uses BFS: traverse forward from `target` — if we can reach `source`, it's a cycle.
- */
-function wouldCreateCycle(
-  source: string,
-  target: string,
-  edges: RFEdge[],
-): boolean {
-  const adj = new Map<string, string[]>();
-  for (const e of edges) {
-    if (!adj.has(e.source)) adj.set(e.source, []);
-    adj.get(e.source)!.push(e.target);
-  }
-
-  const visited = new Set<string>();
-  const queue = [target];
-  visited.add(target);
-
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    if (current === source) return true;
-    const neighbors = adj.get(current);
-    if (neighbors) {
-      for (const n of neighbors) {
-        if (!visited.has(n)) {
-          visited.add(n);
-          queue.push(n);
-        }
-      }
-    }
-  }
-
-  return false;
-}
