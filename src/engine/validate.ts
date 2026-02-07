@@ -85,57 +85,6 @@ export function hasCycle(circuit: Circuit): boolean {
   return false;
 }
 
-// === Deep cycle detection (checks sub-modules recursively) ===
-
-/**
- * Returns true if the circuit contains a cycle, either directly
- * in its own wiring OR transitively inside any referenced sub-module.
- */
-export function hasNestedCycle(
-  circuit: Circuit,
-  modules: Module[],
-): boolean {
-  // Direct cycle in this circuit
-  if (hasCycle(circuit)) return true;
-
-  // Check if any referenced module is itself sequential (cyclic)
-  const moduleMap = new Map(modules.map((m) => [m.id, m]));
-  const cache = new Map<string, boolean>();
-
-  function isSequential(modId: string): boolean {
-    if (cache.has(modId)) return cache.get(modId)!;
-    // Mark as visiting to prevent infinite recursion on circular module refs
-    cache.set(modId, false);
-
-    const mod = moduleMap.get(modId);
-    if (!mod) return false;
-
-    if (hasCycle(mod.circuit)) {
-      cache.set(modId, true);
-      return true;
-    }
-
-    // Check sub-modules recursively
-    for (const node of mod.circuit.nodes) {
-      if (node.type === "module" && node.moduleId && isSequential(node.moduleId)) {
-        cache.set(modId, true);
-        return true;
-      }
-    }
-
-    cache.set(modId, false);
-    return false;
-  }
-
-  for (const node of circuit.nodes) {
-    if (node.type === "module" && node.moduleId && isSequential(node.moduleId)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 // === Forbidden module IDs (prevents circular dependencies on canvas) ===
 
 /**

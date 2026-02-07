@@ -432,8 +432,8 @@ describe("I15 — Controlled feedback loops", () => {
     });
   });
 
-  describe("Cycle without clock — rejected", () => {
-    it("feedback loop without clock node clears state (no infinite loop)", () => {
+  describe("Cycle without clock — iterative evaluation", () => {
+    it("feedback loop without clock node uses iterative evaluator (no infinite loop)", () => {
       const nodes: AppNode[] = [
         nandNode("n1", "a", "b", "o"),
       ];
@@ -444,8 +444,9 @@ describe("I15 — Controlled feedback loops", () => {
       ];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues).toEqual({});
-      expect(s.oscillating).toBe(false);
+      // Iterative evaluator produces values (oscillating NAND)
+      expect(s.pinValues).toHaveProperty("n1:o");
+      expect(s.oscillating).toBe(true);
     });
   });
 

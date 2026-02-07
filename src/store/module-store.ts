@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type { Module, ModuleId, Pin, PinId } from "../engine/types.ts";
 import { hasTransitiveSelfReference, diffInterface, type InterfaceDiff } from "../engine/validate.ts";
-import { generateTruthTable, generateTruthTableAsync } from "../engine/truth-table.ts";
 import { canvasToCircuit } from "../utils/canvas-to-circuit.ts";
 import { useCircuitStore, extractInterface } from "./circuit-store.ts";
 import { generateId } from "../utils/id.ts";
@@ -28,7 +27,6 @@ export interface SaveAnalysis {
 
 interface ModuleStore {
   modules: Module[];
-  truthTableGenerating: boolean;
   addModule: (module: Module) => void;
   updateModule: (id: ModuleId, module: Module) => void;
   deleteModule: (id: ModuleId) => void;
@@ -141,68 +139,8 @@ export function synchronizeInstancesInCircuit(
   return { nodes: updatedNodes, edges: updatedEdges, removedInstancePinIds };
 }
 
-// === Cascading truth table regeneration ===
-
-export function regenerateTruthTablesCascading(
-  changedModuleId: ModuleId,
-  modules: Module[],
-): Module[] {
-  const order = getTransitiveDependentsInOrder(changedModuleId, modules);
-  // Include the changed module itself first
-  const changedModule = modules.find((m) => m.id === changedModuleId);
-  const toRegenerate = changedModule ? [changedModule, ...order] : order;
-
-  let currentModules = [...modules];
-
-  for (const mod of toRegenerate) {
-    const latestMod = currentModules.find((m) => m.id === mod.id);
-    if (!latestMod) continue;
-
-    const truthTable =
-      latestMod.inputs.length <= 16
-        ? generateTruthTable(latestMod.circuit, currentModules) ?? undefined
-        : undefined;
-
-    currentModules = currentModules.map((m) =>
-      m.id === mod.id ? { ...m, truthTable } : m,
-    );
-  }
-
-  return currentModules;
-}
-
-// === Async cascading truth table regeneration ===
-
-async function regenerateTruthTablesCascadingAsync(
-  changedModuleId: ModuleId,
-  modules: Module[],
-): Promise<Module[]> {
-  const order = getTransitiveDependentsInOrder(changedModuleId, modules);
-  const changedModule = modules.find((m) => m.id === changedModuleId);
-  const toRegenerate = changedModule ? [changedModule, ...order] : order;
-
-  let currentModules = [...modules];
-
-  for (const mod of toRegenerate) {
-    const latestMod = currentModules.find((m) => m.id === mod.id);
-    if (!latestMod) continue;
-
-    const truthTable =
-      latestMod.inputs.length <= 16
-        ? (await generateTruthTableAsync(latestMod.circuit, currentModules)) ?? undefined
-        : undefined;
-
-    currentModules = currentModules.map((m) =>
-      m.id === mod.id ? { ...m, truthTable } : m,
-    );
-  }
-
-  return currentModules;
-}
-
 export const useModuleStore = create<ModuleStore>((set, get) => ({
   modules: [],
-  truthTableGenerating: false,
 
   addModule: (module) =>
     set((state) => ({ modules: [...state.modules, module] })),
@@ -261,14 +199,6 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
     }
 
     set({ modules: updatedModules });
-
-    // Regenerate truth table async
-    set({ truthTableGenerating: true });
-    regenerateTruthTablesCascadingAsync(moduleId, get().modules).then(
-      (modulesWithTT) => {
-        set({ modules: modulesWithTT, truthTableGenerating: false });
-      },
-    );
   },
 
   prepareSave: () => {
@@ -351,7 +281,6 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
       inputs,
       outputs,
       circuit,
-      truthTable: undefined,
       pinOrder,
       updatedAt: new Date().toISOString(),
     };
@@ -419,14 +348,6 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
     // 4. Mark canvas as clean
     useCircuitStore.getState().markClean();
 
-    // 5. Async cascading truth table regeneration
-    set({ truthTableGenerating: true });
-    regenerateTruthTablesCascadingAsync(moduleId, updatedModules).then(
-      (modulesWithTT) => {
-        set({ modules: modulesWithTT, truthTableGenerating: false });
-      },
-    );
-
     return { success: true, warnings, errors };
   },
 
@@ -477,18 +398,6 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
 
     // Remove the module itself
     updatedModules = updatedModules.filter((m) => m.id !== moduleId);
-
-    // Regenerate truth tables for affected parents
-    for (const dep of dependents) {
-      updatedModules = updatedModules.map((m) => {
-        if (m.id !== dep.id) return m;
-        const truthTable =
-          m.inputs.length <= 16
-            ? generateTruthTable(m.circuit, updatedModules) ?? undefined
-            : undefined;
-        return { ...m, truthTable };
-      });
-    }
 
     set({ modules: updatedModules });
 

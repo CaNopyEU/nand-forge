@@ -8,7 +8,6 @@ import { generateId } from "../../utils/id.ts";
 import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
-import { TruthTableView } from "../TruthTable/TruthTableView.tsx";
 import { TimingDiagramView } from "../TimingDiagram/TimingDiagramView.tsx";
 import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
 import { exportToJson, importFromJson } from "../../utils/persistence.ts";
@@ -23,7 +22,6 @@ export function Toolbar() {
   const prepareSave = useModuleStore((s) => s.prepareSave);
   const executeSave = useModuleStore((s) => s.executeSave);
   const saveCurrentModule = useModuleStore((s) => s.saveCurrentModule);
-  const truthTableGenerating = useModuleStore((s) => s.truthTableGenerating);
   const undo = useCircuitStore((s) => s.undo);
   const redo = useCircuitStore((s) => s.redo);
   const canUndo = useCircuitStore((s) => s.past.length > 0);
@@ -41,7 +39,6 @@ export function Toolbar() {
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
-  const [showTruthTable, setShowTruthTable] = useState(false);
   const [showTimingDiagram, setShowTimingDiagram] = useState(false);
   const [pendingAction, setPendingAction] = useState<"new" | null>(null);
 
@@ -225,13 +222,6 @@ export function Toolbar() {
           <span className="ml-3 text-xs text-zinc-500">unsaved circuit</span>
         )}
 
-        {truthTableGenerating && (
-          <span className="ml-2 flex items-center gap-1 text-[10px] text-zinc-500">
-            <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-zinc-500 border-t-zinc-300" />
-            TT
-          </span>
-        )}
-
         <div className="ml-4 flex gap-1">
           <button
             onClick={undo}
@@ -286,12 +276,6 @@ export function Toolbar() {
 
         <div className="ml-auto flex gap-2">
           <button
-            onClick={() => setShowTruthTable(true)}
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-          >
-            Truth Table
-          </button>
-          <button
             onClick={() => setShowTimingDiagram(true)}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
           >
@@ -344,8 +328,6 @@ export function Toolbar() {
         onConfirm={handleSaveConfirm}
         onCancel={() => setSaveAnalysis(null)}
       />
-
-      <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} defaultModuleId={activeModuleId ?? undefined} />
 
       <TimingDiagramView open={showTimingDiagram} onClose={() => setShowTimingDiagram(false)} />
 

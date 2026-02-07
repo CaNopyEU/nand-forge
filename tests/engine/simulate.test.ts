@@ -266,16 +266,11 @@ describe("evaluateCircuit", () => {
       inputs: [makePin("in", "In", "input")],
       outputs: [makePin("out", "Out", "output")],
       circuit: notCircuit,
-      truthTable: {
-        inputNames: ["in"],
-        outputNames: ["out"],
-        rows: { "0": "1", "1": "0" },
-      },
       createdAt: "",
       updatedAt: "",
     };
 
-    it("evaluates circuit using module truth table lookup", () => {
+    it("evaluates circuit using sub-module evaluation", () => {
       // Circuit: Input → NOT module → Output
       const nodes: CircuitNode[] = [
         makeInputNode("input", "x", "X"),

@@ -212,47 +212,31 @@ export function evaluateNode(
               : false;
           }
 
-          if (mod.truthTable) {
-            const inputKey = mod.truthTable.inputNames
-              .map((name) => (subInputs[name] ? "1" : "0"))
-              .join("");
-            const outputStr = mod.truthTable.rows[inputKey] ?? "";
-            for (let i = 0; i < instanceOutputPins.length; i++) {
-              const outPin = instanceOutputPins[i];
-              if (outPin) {
-                pinValues.set(
-                  pinKey(node.id, outPin.id),
-                  outputStr[i] === "1",
-                );
-              }
-            }
-          } else {
-            const prevState = instanceStates?.get(node.id);
-            const prevSubPinValues = prevState?.pinValues ?? new Map<string, boolean>();
-            const childInstanceStates = prevState?.children ?? new Map<string, InstanceState>();
-            const subResult = evaluateCircuitWithState(
-              mod.circuit,
-              subInputs,
-              modules,
-              prevSubPinValues,
-              childInstanceStates,
-            );
-            if (instanceStates) {
-              instanceStates.set(node.id, {
-                pinValues: subResult.pinValues,
-                children: childInstanceStates,
-              });
-            }
-            const subOutputs = subResult.outputs;
-            for (let i = 0; i < instanceOutputPins.length; i++) {
-              const instancePin = instanceOutputPins[i];
-              const defPin = mod.outputs[i];
-              if (instancePin && defPin) {
-                pinValues.set(
-                  pinKey(node.id, instancePin.id),
-                  subOutputs[defPin.id] ?? false,
-                );
-              }
+          const prevState = instanceStates?.get(node.id);
+          const prevSubPinValues = prevState?.pinValues ?? new Map<string, boolean>();
+          const childInstanceStates = prevState?.children ?? new Map<string, InstanceState>();
+          const subResult = evaluateCircuitWithState(
+            mod.circuit,
+            subInputs,
+            modules,
+            prevSubPinValues,
+            childInstanceStates,
+          );
+          if (instanceStates) {
+            instanceStates.set(node.id, {
+              pinValues: subResult.pinValues,
+              children: childInstanceStates,
+            });
+          }
+          const subOutputs = subResult.outputs;
+          for (let i = 0; i < instanceOutputPins.length; i++) {
+            const instancePin = instanceOutputPins[i];
+            const defPin = mod.outputs[i];
+            if (instancePin && defPin) {
+              pinValues.set(
+                pinKey(node.id, instancePin.id),
+                subOutputs[defPin.id] ?? false,
+              );
             }
           }
         }

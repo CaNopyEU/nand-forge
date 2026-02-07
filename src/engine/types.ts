@@ -47,15 +47,7 @@ export interface Module {
   inputs: Pin[];
   outputs: Pin[];
   circuit: Circuit;
-  truthTable?: TruthTable;
   pinOrder?: { inputIds: PinId[]; outputIds: PinId[] };
   createdAt: string;
   updatedAt: string;
-}
-
-// === Truth table ===
-export interface TruthTable {
-  inputNames: string[];
-  outputNames: string[];
-  rows: Record<string, string>;
 }

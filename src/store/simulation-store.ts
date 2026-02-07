@@ -82,23 +82,17 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     try {
       pinMap = evaluateCircuitFull(circuit, inputValues, modules, instanceStates);
     } catch {
-      // Cycle detected — try iterative evaluation if clock is present
-      const hasClock = circuit.nodes.some((n) => n.type === "clock");
-      if (hasClock) {
-        const result = evaluateCircuitIterative(
-          circuit,
-          inputValues,
-          modules,
-          get().prevPinValues,
-          instanceStates,
-        );
-        pinMap = result.pinValues;
-        stable = result.stable;
-        unstableKeys = result.unstableKeys;
-      } else {
-        set({ pinValues: {}, edgeSignals: {}, oscillating: false, unstableEdges: {}, instanceStates: new Map() });
-        return;
-      }
+      // Cycle detected — use iterative evaluation with delay model
+      const result = evaluateCircuitIterative(
+        circuit,
+        inputValues,
+        modules,
+        get().prevPinValues,
+        instanceStates,
+      );
+      pinMap = result.pinValues;
+      stable = result.stable;
+      unstableKeys = result.unstableKeys;
     }
 
     const pinValues: Record<string, boolean> = {};
