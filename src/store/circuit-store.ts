@@ -40,6 +40,19 @@ export type ProbeNodeData = {
   rotation: Rotation;
 };
 
+export type ClockNodeData = {
+  pinId: string;
+  value: boolean;
+  rotation: Rotation;
+};
+
+export type ButtonNodeData = {
+  label: string;
+  pinId: string;
+  pressed: boolean;
+  rotation: Rotation;
+};
+
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
@@ -53,12 +66,16 @@ export type InputNodeType = Node<InputNodeData, "circuitInput">;
 export type OutputNodeType = Node<OutputNodeData, "circuitOutput">;
 export type ConstantNodeType = Node<ConstantNodeData, "constant">;
 export type ProbeNodeType = Node<ProbeNodeData, "probe">;
+export type ClockNodeType = Node<ClockNodeData, "clock">;
+export type ButtonNodeType = Node<ButtonNodeData, "button">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
   | OutputNodeType
   | ConstantNodeType
   | ProbeNodeType
+  | ClockNodeType
+  | ButtonNodeType
   | ModuleNodeType;
 
 // === Helpers ===
@@ -156,6 +173,8 @@ interface CircuitStore {
   rotateNode: (nodeId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
   setEdgeColor: (edgeId: string, color: string | undefined) => void;
+  tickClocks: () => void;
+  setButtonPressed: (nodeId: string, pressed: boolean) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
@@ -258,6 +277,22 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             type: "probe",
             position,
             data: { pinId: generateId(), rotation: 0 },
+          };
+          break;
+        case "clock":
+          node = {
+            id,
+            type: "clock",
+            position,
+            data: { pinId: generateId(), value: false, rotation: 0 },
+          };
+          break;
+        case "button":
+          node = {
+            id,
+            type: "button",
+            position,
+            data: { label: "BTN", pinId: generateId(), pressed: false, rotation: 0 },
           };
           break;
         case "module": {
@@ -382,6 +417,24 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
           : e,
       ),
       isDirty: true,
+    })),
+
+  tickClocks: () =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.type !== "clock") return n;
+        return { ...n, data: { ...n.data, value: !n.data.value } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
+    })),
+
+  setButtonPressed: (nodeId, pressed) =>
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "button") return n;
+        return { ...n, data: { ...n.data, pressed } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
     })),
 
   clearCanvas: () =>

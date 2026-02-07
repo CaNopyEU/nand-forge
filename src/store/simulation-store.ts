@@ -3,7 +3,7 @@ import type { Edge as RFEdge } from "@xyflow/react";
 import { evaluateCircuitFull, pinKey } from "../engine/simulate.ts";
 import { canvasToCircuit } from "../utils/canvas-to-circuit.ts";
 import { useModuleStore } from "./module-store.ts";
-import type { AppNode } from "./circuit-store.ts";
+import { useCircuitStore, type AppNode } from "./circuit-store.ts";
 
 // === Store ===
 
@@ -12,13 +12,32 @@ interface SimulationStore {
   pinValues: Record<string, boolean>;
   /** Signal value per edge, keyed by edge ID */
   edgeSignals: Record<string, boolean>;
+  /** Whether the clock is running */
+  running: boolean;
+  /** Ticks per second */
+  tickRate: number;
 
   runSimulation: (nodes: AppNode[], edges: RFEdge[]) => void;
+  play: () => void;
+  pause: () => void;
+  step: () => void;
+  setTickRate: (hz: number) => void;
 }
 
 export const useSimulationStore = create<SimulationStore>((set) => ({
   pinValues: {},
   edgeSignals: {},
+  running: false,
+  tickRate: 2,
+
+  play: () => set({ running: true }),
+  pause: () => set({ running: false }),
+  step: () => {
+    const circuitStore = useCircuitStore.getState();
+    circuitStore.tickClocks();
+    // Simulation will re-run via useSimulation hook reacting to simulationVersion bump
+  },
+  setTickRate: (hz) => set({ tickRate: hz }),
 
   runSimulation: (nodes, edges) => {
     const { circuit, inputValues } = canvasToCircuit(nodes, edges);

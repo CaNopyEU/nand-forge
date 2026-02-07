@@ -24,8 +24,11 @@ import { OutputNode } from "./OutputNode.tsx";
 import { ConstantNode } from "./ConstantNode.tsx";
 import { ProbeNode } from "./ProbeNode.tsx";
 import { ModuleNode } from "./ModuleNode.tsx";
+import { ClockNode } from "./ClockNode.tsx";
+import { ButtonNode } from "./ButtonNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
+import { useClockTick } from "../../hooks/useClockTick.ts";
 
 // P1: nodeTypes & edgeTypes defined outside component — stable reference
 const nodeTypes: NodeTypes = {
@@ -33,6 +36,8 @@ const nodeTypes: NodeTypes = {
   circuitOutput: OutputNode,
   constant: ConstantNode,
   probe: ProbeNode,
+  clock: ClockNode,
+  button: ButtonNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -64,6 +69,7 @@ function CanvasInner() {
   const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
   useSimulation();
+  useClockTick();
 
   // Keyboard shortcut: R to rotate selected nodes
   useEffect(() => {
@@ -286,6 +292,18 @@ function CanvasInner() {
               onClick={() => handleAddNode("probe")}
             >
               + Probe
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-cyan-300 hover:bg-zinc-600"
+              onClick={() => handleAddNode("clock")}
+            >
+              + Clock
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-rose-300 hover:bg-zinc-600"
+              onClick={() => handleAddNode("button")}
+            >
+              + Button
             </button>
           </div>
         </Panel>

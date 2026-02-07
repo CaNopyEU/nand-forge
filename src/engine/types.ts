@@ -15,7 +15,7 @@ export interface Pin {
 // === Node on canvas ===
 export interface CircuitNode {
   id: NodeId;
-  type: "input" | "output" | "constant" | "probe" | "module";
+  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button";
   moduleId?: ModuleId;
   position: { x: number; y: number };
   rotation: 0 | 90 | 180 | 270;

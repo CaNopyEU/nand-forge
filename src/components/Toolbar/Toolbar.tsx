@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useCircuitStore } from "../../store/circuit-store.ts";
+import { useSimulationStore } from "../../store/simulation-store.ts";
 import { useModuleStore, getModuleById, type SaveAnalysis } from "../../store/module-store.ts";
 import { useLibraryStore } from "../../store/library-store.ts";
 import { useToastStore } from "../../store/toast-store.ts";
@@ -26,6 +27,13 @@ export function Toolbar() {
   const redo = useCircuitStore((s) => s.redo);
   const canUndo = useCircuitStore((s) => s.past.length > 0);
   const canRedo = useCircuitStore((s) => s.future.length > 0);
+
+  const running = useSimulationStore((s) => s.running);
+  const tickRate = useSimulationStore((s) => s.tickRate);
+  const play = useSimulationStore((s) => s.play);
+  const pause = useSimulationStore((s) => s.pause);
+  const step = useSimulationStore((s) => s.step);
+  const setTickRate = useSimulationStore((s) => s.setTickRate);
 
   const showToast = useToastStore((s) => s.showToast);
 
@@ -239,6 +247,39 @@ export function Toolbar() {
           >
             Redo
           </button>
+        </div>
+
+        <div className="ml-4 flex items-center gap-1 border-l border-zinc-600 pl-4">
+          <button
+            onClick={running ? pause : play}
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              running
+                ? "bg-amber-600 text-white hover:bg-amber-500"
+                : "bg-emerald-600 text-white hover:bg-emerald-500"
+            }`}
+          >
+            {running ? "Pause" : "Play"}
+          </button>
+          <button
+            onClick={step}
+            disabled={running}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Single tick"
+          >
+            Step
+          </button>
+          <select
+            value={tickRate}
+            onChange={(e) => setTickRate(Number(e.target.value))}
+            className="rounded bg-zinc-700 px-1 py-1 text-xs text-zinc-200 outline-none"
+            title="Tick rate (Hz)"
+          >
+            <option value={1}>1 Hz</option>
+            <option value={2}>2 Hz</option>
+            <option value={5}>5 Hz</option>
+            <option value={10}>10 Hz</option>
+            <option value={25}>25 Hz</option>
+          </select>
         </div>
 
         <div className="ml-auto flex gap-2">

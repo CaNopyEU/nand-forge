@@ -64,6 +64,29 @@ export function circuitNodesToAppNodes(
             rotation: (node.rotation ?? 0) as Rotation,
           },
         };
+      case "clock":
+        return {
+          id: node.id,
+          type: "clock" as const,
+          position: node.position,
+          data: {
+            pinId: node.pins[0]?.id ?? node.id,
+            value: false,
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      case "button":
+        return {
+          id: node.id,
+          type: "button" as const,
+          position: node.position,
+          data: {
+            label: node.pins[0]?.name ?? "BTN",
+            pinId: node.pins[0]?.id ?? node.id,
+            pressed: false,
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
       case "module": {
         const mid = node.moduleId ?? "";
         const mod = moduleMap.get(mid);

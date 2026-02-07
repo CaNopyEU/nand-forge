@@ -68,6 +68,36 @@ export function canvasToCircuit(
             },
           ],
         };
+      case "clock":
+        return {
+          id: node.id,
+          type: "clock" as const,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: "CLK",
+              direction: "output" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
+      case "button":
+        return {
+          id: node.id,
+          type: "button" as const,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: node.data.label,
+              direction: "output" as const,
+              bits: 1 as const,
+            },
+          ],
+        };
       case "module":
         return {
           id: node.id,
@@ -97,6 +127,10 @@ export function canvasToCircuit(
       inputValues[node.data.pinId] = node.data.value;
     } else if (node.type === "constant") {
       inputValues[node.data.pinId] = node.data.value;
+    } else if (node.type === "clock") {
+      inputValues[node.data.pinId] = node.data.value;
+    } else if (node.type === "button") {
+      inputValues[node.data.pinId] = node.data.pressed;
     }
   }
 

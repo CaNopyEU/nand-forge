@@ -132,7 +132,7 @@ export function evaluateCircuitFull(
 
   // Seed input/constant nodes
   for (const node of circuit.nodes) {
-    if (node.type === "input" || node.type === "constant") {
+    if (node.type === "input" || node.type === "constant" || node.type === "clock" || node.type === "button") {
       for (const pin of node.pins) {
         if (pin.direction === "output") {
           pinValues.set(
@@ -152,6 +152,8 @@ export function evaluateCircuitFull(
     switch (node.type) {
       case "input":
       case "constant":
+      case "clock":
+      case "button":
         // Already seeded
         break;
 
