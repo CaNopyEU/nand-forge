@@ -35,7 +35,7 @@ function labelStyle(
   return { left: pct, transform: "translateX(-50%)" };
 }
 
-function ModuleNodeComponent({ data }: NodeProps<ModuleNodeType>) {
+function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
   const rotation = data.rotation ?? 0;
   const inputPos = getInputPosition(rotation);
   const outputPos = getOutputPosition(rotation);
@@ -52,7 +52,7 @@ function ModuleNodeComponent({ data }: NodeProps<ModuleNodeType>) {
 
   return (
     <div
-      className="relative rounded border border-zinc-600 bg-zinc-800 px-4"
+      className={`relative rounded border bg-zinc-800 px-4 ${selected ? "border-blue-500" : "border-zinc-600"}`}
       style={sizeStyle}
     >
       {/* Input handles */}

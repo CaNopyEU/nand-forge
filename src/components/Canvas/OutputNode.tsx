@@ -5,7 +5,7 @@ import { getInputPosition } from "../../utils/layout.ts";
 import { useSimulationStore } from "../../store/simulation-store.ts";
 import { pinKey } from "../../engine/simulate.ts";
 
-function OutputNodeComponent({ id, data }: NodeProps<OutputNodeType>) {
+function OutputNodeComponent({ id, data, selected }: NodeProps<OutputNodeType>) {
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
   const signal = useSimulationStore(
     (s) => s.pinValues[pinKey(id, data.pinId)] ?? false,
@@ -20,7 +20,7 @@ function OutputNodeComponent({ id, data }: NodeProps<OutputNodeType>) {
   }, [id, draft, updateNodeLabel]);
 
   return (
-    <div className="flex items-center gap-1.5 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5">
+    <div className={`flex items-center gap-1.5 rounded border bg-zinc-800 px-2 py-1.5 ${selected ? "border-blue-500" : "border-zinc-600"}`}>
       <Handle type="target" position={getInputPosition(data.rotation ?? 0)} id={data.pinId} />
 
       {editing ? (

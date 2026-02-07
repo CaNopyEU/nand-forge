@@ -17,12 +17,12 @@ export function UnsavedChangesDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in"
       onKeyDown={(e) => {
         if (e.key === "Escape") onCancel();
       }}
     >
-      <div className="w-80 rounded-lg border border-zinc-700 bg-zinc-800 p-4 shadow-xl">
+      <div className="w-80 rounded-lg border border-zinc-700 bg-zinc-800 p-4 shadow-xl animate-dialog-in">
         <h2 className="mb-3 text-sm font-bold text-zinc-100">Unsaved changes</h2>
         <p className="mb-4 text-xs text-zinc-300">
           You have unsaved changes. What would you like to do?

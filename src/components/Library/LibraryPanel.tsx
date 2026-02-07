@@ -39,6 +39,8 @@ export function LibraryPanel() {
   const moveModuleToFolder = useLibraryStore((s) => s.moveModuleToFolder);
   const locked = useLibraryStore((s) => s.locked);
   const toggleLock = useLibraryStore((s) => s.toggleLock);
+  const stampModuleId = useCircuitStore((s) => s.stampModuleId);
+  const setStampModuleId = useCircuitStore((s) => s.setStampModuleId);
 
   const [deleteTarget, setDeleteTarget] = useState<{ module: Module; dependents: Module[] } | null>(null);
   const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
@@ -121,6 +123,11 @@ export function LibraryPanel() {
     [moveModuleToFolder],
   );
 
+  const handleStamp = useCallback((moduleId: string) => {
+    // Toggle: clicking the same module again deactivates stamp mode
+    setStampModuleId(stampModuleId === moduleId ? null : moduleId);
+  }, [stampModuleId, setStampModuleId]);
+
   const handleAddFolder = useCallback(() => {
     addFolder(null, "New Folder");
   }, [addFolder]);
@@ -180,10 +187,12 @@ export function LibraryPanel() {
           onDragLeave={handleRootDragLeave}
           onDrop={handleRootDrop}
         >
-          <ModuleCard module={NAND_MODULE} onOpen={() => {}} />
+          <ModuleCard module={NAND_MODULE} onOpen={() => {}} onStamp={handleStamp} stampActive={stampModuleId === NAND_MODULE.id} />
           <LibraryTree
             onOpen={handleOpen}
             onDelete={handleDelete}
+            onStamp={handleStamp}
+            stampModuleId={stampModuleId}
             forbiddenIds={forbiddenIds}
             onReorder={handleReorder}
           />

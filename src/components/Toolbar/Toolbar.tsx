@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useCircuitStore } from "../../store/circuit-store.ts";
 import { useModuleStore, getModuleById, type SaveAnalysis } from "../../store/module-store.ts";
 import { useLibraryStore } from "../../store/library-store.ts";
+import { useToastStore } from "../../store/toast-store.ts";
 import { generateId } from "../../utils/id.ts";
 import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
@@ -26,9 +27,10 @@ export function Toolbar() {
   const canUndo = useCircuitStore((s) => s.past.length > 0);
   const canRedo = useCircuitStore((s) => s.future.length > 0);
 
+  const showToast = useToastStore((s) => s.showToast);
+
   // "new" = New Module (clears canvas), "save" = Save prompt (keeps canvas)
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
   const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
   const [showTruthTable, setShowTruthTable] = useState(false);
   const [pendingAction, setPendingAction] = useState<"new" | null>(null);
@@ -37,11 +39,6 @@ export function Toolbar() {
 
   // Resolve active module name
   const activeModule = activeModuleId ? getModuleById(activeModuleId) : undefined;
-
-  const showToast = useCallback((type: "success" | "error" | "warning", message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   const doSave = useCallback(() => {
     const analysis = prepareSave();
@@ -202,13 +199,6 @@ export function Toolbar() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleSave]);
 
-  const toastColor =
-    toast?.type === "error"
-      ? "bg-red-600"
-      : toast?.type === "warning"
-        ? "bg-amber-600"
-        : "bg-emerald-600";
-
   return (
     <>
       <div className="flex h-10 items-center border-b border-zinc-700 px-4">
@@ -315,12 +305,6 @@ export function Toolbar() {
         onDiscard={handleUnsavedDiscard}
         onCancel={handleUnsavedCancel}
       />
-
-      {toast && (
-        <div className={`fixed bottom-4 right-4 z-50 rounded px-4 py-2 text-xs text-white shadow-lg ${toastColor}`}>
-          {toast.message}
-        </div>
-      )}
     </>
   );
 }

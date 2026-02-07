@@ -3,7 +3,7 @@ import { Handle, type NodeProps } from "@xyflow/react";
 import { useCircuitStore, type InputNodeType } from "../../store/circuit-store.ts";
 import { getOutputPosition } from "../../utils/layout.ts";
 
-function InputNodeComponent({ id, data }: NodeProps<InputNodeType>) {
+function InputNodeComponent({ id, data, selected }: NodeProps<InputNodeType>) {
   const toggleInputValue = useCircuitStore((s) => s.toggleInputValue);
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
 
@@ -20,7 +20,7 @@ function InputNodeComponent({ id, data }: NodeProps<InputNodeType>) {
   }, [id, draft, updateNodeLabel]);
 
   return (
-    <div className="flex items-center gap-1.5 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5">
+    <div className={`flex items-center gap-1.5 rounded border bg-zinc-800 px-2 py-1.5 ${selected ? "border-blue-500" : "border-zinc-600"}`}>
       <button
         className={`nodrag nopan flex h-5 w-5 items-center justify-center rounded-sm text-xs font-bold ${
           data.value

@@ -44,7 +44,7 @@ function ManhattanEdgeComponent({
     <BaseEdge
       id={id}
       path={path}
-      style={{ stroke: color, strokeWidth: selected ? 2.5 : 2 }}
+      style={{ stroke: color, strokeWidth: selected ? 2.5 : 2, transition: "stroke 0.15s ease" }}
     />
   );
 }

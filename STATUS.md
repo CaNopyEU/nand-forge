@@ -13,9 +13,9 @@ Pred zaciatakom prace precitaj:
 
 ## Aktualny stav
 
-**Faza:** Implementacia
-**Aktualna iteracia:** 13 (DONE)
-**Posledna zmena:** Iteracia 13 dokoncena
+**Faza:** MVP DONE
+**Aktualna iteracia:** 14 (DONE) + pre-v1 polish
+**Posledna zmena:** Selection ring + Stamp mode
 
 ### Progress tracker
 
@@ -34,7 +34,7 @@ Pred zaciatakom prace precitaj:
 | 11 | Truth table view | ✅ DONE |
 | 12 | Persistencia + export/import | ✅ DONE |
 | 13 | Undo/Redo (snapshot) | ✅ DONE |
-| 14 | Polish a edge cases | ⬜ TODO |
+| 14 | Polish a edge cases | ✅ DONE |
 
 Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 
@@ -110,6 +110,51 @@ Statusy: ⬜ TODO | 🔧 IN PROGRESS | ✅ DONE
 ## Poznamky z poslednej session
 
 _Tu sa budu pridavat poznamky z kazdeho pracovneho session. Najnovsie hore._
+
+### Session 2026-02-07 (pre-v1 polish — selection ring + stamp mode)
+- **Node Selection Ring:**
+  - Aktualizovanych vsetkych 5 node komponentov: `InputNode`, `OutputNode`, `ConstantNode`, `ProbeNode`, `ModuleNode`
+  - Kazdy teraz cita `selected` prop z `NodeProps`
+  - Selected: `border-blue-500`, deselected: `border-zinc-600`
+  - User jasne vidi ktory node bude mazany pri Delete
+- **Stamp Mode (click-to-place):**
+  - Novy state `stampModuleId: string | null` + `setStampModuleId` akcia v `circuit-store.ts`
+  - `ModuleCard` — novy `onStamp` prop + `stampActive` prop; klik na kartu aktivuje stamp mode
+  - Aktivna karta ma `border-blue-500 ring-1 ring-blue-500/50` zvyraznenie
+  - Toggle: klik na rovnaky modul deaktivuje stamp mode
+  - `LibraryTree` — propaguje `onStamp` + `stampModuleId` cez `RenderNode`
+  - `LibraryPanel` — `handleStamp` callback, wired na NAND card aj LibraryTree
+  - `Canvas` — ked stamp aktivny:
+    - `!cursor-crosshair` na ReactFlow container
+    - `onPaneClick` umiestni modul na poziciu kurzora
+    - Escape deaktivuje stamp mode (priorita pred context menu close)
+    - Empty state hint skryty pocas stamp mode
+  - Refaktor: extrahovaná `placeModule` helper funkcia (shared medzi drag-drop a stamp)
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK, 67/67 testov OK
+
+### Session 2026-02-07 (iteracia 14 — polish & edge cases)
+- **Shared Toast System:**
+  - Vytvorene `src/store/toast-store.ts` — Zustand store s `showToast(type, message)` a `dismissToast(id)`
+  - Auto-dismiss po 3s, max 3 simultanne toasty (starsie sa odstrania)
+  - Vytvorene `src/components/shared/Toast.tsx` — fixed bottom-right, stacked, fade-in animacia
+  - Refaktorovane `Toolbar.tsx` — odstraneny inline toast state (`toast`, `setToast`, lokalne `showToast`, `toastColor`, toast JSX), nahradene `useToastStore().showToast`
+  - `<Toast />` mountnuty v `App.tsx` — jediny globalny mount point
+- **Status Bar:**
+  - Vytvorene `src/components/StatusBar/StatusBar.tsx` — zobrazuje `N nodes · M wires · ModuleName`
+  - Cita z `useCircuitStore` (node count, edge count, activeModuleId) + `getModuleById` pre meno
+  - Layout: `h-6 border-t border-zinc-700 text-[10px] text-zinc-500`
+  - Mountnuty v `App.tsx` pod canvas area
+- **Empty Canvas State:**
+  - Aktualizovane `Canvas.tsx` — ak `nodes.length === 0`, zobrazeny centered hint cez `<Panel position="top-center">`
+  - Text: "Drag components from the library to start building" (`text-zinc-600 text-sm`)
+- **Visual Polish:**
+  - `ManhattanEdge.tsx` — pridany `transition: "stroke 0.15s ease"` na `<BaseEdge>` style (plynula zmena farby pri signal zmene)
+  - CSS keyframes v `index.css` (Tailwind v4 `@theme`): `fade-in`, `fade-out`, `dialog-in`
+  - Animacie pridane do 4 dialogov: `NewModuleDialog`, `SaveWarningDialog`, `UnsavedChangesDialog`, `TruthTableView`
+    - Overlay: `animate-fade-in` (opacity 0→1)
+    - Dialog body: `animate-dialog-in` (scale 0.95→1 + opacity)
+  - Toast: `animate-fade-in` (opacity + translateY)
+- Verifikacia: `tsc -b` zero errors, `npm run build` OK (228 modules, 0 warnings)
 
 ### Session 2026-02-06 (iteracia 13)
 - Implementovany snapshot-based undo/redo v `src/store/circuit-store.ts`:

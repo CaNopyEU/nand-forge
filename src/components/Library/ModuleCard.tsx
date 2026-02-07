@@ -6,7 +6,9 @@ interface ModuleCardProps {
   module: Module;
   onOpen: (moduleId: string) => void;
   onDelete?: (moduleId: string) => void;
+  onStamp?: (moduleId: string) => void;
   disabled?: boolean;
+  stampActive?: boolean;
   parentFolderId?: string | null;
   indexInParent?: number;
   locked?: boolean;
@@ -17,7 +19,9 @@ export const ModuleCard = React.memo(function ModuleCard({
   module,
   onOpen,
   onDelete,
+  onStamp,
   disabled,
+  stampActive,
   parentFolderId,
   indexInParent,
   locked,
@@ -74,6 +78,11 @@ export const ModuleCard = React.memo(function ModuleCard({
       ? "border-b-2 border-b-blue-500"
       : "";
 
+  const handleClick = useCallback(() => {
+    if (disabled || !onStamp) return;
+    onStamp(module.id);
+  }, [disabled, onStamp, module.id]);
+
   return (
     <div
       draggable={!disabled}
@@ -81,8 +90,9 @@ export const ModuleCard = React.memo(function ModuleCard({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"} ${dropClass}`}
-      title={disabled ? "Cannot place — would create circular dependency" : "Drag to canvas"}
+      onClick={handleClick}
+      className={`flex items-center gap-1 rounded border bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${stampActive ? "border-blue-500 ring-1 ring-blue-500/50" : "border-zinc-600"} ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${dropClass}`}
+      title={disabled ? "Cannot place — would create circular dependency" : "Click to stamp, drag to canvas"}
     >
       <span className="flex-1 font-medium">{module.name}</span>
       <span className="text-[10px] text-zinc-500">

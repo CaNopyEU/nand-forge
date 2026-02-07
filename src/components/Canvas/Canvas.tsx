@@ -55,6 +55,8 @@ function CanvasInner() {
   const undo = useCircuitStore((s) => s.undo);
   const redo = useCircuitStore((s) => s.redo);
   const takeSnapshot = useCircuitStore((s) => s.takeSnapshot);
+  const stampModuleId = useCircuitStore((s) => s.stampModuleId);
+  const setStampModuleId = useCircuitStore((s) => s.setStampModuleId);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
@@ -106,15 +108,19 @@ function CanvasInner() {
     takeSnapshot();
   }, [takeSnapshot]);
 
-  // Close context menu on Escape
+  // Escape: clear stamp mode, close context menu
   useEffect(() => {
-    if (!contextMenu) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setContextMenu(null);
+      if (e.key !== "Escape") return;
+      if (useCircuitStore.getState().stampModuleId) {
+        setStampModuleId(null);
+        return;
+      }
+      if (contextMenu) setContextMenu(null);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [contextMenu]);
+  }, [contextMenu, setStampModuleId]);
 
   const handleAddNode = useCallback(
     (type: AppNode["type"]) => {
@@ -130,17 +136,9 @@ function CanvasInner() {
     [screenToFlowPosition, addNode],
   );
 
-  const handleDragOver = useCallback((e: DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: DragEvent) => {
-      e.preventDefault();
-      const moduleId = e.dataTransfer.getData("application/nandforge-module");
-      if (!moduleId) return;
-
+  // Place a module node at a given flow position (shared by drag-drop and stamp mode)
+  const placeModule = useCallback(
+    (moduleId: string, position: { x: number; y: number }) => {
       // Prevent circular dependencies
       const activeModuleId = useCircuitStore.getState().activeModuleId;
       if (activeModuleId) {
@@ -148,14 +146,11 @@ function CanvasInner() {
         if (forbidden.has(moduleId)) return;
       }
 
-      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-
       if (moduleId === BUILTIN_NAND_MODULE_ID) {
         addNode("module", position, BUILTIN_NAND_MODULE_ID);
         return;
       }
 
-      // Look up custom module for pin data
       const mod = getModuleById(moduleId);
       if (!mod) return;
 
@@ -166,7 +161,22 @@ function CanvasInner() {
 
       addNode("module", position, moduleId, { label: mod.name, pins });
     },
-    [screenToFlowPosition, addNode],
+    [addNode],
+  );
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      const moduleId = e.dataTransfer.getData("application/nandforge-module");
+      if (!moduleId) return;
+      placeModule(moduleId, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+    },
+    [screenToFlowPosition, placeModule],
   );
 
   const handleNodeContextMenu = useCallback(
@@ -196,10 +206,19 @@ function CanvasInner() {
     [edgeColorMenu, setEdgeColor],
   );
 
-  const handlePaneClick = useCallback(() => {
-    setContextMenu(null);
-    setEdgeColorMenu(null);
-  }, []);
+  const handlePaneClick = useCallback(
+    (e: ReactMouseEvent) => {
+      setContextMenu(null);
+      setEdgeColorMenu(null);
+
+      const stamp = useCircuitStore.getState().stampModuleId;
+      if (stamp) {
+        const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        placeModule(stamp, position);
+      }
+    },
+    [screenToFlowPosition, placeModule],
+  );
 
   return (
     <>
@@ -221,7 +240,7 @@ function CanvasInner() {
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         deleteKeyCode={["Backspace", "Delete"]}
-        className="bg-zinc-900"
+        className={`bg-zinc-900 ${stampModuleId ? "!cursor-crosshair" : ""}`}
       >
         <Background
           variant={BackgroundVariant.Dots}
@@ -229,6 +248,13 @@ function CanvasInner() {
           size={1}
           color="#3f3f46"
         />
+        {nodes.length === 0 && !stampModuleId && (
+          <Panel position="top-center">
+            <p className="mt-32 text-sm text-zinc-600 select-none">
+              Drag components from the library to start building
+            </p>
+          </Panel>
+        )}
         <Panel position="top-left">
           <div className="flex gap-1">
             <button

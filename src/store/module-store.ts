@@ -238,9 +238,29 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
       ? { ...mod, inputs: reordered, pinOrder: { ...pinOrder, inputIds: orderedIds } }
       : { ...mod, outputs: reordered, pinOrder: { ...pinOrder, outputIds: orderedIds } };
 
-    set({
-      modules: modules.map((m) => (m.id === moduleId ? updatedModule : m)),
-    });
+    // Update definition + synchronize instances in all dependent modules
+    let updatedModules = modules.map((m) => (m.id === moduleId ? updatedModule : m));
+
+    const dependents = getModulesDependingOn(moduleId, updatedModules);
+    for (const parent of dependents) {
+      const latestParent = updatedModules.find((m) => m.id === parent.id);
+      if (!latestParent) continue;
+
+      const { nodes, edges } = synchronizeInstancesInCircuit(
+        latestParent,
+        moduleId,
+        mod,
+        updatedModule,
+      );
+
+      updatedModules = updatedModules.map((m) =>
+        m.id === parent.id
+          ? { ...m, circuit: { ...m.circuit, nodes, edges } }
+          : m,
+      );
+    }
+
+    set({ modules: updatedModules });
 
     // Regenerate truth table async
     set({ truthTableGenerating: true });

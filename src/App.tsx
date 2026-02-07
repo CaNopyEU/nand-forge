@@ -1,6 +1,8 @@
 import Canvas from "./components/Canvas/Canvas.tsx";
 import { Toolbar } from "./components/Toolbar/Toolbar.tsx";
 import { LibraryPanel } from "./components/Library/LibraryPanel.tsx";
+import { StatusBar } from "./components/StatusBar/StatusBar.tsx";
+import { Toast } from "./components/shared/Toast.tsx";
 
 export default function App() {
   return (
@@ -17,6 +19,12 @@ export default function App() {
           <Canvas />
         </div>
       </div>
+
+      {/* Status bar */}
+      <StatusBar />
+
+      {/* Global toast notifications */}
+      <Toast />
     </div>
   );
 }

@@ -138,6 +138,7 @@ interface CircuitStore {
   isDirty: boolean;
   past: Snapshot[];
   future: Snapshot[];
+  stampModuleId: string | null;
 
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
@@ -162,6 +163,7 @@ interface CircuitStore {
   undo: () => void;
   redo: () => void;
   takeSnapshot: () => void;
+  setStampModuleId: (moduleId: string | null) => void;
 }
 
 export const useCircuitStore = create<CircuitStore>((set, get) => ({
@@ -172,6 +174,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
   isDirty: false,
   past: [],
   future: [],
+  stampModuleId: null,
 
   onNodesChange: (changes) =>
     set((state) => {
@@ -437,4 +440,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
 
   takeSnapshot: () =>
     set((state) => pushSnapshot(state)),
+
+  setStampModuleId: (moduleId) =>
+    set({ stampModuleId: moduleId }),
 }));

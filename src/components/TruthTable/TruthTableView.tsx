@@ -188,10 +188,10 @@ export function TruthTableView({ open, onClose, defaultModuleId }: TruthTableVie
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in"
       onClick={handleOverlayClick}
     >
-      <div className="max-h-[80vh] w-auto min-w-80 max-w-[90vw] overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 p-4 shadow-xl flex flex-col">
+      <div className="max-h-[80vh] w-auto min-w-80 max-w-[90vw] overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 p-4 shadow-xl flex flex-col animate-dialog-in">
         {/* Header */}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold text-zinc-100">Truth Table</h2>

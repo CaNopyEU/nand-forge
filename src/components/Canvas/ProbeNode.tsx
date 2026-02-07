@@ -5,13 +5,13 @@ import { getInputPosition } from "../../utils/layout.ts";
 import { useSimulationStore } from "../../store/simulation-store.ts";
 import { pinKey } from "../../engine/simulate.ts";
 
-function ProbeNodeComponent({ id, data }: NodeProps<ProbeNodeType>) {
+function ProbeNodeComponent({ id, data, selected }: NodeProps<ProbeNodeType>) {
   const signal = useSimulationStore(
     (s) => s.pinValues[pinKey(id, data.pinId)] ?? false,
   );
 
   return (
-    <div className="flex items-center gap-1 rounded border border-zinc-600 bg-zinc-800 px-1.5 py-1">
+    <div className={`flex items-center gap-1 rounded border bg-zinc-800 px-1.5 py-1 ${selected ? "border-blue-500" : "border-zinc-600"}`}>
       <Handle type="target" position={getInputPosition(data.rotation ?? 0)} id={data.pinId} />
 
       <div
