@@ -8,6 +8,13 @@ import type {
 } from "./types.ts";
 import { evaluateCircuitIterative } from "./simulate-iterative.ts";
 
+// === Instance state (hierarchical — supports nested sub-modules) ===
+
+export interface InstanceState {
+  pinValues: Map<string, boolean>;
+  children: Map<string, InstanceState>;
+}
+
 // === Constants ===
 
 export const BUILTIN_NAND_MODULE_ID: ModuleId = "builtin:nand";
@@ -121,6 +128,7 @@ export function evaluateNode(
   adj: AdjacencyList,
   pinValues: Map<string, boolean>,
   modules?: Module[],
+  instanceStates?: Map<string, InstanceState>,
 ): void {
   switch (node.type) {
     case "input":
@@ -219,11 +227,23 @@ export function evaluateNode(
               }
             }
           } else {
-            const subOutputs = evaluateCircuit(
+            const prevState = instanceStates?.get(node.id);
+            const prevSubPinValues = prevState?.pinValues ?? new Map<string, boolean>();
+            const childInstanceStates = prevState?.children ?? new Map<string, InstanceState>();
+            const subResult = evaluateCircuitWithState(
               mod.circuit,
               subInputs,
               modules,
+              prevSubPinValues,
+              childInstanceStates,
             );
+            if (instanceStates) {
+              instanceStates.set(node.id, {
+                pinValues: subResult.pinValues,
+                children: childInstanceStates,
+              });
+            }
+            const subOutputs = subResult.outputs;
             for (let i = 0; i < instanceOutputPins.length; i++) {
               const instancePin = instanceOutputPins[i];
               const defPin = mod.outputs[i];
@@ -248,6 +268,7 @@ export function evaluateCircuitFull(
   circuit: Circuit,
   inputs: Record<PinId, boolean>,
   modules?: Module[],
+  instanceStates?: Map<string, InstanceState>,
 ): Map<string, boolean> {
   const adj = buildAdjacencyList(circuit);
   const order = topologicalSort(circuit);
@@ -277,10 +298,47 @@ export function evaluateCircuitFull(
   for (const nodeId of order) {
     const node = nodeMap.get(nodeId);
     if (!node) continue;
-    evaluateNode(node, adj, pinValues, modules);
+    evaluateNode(node, adj, pinValues, modules, instanceStates);
   }
 
   return pinValues;
+}
+
+// === Circuit evaluation with state (for sub-module evaluation) ===
+
+export function evaluateCircuitWithState(
+  circuit: Circuit,
+  inputs: Record<PinId, boolean>,
+  modules?: Module[],
+  prevPinValues?: Map<string, boolean>,
+  instanceStates?: Map<string, InstanceState>,
+): { outputs: Record<PinId, boolean>; pinValues: Map<string, boolean> } {
+  let pinValues: Map<string, boolean>;
+  try {
+    pinValues = evaluateCircuitFull(circuit, inputs, modules, instanceStates);
+  } catch {
+    const iterResult = evaluateCircuitIterative(
+      circuit,
+      inputs,
+      modules,
+      prevPinValues ?? new Map(),
+      instanceStates,
+    );
+    pinValues = iterResult.pinValues;
+  }
+
+  const outputs: Record<PinId, boolean> = {};
+  for (const node of circuit.nodes) {
+    if (node.type === "output") {
+      for (const pin of node.pins) {
+        if (pin.direction === "input") {
+          outputs[pin.id] = pinValues.get(pinKey(node.id, pin.id)) ?? false;
+        }
+      }
+    }
+  }
+
+  return { outputs, pinValues };
 }
 
 // === Circuit evaluation (outputs only — preserves original API) ===

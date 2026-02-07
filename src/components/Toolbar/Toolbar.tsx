@@ -9,6 +9,7 @@ import type { Module } from "../../engine/types.ts";
 import { NewModuleDialog } from "./NewModuleDialog.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
 import { TruthTableView } from "../TruthTable/TruthTableView.tsx";
+import { TimingDiagramView } from "../TimingDiagram/TimingDiagramView.tsx";
 import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
 import { exportToJson, importFromJson } from "../../utils/persistence.ts";
 
@@ -41,6 +42,7 @@ export function Toolbar() {
   const [dialogMode, setDialogMode] = useState<"new" | "save" | null>(null);
   const [saveAnalysis, setSaveAnalysis] = useState<SaveAnalysis | null>(null);
   const [showTruthTable, setShowTruthTable] = useState(false);
+  const [showTimingDiagram, setShowTimingDiagram] = useState(false);
   const [pendingAction, setPendingAction] = useState<"new" | null>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -290,6 +292,12 @@ export function Toolbar() {
             Truth Table
           </button>
           <button
+            onClick={() => setShowTimingDiagram(true)}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+          >
+            Timing
+          </button>
+          <button
             onClick={handleExport}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
           >
@@ -338,6 +346,8 @@ export function Toolbar() {
       />
 
       <TruthTableView open={showTruthTable} onClose={() => setShowTruthTable(false)} defaultModuleId={activeModuleId ?? undefined} />
+
+      <TimingDiagramView open={showTimingDiagram} onClose={() => setShowTimingDiagram(false)} />
 
       <UnsavedChangesDialog
         open={pendingAction !== null}

@@ -1,5 +1,5 @@
 import type { Circuit, Module, PinId } from "./types.ts";
-import { buildAdjacencyList, evaluateNode, pinKey } from "./simulate.ts";
+import { buildAdjacencyList, evaluateNode, pinKey, type InstanceState } from "./simulate.ts";
 
 // === Constants ===
 
@@ -21,6 +21,7 @@ export function evaluateCircuitIterative(
   inputs: Record<PinId, boolean>,
   modules: Module[] | undefined,
   prevPinValues: Map<string, boolean>,
+  instanceStates?: Map<string, InstanceState>,
 ): IterativeResult {
   const adj = buildAdjacencyList(circuit);
   const currentValues = new Map(prevPinValues);
@@ -49,7 +50,7 @@ export function evaluateCircuitIterative(
     const snapshot = new Map(currentValues);
 
     for (const node of circuit.nodes) {
-      evaluateNode(node, adj, currentValues, modules);
+      evaluateNode(node, adj, currentValues, modules, instanceStates);
     }
 
     // Check convergence

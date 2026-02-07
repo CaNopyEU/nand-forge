@@ -29,27 +29,44 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-### Iteracia 15 — Kontrolovane cykly (feedback loops) [PENDING]
+### Iteracia 15 — Kontrolovane cykly (feedback loops) [DONE]
 
 | # | Task | Status |
 |---|---|---|
-| 15.1 | Propagation delay model | - |
-| 15.2 | Povolenie cyklov (s clockom) | - |
-| 15.3 | Stabilizacia detekcia | - |
-| 15.4 | Oscilacia warning | - |
-| 15.5 | Testy cykly (SR latch) | - |
+| 15.1 | Iterativny evaluator (Gauss-Seidel convergence) | DONE |
+| 15.2 | Povolenie cyklov (s clockom) | DONE |
+| 15.3 | Stabilizacia detekcia + prevPinValues delay model | DONE |
+| 15.4 | Oscilacia warning (unstable edges vizual) | DONE |
+| 15.5 | Testy cykly (SR latch, ring oscillator, acyclic sanity) | DONE |
 
-### Iteracia 16 — Flip-Flopy a Registre [PENDING]
+**Implementacia:**
+- Engine: `simulate-iterative.ts` — iterativny evaluator s convergence loop (max 100 iteracii)
+- `evaluateCircuit` fallback na iterativny evaluator pri cycle detekcii
+- Simulation store: `prevPinValues`, `oscillating`, `unstableEdges`
+- Vizual: oscillating edges animacia
+
+---
+
+### Iteracia 16 — Flip-Flopy a Registre [DONE]
 
 | # | Task | Status |
 |---|---|---|
-| 16.1 | SR Flip-Flop | - |
-| 16.2 | D Flip-Flop | - |
-| 16.3 | JK Flip-Flop | - |
-| 16.4 | Edge detection | - |
-| 16.5 | 8-bit Register | - |
-| 16.6 | Counter | - |
-| 16.7 | Timing diagram view | - |
+| 16.1 | Per-instance state (`instanceStates` Map) | DONE |
+| 16.2 | `evaluateCircuitWithState` (outputs + pinValues) | DONE |
+| 16.3 | Thread `instanceStates` cez evaluateNode, evaluateCircuitFull, iterativny evaluator | DONE |
+| 16.4 | Simulation store integrácia (instanceStates persistencia medzi tikmi) | DONE |
+| 16.5 | Signal history (recording, maxHistoryLength: 128) | DONE |
+| 16.6 | Timing diagram view (SVG waveform, signal selector, Record/Stop/Clear) | DONE |
+| 16.7 | Testy per-instance state (SR latch hold, nezavisle instancie, acyclic sanity) | DONE |
+
+**Implementacia:**
+- Engine: `instanceStates: Map<string, Map<string, boolean>>` — kazdy modul-instance node ma vlastne ulozene pin values z predchadzajuceho ticku
+- `evaluateCircuitWithState()` — vrati outputs + full pinValues, try topological / catch iterative
+- `evaluateNode` module case: cita `prevSubState` z `instanceStates`, zapisuje novy stav po evaluacii
+- Simulation store: `instanceStates`, `signalHistory`, `recording`, `toggleRecording()`, `clearHistory()`
+- Komponenty: `TimingDiagramView.tsx` — dialog s SVG waveformami, signal selector (checkboxy), auto-scroll
+- Toolbar: "Timing" button vedla "Truth Table"
+- Testy: 4 nove (SR latch Set→Hold, Reset→Hold, 2 nezavisle instancie, acyclic NOT gate)
 
 ---
 
@@ -77,4 +94,6 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 | Iteracia | Datum | Commit | Poznamka |
 |---|---|---|---|
-| 14 | 2026-02-07 | — | Clock + Button, Play/Pause/Step, tick rate |
+| 14 | 2026-02-07 | 2b59ca7 | Clock + Button, Play/Pause/Step, tick rate |
+| 15 | 2026-02-07 | fba524d | Kontrolovane cykly, iterativny evaluator, oscilacia detekcia |
+| 16 | 2026-02-07 | — | Per-instance state, timing diagram, signal history |

@@ -1,0 +1,173 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-sr-latch",
+      "name": "SR Latch",
+      "inputs": [
+        { "id": "s", "name": "S", "direction": "input", "bits": 1 },
+        { "id": "r", "name": "R", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 },
+        { "id": "qbar", "name": "Q̄", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "sr-circuit", "name": "SR Latch",
+        "nodes": [
+          { "id": "si", "type": "input", "position": { "x": 0, "y": 50 }, "rotation": 0, "pins": [{ "id": "s", "name": "S", "direction": "output", "bits": 1 }] },
+          { "id": "ri", "type": "input", "position": { "x": 0, "y": 200 }, "rotation": 0, "pins": [{ "id": "r", "name": "R", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 50 }, "rotation": 0, "pins": [
+            { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "n2", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 400, "y": 50 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] },
+          { "id": "qbo", "type": "output", "position": { "x": 400, "y": 200 }, "rotation": 0, "pins": [{ "id": "qbar", "name": "Q̄", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "si", "fromPinId": "s", "toNodeId": "n1", "toPinId": "a" },
+          { "id": "e2", "fromNodeId": "ri", "fromPinId": "r", "toNodeId": "n2", "toPinId": "b" },
+          { "id": "e3", "fromNodeId": "n1", "fromPinId": "out", "toNodeId": "qo", "toPinId": "q" },
+          { "id": "e4", "fromNodeId": "n2", "fromPinId": "out", "toNodeId": "qbo", "toPinId": "qbar" },
+          { "id": "e5", "fromNodeId": "n1", "fromPinId": "out", "toNodeId": "n2", "toPinId": "a" },
+          { "id": "e6", "fromNodeId": "n2", "fromPinId": "out", "toNodeId": "n1", "toPinId": "b" }
+        ]
+      },
+      "createdAt": "2026-02-07T00:00:00.000Z",
+      "updatedAt": "2026-02-07T00:00:00.000Z"
+    },
+    {
+      "id": "mod-d-latch",
+      "name": "D Latch",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 1 },
+        { "id": "en", "name": "EN", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "dl-circuit", "name": "D Latch",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 50 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 1 }] },
+          { "id": "eni", "type": "input", "position": { "x": 0, "y": 200 }, "rotation": 0, "pins": [{ "id": "en", "name": "EN", "direction": "output", "bits": 1 }] },
+          { "id": "not_d", "type": "module", "moduleId": "builtin:nand", "position": { "x": 150, "y": 300 }, "rotation": 0, "pins": [
+            { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "nand_s", "type": "module", "moduleId": "builtin:nand", "position": { "x": 300, "y": 50 }, "rotation": 0, "pins": [
+            { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "nand_r", "type": "module", "moduleId": "builtin:nand", "position": { "x": 300, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "sr", "type": "module", "moduleId": "mod-sr-latch", "position": { "x": 500, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "sr_s", "name": "S", "direction": "input", "bits": 1 },
+            { "id": "sr_r", "name": "R", "direction": "input", "bits": 1 },
+            { "id": "sr_q", "name": "Q", "direction": "output", "bits": 1 },
+            { "id": "sr_qbar", "name": "Q̄", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 100 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "not_d", "toPinId": "a" },
+          { "id": "e2", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "not_d", "toPinId": "b" },
+          { "id": "e3", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "nand_s", "toPinId": "a" },
+          { "id": "e4", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "nand_s", "toPinId": "b" },
+          { "id": "e5", "fromNodeId": "not_d", "fromPinId": "out", "toNodeId": "nand_r", "toPinId": "a" },
+          { "id": "e6", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "nand_r", "toPinId": "b" },
+          { "id": "e7", "fromNodeId": "nand_s", "fromPinId": "out", "toNodeId": "sr", "toPinId": "sr_s" },
+          { "id": "e8", "fromNodeId": "nand_r", "fromPinId": "out", "toNodeId": "sr", "toPinId": "sr_r" },
+          { "id": "e9", "fromNodeId": "sr", "fromPinId": "sr_q", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-07T00:00:00.000Z",
+      "updatedAt": "2026-02-07T00:00:00.000Z"
+    },
+    {
+      "id": "mod-4bit-reg",
+      "name": "4-bit Register",
+      "inputs": [
+        { "id": "d0", "name": "D0", "direction": "input", "bits": 1 },
+        { "id": "d1", "name": "D1", "direction": "input", "bits": 1 },
+        { "id": "d2", "name": "D2", "direction": "input", "bits": 1 },
+        { "id": "d3", "name": "D3", "direction": "input", "bits": 1 },
+        { "id": "en", "name": "EN", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q0", "name": "Q0", "direction": "output", "bits": 1 },
+        { "id": "q1", "name": "Q1", "direction": "output", "bits": 1 },
+        { "id": "q2", "name": "Q2", "direction": "output", "bits": 1 },
+        { "id": "q3", "name": "Q3", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "reg4-circuit", "name": "4-bit Register",
+        "nodes": [
+          { "id": "d0i", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d0", "name": "D0", "direction": "output", "bits": 1 }] },
+          { "id": "d1i", "type": "input", "position": { "x": 0, "y": 120 }, "rotation": 0, "pins": [{ "id": "d1", "name": "D1", "direction": "output", "bits": 1 }] },
+          { "id": "d2i", "type": "input", "position": { "x": 0, "y": 240 }, "rotation": 0, "pins": [{ "id": "d2", "name": "D2", "direction": "output", "bits": 1 }] },
+          { "id": "d3i", "type": "input", "position": { "x": 0, "y": 360 }, "rotation": 0, "pins": [{ "id": "d3", "name": "D3", "direction": "output", "bits": 1 }] },
+          { "id": "eni", "type": "input", "position": { "x": 0, "y": 500 }, "rotation": 0, "pins": [{ "id": "en", "name": "EN", "direction": "output", "bits": 1 }] },
+
+          { "id": "dl0", "type": "module", "moduleId": "mod-d-latch", "position": { "x": 250, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "dl0_d", "name": "D", "direction": "input", "bits": 1 },
+            { "id": "dl0_en", "name": "EN", "direction": "input", "bits": 1 },
+            { "id": "dl0_q", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "dl1", "type": "module", "moduleId": "mod-d-latch", "position": { "x": 250, "y": 120 }, "rotation": 0, "pins": [
+            { "id": "dl1_d", "name": "D", "direction": "input", "bits": 1 },
+            { "id": "dl1_en", "name": "EN", "direction": "input", "bits": 1 },
+            { "id": "dl1_q", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "dl2", "type": "module", "moduleId": "mod-d-latch", "position": { "x": 250, "y": 240 }, "rotation": 0, "pins": [
+            { "id": "dl2_d", "name": "D", "direction": "input", "bits": 1 },
+            { "id": "dl2_en", "name": "EN", "direction": "input", "bits": 1 },
+            { "id": "dl2_q", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "dl3", "type": "module", "moduleId": "mod-d-latch", "position": { "x": 250, "y": 360 }, "rotation": 0, "pins": [
+            { "id": "dl3_d", "name": "D", "direction": "input", "bits": 1 },
+            { "id": "dl3_en", "name": "EN", "direction": "input", "bits": 1 },
+            { "id": "dl3_q", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+
+          { "id": "q0o", "type": "output", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [{ "id": "q0", "name": "Q0", "direction": "input", "bits": 1 }] },
+          { "id": "q1o", "type": "output", "position": { "x": 500, "y": 120 }, "rotation": 0, "pins": [{ "id": "q1", "name": "Q1", "direction": "input", "bits": 1 }] },
+          { "id": "q2o", "type": "output", "position": { "x": 500, "y": 240 }, "rotation": 0, "pins": [{ "id": "q2", "name": "Q2", "direction": "input", "bits": 1 }] },
+          { "id": "q3o", "type": "output", "position": { "x": 500, "y": 360 }, "rotation": 0, "pins": [{ "id": "q3", "name": "Q3", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "ed0", "fromNodeId": "d0i", "fromPinId": "d0", "toNodeId": "dl0", "toPinId": "dl0_d" },
+          { "id": "ed1", "fromNodeId": "d1i", "fromPinId": "d1", "toNodeId": "dl1", "toPinId": "dl1_d" },
+          { "id": "ed2", "fromNodeId": "d2i", "fromPinId": "d2", "toNodeId": "dl2", "toPinId": "dl2_d" },
+          { "id": "ed3", "fromNodeId": "d3i", "fromPinId": "d3", "toNodeId": "dl3", "toPinId": "dl3_d" },
+          { "id": "een0", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "dl0", "toPinId": "dl0_en" },
+          { "id": "een1", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "dl1", "toPinId": "dl1_en" },
+          { "id": "een2", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "dl2", "toPinId": "dl2_en" },
+          { "id": "een3", "fromNodeId": "eni", "fromPinId": "en", "toNodeId": "dl3", "toPinId": "dl3_en" },
+          { "id": "eq0", "fromNodeId": "dl0", "fromPinId": "dl0_q", "toNodeId": "q0o", "toPinId": "q0" },
+          { "id": "eq1", "fromNodeId": "dl1", "fromPinId": "dl1_q", "toNodeId": "q1o", "toPinId": "q1" },
+          { "id": "eq2", "fromNodeId": "dl2", "fromPinId": "dl2_q", "toNodeId": "q2o", "toPinId": "q2" },
+          { "id": "eq3", "fromNodeId": "dl3", "fromPinId": "dl3_q", "toNodeId": "q3o", "toPinId": "q3" }
+        ]
+      },
+      "createdAt": "2026-02-07T00:00:00.000Z",
+      "updatedAt": "2026-02-07T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-sr-latch" },
+    { "type": "module", "moduleId": "mod-d-latch" },
+    { "type": "module", "moduleId": "mod-4bit-reg" }
+  ]
+}

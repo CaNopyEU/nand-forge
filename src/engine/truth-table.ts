@@ -1,6 +1,6 @@
 import type { Circuit, Module, TruthTable } from "./types.ts";
 import { evaluateCircuit } from "./simulate.ts";
-import { hasCycle } from "./validate.ts";
+import { hasNestedCycle } from "./validate.ts";
 
 const MAX_TRUTH_TABLE_INPUTS = 16;
 
@@ -8,7 +8,7 @@ export function generateTruthTable(
   circuit: Circuit,
   modules: Module[],
 ): TruthTable | null {
-  if (hasCycle(circuit)) return null;
+  if (hasNestedCycle(circuit, modules)) return null;
 
   // Collect input pin IDs (from input nodes' output pins)
   const inputPinIds: string[] = [];
