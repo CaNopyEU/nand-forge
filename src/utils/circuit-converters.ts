@@ -1,8 +1,8 @@
 import type { Edge as RFEdge } from "@xyflow/react";
-import type { CircuitNode, Edge as EngineEdge, Module } from "../engine/types.ts";
+import type { BitWidth, CircuitNode, Edge as EngineEdge, Module } from "../engine/types.ts";
 import type { AppNode } from "../store/circuit-store.ts";
 import type { Rotation } from "../utils/layout.ts";
-import { BUILTIN_NAND_MODULE_ID } from "../engine/simulate.ts";
+import { BUILTIN_NAND_MODULE_ID, BUILTIN_SPLITTER_MODULE_ID, BUILTIN_MERGER_MODULE_ID } from "../engine/simulate.ts";
 
 /**
  * Convert engine CircuitNodes back to React Flow AppNodes.
@@ -17,6 +17,20 @@ export function circuitNodesToAppNodes(
   return nodes.map((node) => {
     switch (node.type) {
       case "input":
+        if (node.variant === "dip-switch") {
+          return {
+            id: node.id,
+            type: "dipSwitch" as const,
+            position: node.position,
+            data: {
+              label: node.pins[0]?.name ?? "DIP",
+              pinId: node.pins[0]?.id ?? node.id,
+              value: 0,
+              bits: (node.pins[0]?.bits ?? 8) as BitWidth,
+              rotation: (node.rotation ?? 0) as Rotation,
+            },
+          };
+        }
         return {
           id: node.id,
           type: "circuitInput" as const,
@@ -24,11 +38,36 @@ export function circuitNodesToAppNodes(
           data: {
             label: node.pins[0]?.name ?? "Input",
             pinId: node.pins[0]?.id ?? node.id,
-            value: false,
+            value: 0,
+            bits: (node.pins[0]?.bits ?? 1) as BitWidth,
             rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       case "output":
+        if (node.variant === "hex-display") {
+          return {
+            id: node.id,
+            type: "hexDisplay" as const,
+            position: node.position,
+            data: {
+              pinId: node.pins[0]?.id ?? node.id,
+              bits: (node.pins[0]?.bits ?? 8) as BitWidth,
+              rotation: (node.rotation ?? 0) as Rotation,
+            },
+          };
+        }
+        if (node.variant === "led-bar") {
+          return {
+            id: node.id,
+            type: "ledBar" as const,
+            position: node.position,
+            data: {
+              pinId: node.pins[0]?.id ?? node.id,
+              bits: (node.pins[0]?.bits ?? 8) as BitWidth,
+              rotation: (node.rotation ?? 0) as Rotation,
+            },
+          };
+        }
         return {
           id: node.id,
           type: "circuitOutput" as const,
@@ -36,12 +75,13 @@ export function circuitNodesToAppNodes(
           data: {
             label: node.pins[0]?.name ?? "Output",
             pinId: node.pins[0]?.id ?? node.id,
+            bits: (node.pins[0]?.bits ?? 1) as BitWidth,
             rotation: (node.rotation ?? 0) as Rotation,
           },
         };
       case "constant": {
         const pinName = node.pins[0]?.name ?? "0";
-        const value = pinName === "1";
+        const value = pinName === "1" ? 1 : 0;
         return {
           id: node.id,
           type: "constant" as const,
@@ -71,7 +111,7 @@ export function circuitNodesToAppNodes(
           position: node.position,
           data: {
             pinId: node.pins[0]?.id ?? node.id,
-            value: false,
+            value: 0,
             rotation: (node.rotation ?? 0) as Rotation,
           },
         };
@@ -83,15 +123,38 @@ export function circuitNodesToAppNodes(
           data: {
             label: node.pins[0]?.name ?? "BTN",
             pinId: node.pins[0]?.id ?? node.id,
-            pressed: false,
+            pressed: 0,
             rotation: (node.rotation ?? 0) as Rotation,
           },
         };
+      case "tunnel": {
+        const dir = (node.variant ?? "in") as "in" | "out";
+        // Visible pin: for "in" it's the input pin, for "out" it's the output pin
+        const visiblePin = dir === "in"
+          ? node.pins.find((p) => p.direction === "input")
+          : node.pins.find((p) => p.direction === "output");
+        return {
+          id: node.id,
+          type: "tunnel" as const,
+          position: node.position,
+          data: {
+            label: node.pins[0]?.name ?? "T",
+            pinId: visiblePin?.id ?? node.id,
+            bits: (visiblePin?.bits ?? 1) as BitWidth,
+            direction: dir,
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      }
       case "module": {
         const mid = node.moduleId ?? "";
         const mod = moduleMap.get(mid);
         const label = mid === BUILTIN_NAND_MODULE_ID
           ? "NAND"
+          : mid === BUILTIN_SPLITTER_MODULE_ID
+          ? `Split ${node.pins.filter((p) => p.direction === "output").length}`
+          : mid === BUILTIN_MERGER_MODULE_ID
+          ? `Merge ${node.pins.filter((p) => p.direction === "input").length}`
           : mod?.name ?? "Module";
         return {
           id: node.id,

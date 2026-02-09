@@ -171,13 +171,13 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // Tick 1: Set (S=0, R=1) → Q=1
       const tick1 = evaluateCircuitWithState(
         topCircuit,
-        { ts: false, tr: true },
+        { ts: 0, tr: 1 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick1.outputs["tq"]).toBe(true);
-      expect(tick1.outputs["tqbar"]).toBe(false);
+      expect(tick1.outputs["tq"]).toBe(1);
+      expect(tick1.outputs["tqbar"]).toBe(0);
 
       // Verify instanceStates was populated
       expect(instanceStates.has("sr_inst")).toBe(true);
@@ -185,13 +185,13 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // Tick 2: Hold (S=1, R=1) — should retain Q=1
       const tick2 = evaluateCircuitWithState(
         topCircuit,
-        { ts: true, tr: true },
+        { ts: 1, tr: 1 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick2.outputs["tq"]).toBe(true);
-      expect(tick2.outputs["tqbar"]).toBe(false);
+      expect(tick2.outputs["tq"]).toBe(1);
+      expect(tick2.outputs["tqbar"]).toBe(0);
     });
 
     it("Reset (S=1, R=0) then Hold (S=1, R=1) retains Q=0", () => {
@@ -224,24 +224,24 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // Tick 1: Reset (S=1, R=0) → Q=0
       const tick1 = evaluateCircuitWithState(
         topCircuit,
-        { ts: true, tr: false },
+        { ts: 1, tr: 0 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick1.outputs["tq"]).toBe(false);
-      expect(tick1.outputs["tqbar"]).toBe(true);
+      expect(tick1.outputs["tq"]).toBe(0);
+      expect(tick1.outputs["tqbar"]).toBe(1);
 
       // Tick 2: Hold (S=1, R=1) — should retain Q=0
       const tick2 = evaluateCircuitWithState(
         topCircuit,
-        { ts: true, tr: true },
+        { ts: 1, tr: 1 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick2.outputs["tq"]).toBe(false);
-      expect(tick2.outputs["tqbar"]).toBe(true);
+      expect(tick2.outputs["tq"]).toBe(0);
+      expect(tick2.outputs["tqbar"]).toBe(1);
     });
   });
 
@@ -286,24 +286,24 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // Tick 1: Set SR1 (S=0, R=1), Reset SR2 (S=1, R=0)
       const tick1 = evaluateCircuitWithState(
         topCircuit,
-        { s1_pin: false, r1_pin: true, s2_pin: true, r2_pin: false },
+        { s1_pin: 0, r1_pin: 1, s2_pin: 1, r2_pin: 0 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick1.outputs["q1_pin"]).toBe(true);  // SR1 Set → Q=1
-      expect(tick1.outputs["q2_pin"]).toBe(false); // SR2 Reset → Q=0
+      expect(tick1.outputs["q1_pin"]).toBe(1);  // SR1 Set → Q=1
+      expect(tick1.outputs["q2_pin"]).toBe(0); // SR2 Reset → Q=0
 
       // Tick 2: Hold both (S=1, R=1)
       const tick2 = evaluateCircuitWithState(
         topCircuit,
-        { s1_pin: true, r1_pin: true, s2_pin: true, r2_pin: true },
+        { s1_pin: 1, r1_pin: 1, s2_pin: 1, r2_pin: 1 },
         modules,
         undefined,
         instanceStates,
       );
-      expect(tick2.outputs["q1_pin"]).toBe(true);  // SR1 holds Q=1
-      expect(tick2.outputs["q2_pin"]).toBe(false); // SR2 holds Q=0
+      expect(tick2.outputs["q1_pin"]).toBe(1);  // SR1 holds Q=1
+      expect(tick2.outputs["q2_pin"]).toBe(0); // SR2 holds Q=0
     });
   });
 
@@ -411,36 +411,36 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // Tick 1: Load D=1010 with EN=1
       const tick1 = evaluateCircuitWithState(
         topCircuit,
-        { d0p: true, d1p: false, d2p: true, d3p: false, enp: true },
+        { d0p: 1, d1p: 0, d2p: 1, d3p: 0, enp: 1 },
         modules, undefined, instanceStates,
       );
-      expect(tick1.outputs["q0p"]).toBe(true);
-      expect(tick1.outputs["q1p"]).toBe(false);
-      expect(tick1.outputs["q2p"]).toBe(true);
-      expect(tick1.outputs["q3p"]).toBe(false);
+      expect(tick1.outputs["q0p"]).toBe(1);
+      expect(tick1.outputs["q1p"]).toBe(0);
+      expect(tick1.outputs["q2p"]).toBe(1);
+      expect(tick1.outputs["q3p"]).toBe(0);
 
       // Tick 2: Change D=0101 but EN=0 (latch should hold previous)
       const tick2 = evaluateCircuitWithState(
         topCircuit,
-        { d0p: false, d1p: true, d2p: false, d3p: true, enp: false },
+        { d0p: 0, d1p: 1, d2p: 0, d3p: 1, enp: 0 },
         modules, undefined, instanceStates,
       );
       // Should retain 1010 from tick 1!
-      expect(tick2.outputs["q0p"]).toBe(true);
-      expect(tick2.outputs["q1p"]).toBe(false);
-      expect(tick2.outputs["q2p"]).toBe(true);
-      expect(tick2.outputs["q3p"]).toBe(false);
+      expect(tick2.outputs["q0p"]).toBe(1);
+      expect(tick2.outputs["q1p"]).toBe(0);
+      expect(tick2.outputs["q2p"]).toBe(1);
+      expect(tick2.outputs["q3p"]).toBe(0);
 
       // Tick 3: EN=1 again with D=0101 → should latch new values
       const tick3 = evaluateCircuitWithState(
         topCircuit,
-        { d0p: false, d1p: true, d2p: false, d3p: true, enp: true },
+        { d0p: 0, d1p: 1, d2p: 0, d3p: 1, enp: 1 },
         modules, undefined, instanceStates,
       );
-      expect(tick3.outputs["q0p"]).toBe(false);
-      expect(tick3.outputs["q1p"]).toBe(true);
-      expect(tick3.outputs["q2p"]).toBe(false);
-      expect(tick3.outputs["q3p"]).toBe(true);
+      expect(tick3.outputs["q0p"]).toBe(0);
+      expect(tick3.outputs["q1p"]).toBe(1);
+      expect(tick3.outputs["q2p"]).toBe(0);
+      expect(tick3.outputs["q3p"]).toBe(1);
     });
   });
 
@@ -486,15 +486,15 @@ describe("per-instance state (evaluateCircuitWithState)", () => {
       // evaluateCircuitWithState
       const result = evaluateCircuitWithState(
         topCircuit,
-        { tin: true },
+        { tin: 1 },
         modules,
       );
 
       // evaluateCircuitFull (direct)
-      const fullPinValues = evaluateCircuitFull(topCircuit, { tin: true }, modules);
+      const fullPinValues = evaluateCircuitFull(topCircuit, { tin: 1 }, modules);
       const fullOutput = fullPinValues.get(pinKey("top_out", "tout"));
 
-      expect(result.outputs["tout"]).toBe(false); // NOT(true) = false
+      expect(result.outputs["tout"]).toBe(0); // NOT(1) = 0
       expect(result.outputs["tout"]).toBe(fullOutput);
     });
   });

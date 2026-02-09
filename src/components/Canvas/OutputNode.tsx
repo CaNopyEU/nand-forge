@@ -5,11 +5,20 @@ import { getInputPosition } from "../../utils/layout.ts";
 import { useSimulationStore } from "../../store/simulation-store.ts";
 import { pinKey } from "../../engine/simulate.ts";
 
+function formatHex(value: number, bits: number): string {
+  const digits = Math.ceil(bits / 4);
+  const masked = value & ((1 << bits) - 1);
+  return `0x${masked.toString(16).toUpperCase().padStart(digits, "0")}`;
+}
+
 function OutputNodeComponent({ id, data, selected }: NodeProps<OutputNodeType>) {
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
   const signal = useSimulationStore(
-    (s) => s.pinValues[pinKey(id, data.pinId)] ?? false,
+    (s) => s.pinValues[pinKey(id, data.pinId)] ?? 0,
   );
+
+  const bits = data.bits ?? 1;
+  const isBus = bits > 1;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -46,13 +55,26 @@ function OutputNodeComponent({ id, data, selected }: NodeProps<OutputNodeType>) 
         </span>
       )}
 
-      <div
-        className={`h-3 w-3 rounded-full ${
-          signal
-            ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
-            : "bg-zinc-600"
-        }`}
-      />
+      {isBus ? (
+        <>
+          <span
+            className={`rounded px-1 text-xs font-mono ${
+              signal ? "bg-emerald-800 text-emerald-200" : "bg-zinc-700 text-zinc-400"
+            }`}
+          >
+            {formatHex(signal, bits)}
+          </span>
+          <span className="text-[9px] text-zinc-500">{bits}b</span>
+        </>
+      ) : (
+        <div
+          className={`h-3 w-3 rounded-full ${
+            signal
+              ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+              : "bg-zinc-600"
+          }`}
+        />
+      )}
     </div>
   );
 }

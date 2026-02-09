@@ -10,11 +10,11 @@ import { useCircuitStore, type AppNode } from "./circuit-store.ts";
 
 interface SimulationStore {
   /** All computed pin values, keyed by "nodeId:pinId" */
-  pinValues: Record<string, boolean>;
+  pinValues: Record<string, number>;
   /** Signal value per edge, keyed by edge ID */
-  edgeSignals: Record<string, boolean>;
+  edgeSignals: Record<string, number>;
   /** Pin values from previous tick (for iterative delay model) */
-  prevPinValues: Map<string, boolean>;
+  prevPinValues: Map<string, number>;
   /** Per-instance state for cyclic sub-modules (hierarchical) */
   instanceStates: Map<string, InstanceState>;
   /** Whether the circuit is oscillating (did not converge) */
@@ -26,7 +26,7 @@ interface SimulationStore {
   /** Ticks per second */
   tickRate: number;
   /** Signal history for timing diagram */
-  signalHistory: Array<Record<string, boolean>>;
+  signalHistory: Array<Record<string, number>>;
   /** Maximum number of ticks to record */
   maxHistoryLength: number;
   /** Whether recording is active */
@@ -75,7 +75,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
     const modules = useModuleStore.getState().modules;
     const instanceStates = get().instanceStates;
-    let pinMap: Map<string, boolean>;
+    let pinMap: Map<string, number>;
     let stable = true;
     let unstableKeys = new Set<string>();
 
@@ -95,18 +95,18 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       unstableKeys = result.unstableKeys;
     }
 
-    const pinValues: Record<string, boolean> = {};
+    const pinValues: Record<string, number> = {};
     for (const [key, value] of pinMap) {
       pinValues[key] = value;
     }
 
     // Derive edge signals: each edge carries the value of its source output pin
-    const edgeSignals: Record<string, boolean> = {};
+    const edgeSignals: Record<string, number> = {};
     const unstableEdges: Record<string, boolean> = {};
     for (const edge of edges) {
       if (edge.sourceHandle) {
         const key = pinKey(edge.source, edge.sourceHandle);
-        edgeSignals[edge.id] = pinValues[key] ?? false;
+        edgeSignals[edge.id] = pinValues[key] ?? 0;
         if (unstableKeys.has(key)) {
           unstableEdges[edge.id] = true;
         }

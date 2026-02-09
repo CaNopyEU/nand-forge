@@ -5,7 +5,7 @@ import type { AppNode } from "../store/circuit-store.ts";
 export function canvasToCircuit(
   nodes: AppNode[],
   edges: RFEdge[],
-): { circuit: Circuit; inputValues: Record<string, boolean> } {
+): { circuit: Circuit; inputValues: Record<string, number> } {
   const circuitNodes: CircuitNode[] = nodes.map((node) => {
     switch (node.type) {
       case "circuitInput":
@@ -19,7 +19,7 @@ export function canvasToCircuit(
               id: node.data.pinId,
               name: node.data.label,
               direction: "output" as const,
-              bits: 1 as const,
+              bits: node.data.bits ?? 1,
             },
           ],
         };
@@ -34,7 +34,7 @@ export function canvasToCircuit(
               id: node.data.pinId,
               name: node.data.label,
               direction: "input" as const,
-              bits: 1 as const,
+              bits: node.data.bits ?? 1,
             },
           ],
         };
@@ -98,6 +98,76 @@ export function canvasToCircuit(
             },
           ],
         };
+      case "dipSwitch":
+        return {
+          id: node.id,
+          type: "input" as const,
+          variant: "dip-switch",
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: node.data.label,
+              direction: "output" as const,
+              bits: node.data.bits ?? 8,
+            },
+          ],
+        };
+      case "hexDisplay":
+        return {
+          id: node.id,
+          type: "output" as const,
+          variant: "hex-display",
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: "HEX",
+              direction: "input" as const,
+              bits: node.data.bits ?? 8,
+            },
+          ],
+        };
+      case "ledBar":
+        return {
+          id: node.id,
+          type: "output" as const,
+          variant: "led-bar",
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            {
+              id: node.data.pinId,
+              name: "LEDs",
+              direction: "input" as const,
+              bits: node.data.bits ?? 8,
+            },
+          ],
+        };
+      case "tunnel": {
+        const dir = node.data.direction;
+        const visiblePinId = node.data.pinId;
+        const internalPinId = `${visiblePinId}_int`;
+        const tunnelName = node.data.label;
+        return {
+          id: node.id,
+          type: "tunnel" as const,
+          variant: dir,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: dir === "in"
+            ? [
+                { id: visiblePinId, name: tunnelName, direction: "input" as const, bits: node.data.bits ?? 1 },
+                { id: internalPinId, name: tunnelName, direction: "output" as const, bits: node.data.bits ?? 1 },
+              ]
+            : [
+                { id: internalPinId, name: tunnelName, direction: "input" as const, bits: node.data.bits ?? 1 },
+                { id: visiblePinId, name: tunnelName, direction: "output" as const, bits: node.data.bits ?? 1 },
+              ],
+        };
+      }
       case "module":
         return {
           id: node.id,
@@ -121,9 +191,11 @@ export function canvasToCircuit(
       ...(e.data?.["color"] ? { color: e.data["color"] as string } : {}),
     }));
 
-  const inputValues: Record<string, boolean> = {};
+  const inputValues: Record<string, number> = {};
   for (const node of nodes) {
     if (node.type === "circuitInput") {
+      inputValues[node.data.pinId] = node.data.value;
+    } else if (node.type === "dipSwitch") {
       inputValues[node.data.pinId] = node.data.value;
     } else if (node.type === "constant") {
       inputValues[node.data.pinId] = node.data.value;

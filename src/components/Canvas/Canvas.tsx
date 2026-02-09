@@ -14,7 +14,7 @@ import "@xyflow/react/dist/style.css";
 
 import { useCircuitStore, type AppNode } from "../../store/circuit-store.ts";
 import { getModuleById, useModuleStore } from "../../store/module-store.ts";
-import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
+import { BUILTIN_NAND_MODULE_ID, BUILTIN_SPLITTER_MODULE_ID, BUILTIN_MERGER_MODULE_ID } from "../../engine/simulate.ts";
 import { getForbiddenModuleIds } from "../../engine/validate.ts";
 import type { Pin } from "../../engine/types.ts";
 import { useWiring } from "../../hooks/useWiring.ts";
@@ -26,6 +26,10 @@ import { ProbeNode } from "./ProbeNode.tsx";
 import { ModuleNode } from "./ModuleNode.tsx";
 import { ClockNode } from "./ClockNode.tsx";
 import { ButtonNode } from "./ButtonNode.tsx";
+import { DipSwitchNode } from "./DipSwitchNode.tsx";
+import { HexDisplayNode } from "./HexDisplayNode.tsx";
+import { LedBarNode } from "./LedBarNode.tsx";
+import { TunnelNode } from "./TunnelNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
 import { useClockTick } from "../../hooks/useClockTick.ts";
@@ -38,6 +42,10 @@ const nodeTypes: NodeTypes = {
   probe: ProbeNode,
   clock: ClockNode,
   button: ButtonNode,
+  dipSwitch: DipSwitchNode,
+  hexDisplay: HexDisplayNode,
+  ledBar: LedBarNode,
+  tunnel: TunnelNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -128,19 +136,70 @@ function CanvasInner() {
     return () => window.removeEventListener("keydown", handler);
   }, [contextMenu, setStampModuleId]);
 
+  const getCenter = useCallback(() => {
+    const position = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+    position.x += (Math.random() - 0.5) * 100;
+    position.y += (Math.random() - 0.5) * 100;
+    return position;
+  }, [screenToFlowPosition]);
+
   const handleAddNode = useCallback(
     (type: AppNode["type"]) => {
-      const position = screenToFlowPosition({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      });
-      // Small random offset to avoid stacking
-      position.x += (Math.random() - 0.5) * 100;
-      position.y += (Math.random() - 0.5) * 100;
-      addNode(type, position);
+      addNode(type, getCenter());
     },
-    [screenToFlowPosition, addNode],
+    [getCenter, addNode],
   );
+
+  const handleAddBusInput = useCallback(() => {
+    addNode("circuitInput", getCenter(), undefined, undefined, 8);
+  }, [getCenter, addNode]);
+
+  const handleAddBusOutput = useCallback(() => {
+    addNode("circuitOutput", getCenter(), undefined, undefined, 8);
+  }, [getCenter, addNode]);
+
+  const handleAddSplitter = useCallback(() => {
+    const pins: Pin[] = [
+      { id: "x", name: "In", direction: "input", bits: 8 },
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: "x", name: String(i), direction: "output" as const, bits: 1 as const,
+      })),
+    ];
+    addNode("module", getCenter(), BUILTIN_SPLITTER_MODULE_ID, { label: "Split 8", pins });
+  }, [getCenter, addNode]);
+
+  const handleAddDipSwitch = useCallback(() => {
+    addNode("dipSwitch", getCenter());
+  }, [getCenter, addNode]);
+
+  const handleAddHexDisplay = useCallback(() => {
+    addNode("hexDisplay", getCenter());
+  }, [getCenter, addNode]);
+
+  const handleAddLedBar = useCallback(() => {
+    addNode("ledBar", getCenter());
+  }, [getCenter, addNode]);
+
+  const handleAddTunnelIn = useCallback(() => {
+    addNode("tunnel", getCenter(), undefined, { label: "in", pins: [] });
+  }, [getCenter, addNode]);
+
+  const handleAddTunnelOut = useCallback(() => {
+    addNode("tunnel", getCenter(), undefined, { label: "out", pins: [] });
+  }, [getCenter, addNode]);
+
+  const handleAddMerger = useCallback(() => {
+    const pins: Pin[] = [
+      ...Array.from({ length: 8 }, (_, i) => ({
+        id: "x", name: String(i), direction: "input" as const, bits: 1 as const,
+      })),
+      { id: "x", name: "Out", direction: "output", bits: 8 },
+    ];
+    addNode("module", getCenter(), BUILTIN_MERGER_MODULE_ID, { label: "Merge 8", pins });
+  }, [getCenter, addNode]);
 
   // Place a module node at a given flow position (shared by drag-drop and stamp mode)
   const placeModule = useCallback(
@@ -304,6 +363,62 @@ function CanvasInner() {
               onClick={() => handleAddNode("button")}
             >
               + Button
+            </button>
+            <span className="mx-1 text-zinc-600">|</span>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddBusInput}
+            >
+              + Bus In
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddBusOutput}
+            >
+              + Bus Out
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddSplitter}
+            >
+              + Splitter
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddMerger}
+            >
+              + Merger
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddDipSwitch}
+            >
+              + DIP
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddHexDisplay}
+            >
+              + Hex
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+              onClick={handleAddLedBar}
+            >
+              + LEDs
+            </button>
+            <span className="mx-1 text-zinc-600">|</span>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+              onClick={handleAddTunnelIn}
+            >
+              + Tun In
+            </button>
+            <button
+              className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+              onClick={handleAddTunnelOut}
+            >
+              + Tun Out
             </button>
           </div>
         </Panel>

@@ -126,28 +126,28 @@ describe("evaluateCircuitIterative", () => {
       const circuit = makeSRLatch();
       const result = evaluateCircuitIterative(
         circuit,
-        { s: false, r: true, clk: false },
+        { s: 0, r: 1, clk: 0 },
         undefined,
         new Map(),
       );
 
       expect(result.stable).toBe(true);
-      expect(result.pinValues.get(pinKey("q_node", "q"))).toBe(true);
-      expect(result.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(false);
+      expect(result.pinValues.get(pinKey("q_node", "q"))).toBe(1);
+      expect(result.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(0);
     });
 
     it("Reset (S=1, R=0) → Q=0, Q_bar=1, stable", () => {
       const circuit = makeSRLatch();
       const result = evaluateCircuitIterative(
         circuit,
-        { s: true, r: false, clk: false },
+        { s: 1, r: 0, clk: 0 },
         undefined,
         new Map(),
       );
 
       expect(result.stable).toBe(true);
-      expect(result.pinValues.get(pinKey("q_node", "q"))).toBe(false);
-      expect(result.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(true);
+      expect(result.pinValues.get(pinKey("q_node", "q"))).toBe(0);
+      expect(result.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(1);
     });
 
     it("Hold after Set (S=1, R=1) — retains Q=1 from previous Set state", () => {
@@ -156,7 +156,7 @@ describe("evaluateCircuitIterative", () => {
       // First: Set state
       const setResult = evaluateCircuitIterative(
         circuit,
-        { s: false, r: true, clk: false },
+        { s: 0, r: 1, clk: 0 },
         undefined,
         new Map(),
       );
@@ -165,14 +165,14 @@ describe("evaluateCircuitIterative", () => {
       // Then: Hold (S=1, R=1) with previous pin values
       const holdResult = evaluateCircuitIterative(
         circuit,
-        { s: true, r: true, clk: false },
+        { s: 1, r: 1, clk: 0 },
         undefined,
         setResult.pinValues,
       );
 
       expect(holdResult.stable).toBe(true);
-      expect(holdResult.pinValues.get(pinKey("q_node", "q"))).toBe(true);
-      expect(holdResult.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(false);
+      expect(holdResult.pinValues.get(pinKey("q_node", "q"))).toBe(1);
+      expect(holdResult.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(0);
     });
 
     it("Hold after Reset (S=1, R=1) — retains Q=0 from previous Reset state", () => {
@@ -181,7 +181,7 @@ describe("evaluateCircuitIterative", () => {
       // First: Reset state
       const resetResult = evaluateCircuitIterative(
         circuit,
-        { s: true, r: false, clk: false },
+        { s: 1, r: 0, clk: 0 },
         undefined,
         new Map(),
       );
@@ -190,14 +190,14 @@ describe("evaluateCircuitIterative", () => {
       // Then: Hold (S=1, R=1) with previous pin values
       const holdResult = evaluateCircuitIterative(
         circuit,
-        { s: true, r: true, clk: false },
+        { s: 1, r: 1, clk: 0 },
         undefined,
         resetResult.pinValues,
       );
 
       expect(holdResult.stable).toBe(true);
-      expect(holdResult.pinValues.get(pinKey("q_node", "q"))).toBe(false);
-      expect(holdResult.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(true);
+      expect(holdResult.pinValues.get(pinKey("q_node", "q"))).toBe(0);
+      expect(holdResult.pinValues.get(pinKey("qbar_node", "qbar"))).toBe(1);
     });
   });
 
@@ -216,7 +216,7 @@ describe("evaluateCircuitIterative", () => {
 
       const result = evaluateCircuitIterative(
         circuit,
-        { clk_pin: false },
+        { clk_pin: 0 },
         undefined,
         new Map(),
       );
@@ -243,13 +243,13 @@ describe("evaluateCircuitIterative", () => {
       const circuit = makeCircuit("not", nodes, edges);
 
       // Topological evaluation
-      const topoResult = evaluateCircuitFull(circuit, { in: true });
+      const topoResult = evaluateCircuitFull(circuit, { in: 1 });
       const topoOut = topoResult.get(pinKey("n3", "out"));
 
       // Iterative evaluation
       const iterResult = evaluateCircuitIterative(
         circuit,
-        { in: true },
+        { in: 1 },
         undefined,
         new Map(),
       );
@@ -257,7 +257,7 @@ describe("evaluateCircuitIterative", () => {
 
       expect(iterResult.stable).toBe(true);
       expect(iterOut).toBe(topoOut);
-      expect(iterOut).toBe(false); // NOT(true) = false
+      expect(iterOut).toBe(0); // NOT(1) = 0
     });
   });
 });

@@ -60,7 +60,7 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 16.7 | Testy per-instance state (SR latch hold, nezavisle instancie, acyclic sanity) | DONE |
 
 **Implementacia:**
-- Engine: `instanceStates: Map<string, Map<string, boolean>>` — kazdy modul-instance node ma vlastne ulozene pin values z predchadzajuceho ticku
+- Engine: `instanceStates: Map<string, InstanceState>` (hierarchicke) — kazdy modul-instance node ma vlastne ulozene pin values z predchadzajuceho ticku
 - `evaluateCircuitWithState()` — vrati outputs + full pinValues, try topological / catch iterative
 - `evaluateNode` module case: cita `prevSubState` z `instanceStates`, zapisuje novy stav po evaluacii
 - Simulation store: `instanceStates`, `signalHistory`, `recording`, `toggleRecording()`, `clearHistory()`
@@ -70,9 +70,74 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-## Faza B — Multi-bit & UX [PENDING]
+## Faza B — Multi-bit & UX
 
-### Iteracia 17 — Multi-bit bus + convenience I/O [PENDING]
+### Iteracia 17A — Core Multi-bit Engine [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 17.1 | Multi-bit pin typ (`Pin.bits: BitWidth = 1 \| 4 \| 8 \| 16`) | DONE |
+| 17.5 | Bus validacia (wire medzi pinmi roznej sirky → reject) | DONE |
+| 17.6 | Bus simulacia (`boolean` → `number` vsade) | DONE |
+| 17.7 | Spatna kompatibilita (1-bit moduly funguju rovnako) | DONE |
+
+**Implementacia:**
+- Engine: `BitWidth` typ, `Pin.bits` rozsireny na `1 | 4 | 8 | 16`
+- Engine: vsetky signal hodnoty `boolean` → `number` (`evaluateNand` pouziva bitovy `(a & b) ? 0 : 1`)
+- Engine: `InstanceState.pinValues`, `IterativeResult.pinValues`, vsetky `evaluateCircuit*` funkcie → `Map<string, number>` / `Record<string, number>`
+- Store: `InputNodeData.value`, `ConstantNodeData.value`, `ClockNodeData.value`, `ButtonNodeData.pressed` → `number`
+- Store: `SimulationStore.pinValues`, `edgeSignals`, `prevPinValues`, `signalHistory` → `number`
+- Konverzia: `canvas-to-circuit.ts` a `circuit-converters.ts` — default hodnoty `0` namiesto `false`
+- Wiring: `useWiring.ts` — novy `getPinBits()` helper + pravidlo: `sourceBits !== targetBits → reject`
+- UI: vsetky `?? false` → `?? 0`, ButtonNode `setButtonPressed(id, 1/0)`
+- Persistence: `migrateNodeValues()` — stare boolean hodnoty sa automaticky migruju na number pri nacitani z localStorage
+- Testy: vsetky existujuce testy aktualizovane (`true/false` → `1/0`), novy `useWiring.test.ts` (11 testov pre bit width validaciu)
+
+### Iteracia 17B — Bus I/O, Splitter/Merger, Bus Wire Rendering [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 17.2 | Bus wire rendering (hrubsi stroke + hex label) | DONE |
+| 17.3 | Bus Input/Output nody (konfigurovatelna bitova sirka) | DONE |
+| 17.4 | Splitter/Merger (built-in moduly) | DONE |
+
+**Implementacia:**
+- Store: `InputNodeData.bits`, `OutputNodeData.bits` (`BitWidth`), `addNode(…, bits?)`, `setInputValue()` action
+- Store: `extractInterface` cita `bits` z Input/Output node data namiesto hardcoded `1`
+- Wiring: `getPinBits` rozsireny o `circuitInput`/`circuitOutput`, `onConnect` uklada `bits` do edge data
+- Engine: `BUILTIN_SPLITTER_MODULE_ID`, `BUILTIN_MERGER_MODULE_ID` + evaluateNode cases (bit extraction/composition)
+- UI: `ManhattanEdge` — bus wiry hrubsie (3.5px), hex label cez `EdgeLabelRenderer`
+- UI: `InputNode` — multi-bit mode: hex input field + bit width badge
+- UI: `OutputNode` — multi-bit mode: hex display (green/gray) + bit width badge
+- UI: `Canvas` — 4 nove tlacidla: Bus In, Bus Out, Splitter, Merger (amber tema)
+- Konverzia: `canvas-to-circuit` a `circuit-converters` — bits zachovanie, splitter/merger label detection
+- Testy: 8 novych engine testov (Splitter 8/4-bit, Merger 8/4-bit, roundtrip), 6 novych wiring testov (bus I/O bit width)
+
+### Iteracia 17C — Bus Peripherals [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 17.8 | DIP Switch node (8-bit toggle, engine type input+variant) | DONE |
+| 17.9 | Hex Display node (hex/bin/dec zobrazenie, engine type output+variant) | DONE |
+| 17.10 | LED Bar node (8 LED kruzkov s glow efektom) | DONE |
+| 17.11 | Tunnel node (wireless prepojenie cez meno, novy engine type "tunnel") | DONE |
+
+**Implementacia:**
+- Engine: `CircuitNode.variant?: string` pre rozlisenie DIP/Hex/LED od beznych input/output nodov
+- Engine: novy typ `"tunnel"` — pass-through node (input → output), `resolveTunnels()` vytvara virtualne edges medzi rovnomennymi tunnelIn/tunnelOut parmi pred evaluaciou
+- Engine: tunnel integrovany do `evaluateCircuitFull` aj `evaluateCircuitIterative`
+- Store: 4 nove data typy (`DipSwitchNodeData`, `HexDisplayNodeData`, `LedBarNodeData`, `TunnelNodeData`), `setDipSwitchValue()` action
+- Store: `addNode` rozsireny o `dipSwitch`, `hexDisplay`, `ledBar`, `tunnel` cases
+- Konverzia: `canvas-to-circuit` — DIP→input+dip-switch, Hex→output+hex-display, LED→output+led-bar, Tunnel→tunnel+2 piny (visible + internal)
+- Konverzia: `circuit-converters` — variant-aware spätna konverzia (zachovava DIP/Hex/LED/Tunnel pri load)
+- Wiring: `getPinBits` rozsireny pre vsetky 4 nove typy
+- UI: `DipSwitchNode.tsx` (amber, 8 toggle buttons MSB-first, editable label)
+- UI: `HexDisplayNode.tsx` (amber, hex/bin/dec, green ked non-zero)
+- UI: `LedBarNode.tsx` (amber, 8 LED kruzkov so shadow glow)
+- UI: `TunnelNode.tsx` (violet, direction-dependent handle, editable label = tunnel name, signal badge)
+- Canvas: 7 novych tlacidiel (+ DIP, + Hex, + LEDs, |, + Tun In, + Tun Out)
+- Testy: 14 novych testov (DIP evaluation, Hex/LED readback, tunnel basic/mismatch/multi-driver/bus-width, resolveTunnels, round-trip variant preservation)
+
 ### Iteracia 18 — Undo/Redo [DONE — MVP I13]
 
 > Pozn.: Undo/Redo bol implementovany uz v MVP iteracii 13 (snapshot-based pristup).
@@ -97,3 +162,6 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 14 | 2026-02-07 | 2b59ca7 | Clock + Button, Play/Pause/Step, tick rate |
 | 15 | 2026-02-07 | fba524d | Kontrolovane cykly, iterativny evaluator, oscilacia detekcia |
 | 16 | 2026-02-07 | — | Per-instance state, timing diagram, signal history |
+| 17A | 2026-02-08 | — | Core multi-bit engine: boolean→number, BitWidth type, bus validacia |
+| 17B | 2026-02-09 | — | Bus I/O nody, Splitter/Merger, bus wire rendering |
+| 17C | 2026-02-09 | — | DIP Switch, Hex Display, LED Bar, Tunnel nodes |

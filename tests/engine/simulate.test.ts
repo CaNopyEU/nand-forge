@@ -8,6 +8,8 @@ import type {
 } from "../../src/engine/types.ts";
 import {
   BUILTIN_NAND_MODULE_ID,
+  BUILTIN_SPLITTER_MODULE_ID,
+  BUILTIN_MERGER_MODULE_ID,
   buildAdjacencyList,
   evaluateCircuit,
   evaluateNand,
@@ -78,20 +80,20 @@ function makeCircuit(name: string, nodes: CircuitNode[], edges: Edge[]): Circuit
 // === evaluateNand ===
 
 describe("evaluateNand", () => {
-  it("returns true for (false, false)", () => {
-    expect(evaluateNand(false, false)).toBe(true);
+  it("returns 1 for (0, 0)", () => {
+    expect(evaluateNand(0, 0)).toBe(1);
   });
 
-  it("returns true for (false, true)", () => {
-    expect(evaluateNand(false, true)).toBe(true);
+  it("returns 1 for (0, 1)", () => {
+    expect(evaluateNand(0, 1)).toBe(1);
   });
 
-  it("returns true for (true, false)", () => {
-    expect(evaluateNand(true, false)).toBe(true);
+  it("returns 1 for (1, 0)", () => {
+    expect(evaluateNand(1, 0)).toBe(1);
   });
 
-  it("returns false for (true, true)", () => {
-    expect(evaluateNand(true, true)).toBe(false);
+  it("returns 0 for (1, 1)", () => {
+    expect(evaluateNand(1, 1)).toBe(0);
   });
 });
 
@@ -180,8 +182,8 @@ describe("evaluateCircuit", () => {
     const edges = [makeEdge("e1", "n1", "in", "n2", "out")];
     const circuit = makeCircuit("passthrough", nodes, edges);
 
-    expect(evaluateCircuit(circuit, { in: true })).toEqual({ out: true });
-    expect(evaluateCircuit(circuit, { in: false })).toEqual({ out: false });
+    expect(evaluateCircuit(circuit, { in: 1 })).toEqual({ out: 1 });
+    expect(evaluateCircuit(circuit, { in: 0 })).toEqual({ out: 0 });
   });
 
   describe("NOT circuit (1x NAND, both inputs from same source)", () => {
@@ -198,12 +200,12 @@ describe("evaluateCircuit", () => {
     ];
     const circuit = makeCircuit("not", nodes, edges);
 
-    it("NOT(true) = false", () => {
-      expect(evaluateCircuit(circuit, { in: true })).toEqual({ out: false });
+    it("NOT(1) = 0", () => {
+      expect(evaluateCircuit(circuit, { in: 1 })).toEqual({ out: 0 });
     });
 
-    it("NOT(false) = true", () => {
-      expect(evaluateCircuit(circuit, { in: false })).toEqual({ out: true });
+    it("NOT(0) = 1", () => {
+      expect(evaluateCircuit(circuit, { in: 0 })).toEqual({ out: 1 });
     });
   });
 
@@ -225,11 +227,11 @@ describe("evaluateCircuit", () => {
     ];
     const circuit = makeCircuit("and", nodes, edges);
 
-    const cases: Array<[boolean, boolean, boolean]> = [
-      [false, false, false],
-      [false, true, false],
-      [true, false, false],
-      [true, true, true],
+    const cases: Array<[number, number, number]> = [
+      [0, 0, 0],
+      [0, 1, 0],
+      [1, 0, 0],
+      [1, 1, 1],
     ];
 
     for (const [a, b, expected] of cases) {
@@ -241,11 +243,11 @@ describe("evaluateCircuit", () => {
     }
   });
 
-  it("unconnected output defaults to false", () => {
+  it("unconnected output defaults to 0", () => {
     const nodes = [makeOutputNode("n1", "out", "Out")];
     const circuit = makeCircuit("unconnected", nodes, []);
 
-    expect(evaluateCircuit(circuit, {})).toEqual({ out: false });
+    expect(evaluateCircuit(circuit, {})).toEqual({ out: 0 });
   });
 
   describe("module with truth table cache", () => {
@@ -293,8 +295,8 @@ describe("evaluateCircuit", () => {
       ];
       const circuit = makeCircuit("with-module", nodes, edges);
 
-      expect(evaluateCircuit(circuit, { x: true }, [notModule])).toEqual({ y: false });
-      expect(evaluateCircuit(circuit, { x: false }, [notModule])).toEqual({ y: true });
+      expect(evaluateCircuit(circuit, { x: 1 }, [notModule])).toEqual({ y: 0 });
+      expect(evaluateCircuit(circuit, { x: 0 }, [notModule])).toEqual({ y: 1 });
     });
 
     it("evaluates double NOT (module used twice) back to identity", () => {
@@ -331,8 +333,179 @@ describe("evaluateCircuit", () => {
       ];
       const circuit = makeCircuit("double-not", nodes, edges);
 
-      expect(evaluateCircuit(circuit, { x: true }, [notModule])).toEqual({ y: true });
-      expect(evaluateCircuit(circuit, { x: false }, [notModule])).toEqual({ y: false });
+      expect(evaluateCircuit(circuit, { x: 1 }, [notModule])).toEqual({ y: 1 });
+      expect(evaluateCircuit(circuit, { x: 0 }, [notModule])).toEqual({ y: 0 });
     });
+  });
+});
+
+// === Splitter / Merger ===
+
+function makeSplitterNode(
+  id: string,
+  inputPinId: string,
+  outputPinIds: string[],
+  inputBits: 1 | 4 | 8 | 16 = 8,
+): CircuitNode {
+  return {
+    id,
+    type: "module",
+    moduleId: BUILTIN_SPLITTER_MODULE_ID,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    pins: [
+      { id: inputPinId, name: "In", direction: "input", bits: inputBits },
+      ...outputPinIds.map((pid, i) => ({
+        id: pid,
+        name: String(i),
+        direction: "output" as const,
+        bits: 1 as const,
+      })),
+    ],
+  };
+}
+
+function makeMergerNode(
+  id: string,
+  inputPinIds: string[],
+  outputPinId: string,
+  outputBits: 1 | 4 | 8 | 16 = 8,
+): CircuitNode {
+  return {
+    id,
+    type: "module",
+    moduleId: BUILTIN_MERGER_MODULE_ID,
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    pins: [
+      ...inputPinIds.map((pid, i) => ({
+        id: pid,
+        name: String(i),
+        direction: "input" as const,
+        bits: 1 as const,
+      })),
+      { id: outputPinId, name: "Out", direction: "output", bits: outputBits },
+    ],
+  };
+}
+
+describe("Splitter", () => {
+  it("splits 8-bit 0xA5 into individual bits", () => {
+    // 0xA5 = 10100101 → bits [1,0,1,0,0,1,0,1]
+    const outPins = ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7"];
+    const nodes: CircuitNode[] = [
+      makeInputNode("in", "x", "X"),
+      makeSplitterNode("split", "si", outPins),
+      ...outPins.map((_pid, i) => makeOutputNode(`o${i}`, `op${i}`, `O${i}`)),
+    ];
+    const edges: Edge[] = [
+      makeEdge("e0", "in", "x", "split", "si"),
+      ...outPins.map((pid, i) => makeEdge(`eo${i}`, "split", pid, `o${i}`, `op${i}`)),
+    ];
+    const circuit = makeCircuit("split-8", nodes, edges);
+
+    const result = evaluateCircuit(circuit, { x: 0xa5 });
+    // 0xA5 = 10100101 → LSB first: [1,0,1,0,0,1,0,1]
+    expect(result["op0"]).toBe(1);
+    expect(result["op1"]).toBe(0);
+    expect(result["op2"]).toBe(1);
+    expect(result["op3"]).toBe(0);
+    expect(result["op4"]).toBe(0);
+    expect(result["op5"]).toBe(1);
+    expect(result["op6"]).toBe(0);
+    expect(result["op7"]).toBe(1);
+  });
+
+  it("splits 4-bit 0xF into individual bits", () => {
+    const outPins = ["b0", "b1", "b2", "b3"];
+    const nodes: CircuitNode[] = [
+      makeInputNode("in", "x", "X"),
+      makeSplitterNode("split", "si", outPins, 4),
+      ...outPins.map((_pid, i) => makeOutputNode(`o${i}`, `op${i}`, `O${i}`)),
+    ];
+    const edges: Edge[] = [
+      makeEdge("e0", "in", "x", "split", "si"),
+      ...outPins.map((pid, i) => makeEdge(`eo${i}`, "split", pid, `o${i}`, `op${i}`)),
+    ];
+    const circuit = makeCircuit("split-4", nodes, edges);
+
+    const result = evaluateCircuit(circuit, { x: 0xf });
+    expect(result["op0"]).toBe(1);
+    expect(result["op1"]).toBe(1);
+    expect(result["op2"]).toBe(1);
+    expect(result["op3"]).toBe(1);
+  });
+});
+
+describe("Merger", () => {
+  it("merges 8 individual bits into 0xA5", () => {
+    const inPins = ["b0", "b1", "b2", "b3", "b4", "b5", "b6", "b7"];
+    const bits = [1, 0, 1, 0, 0, 1, 0, 1]; // 0xA5 LSB-first
+    const nodes: CircuitNode[] = [
+      ...inPins.map((_pid, i) => makeInputNode(`i${i}`, `ip${i}`, `I${i}`)),
+      makeMergerNode("merge", inPins, "mo"),
+      makeOutputNode("out", "op", "Out"),
+    ];
+    const edges: Edge[] = [
+      ...inPins.map((pid, i) => makeEdge(`ei${i}`, `i${i}`, `ip${i}`, "merge", pid)),
+      makeEdge("eo", "merge", "mo", "out", "op"),
+    ];
+    const circuit = makeCircuit("merge-8", nodes, edges);
+
+    const inputValues: Record<string, number> = {};
+    for (let i = 0; i < bits.length; i++) {
+      inputValues[`ip${i}`] = bits[i]!;
+    }
+
+    const result = evaluateCircuit(circuit, inputValues);
+    expect(result["op"]).toBe(0xa5);
+  });
+
+  it("merges 4 individual bits into 0x05", () => {
+    const inPins = ["b0", "b1", "b2", "b3"];
+    const bits = [1, 0, 1, 0]; // 0x05 = 0101 LSB-first
+    const nodes: CircuitNode[] = [
+      ...inPins.map((_pid, i) => makeInputNode(`i${i}`, `ip${i}`, `I${i}`)),
+      makeMergerNode("merge", inPins, "mo", 4),
+      makeOutputNode("out", "op", "Out"),
+    ];
+    const edges: Edge[] = [
+      ...inPins.map((pid, i) => makeEdge(`ei${i}`, `i${i}`, `ip${i}`, "merge", pid)),
+      makeEdge("eo", "merge", "mo", "out", "op"),
+    ];
+    const circuit = makeCircuit("merge-4", nodes, edges);
+
+    const inputValues: Record<string, number> = {};
+    for (let i = 0; i < bits.length; i++) {
+      inputValues[`ip${i}`] = bits[i]!;
+    }
+
+    const result = evaluateCircuit(circuit, inputValues);
+    expect(result["op"]).toBe(0x05);
+  });
+});
+
+describe("Splitter → Merger roundtrip", () => {
+  it("split then merge preserves the original value", () => {
+    const splitOuts = ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"];
+    const mergeIns = ["m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7"];
+    const nodes: CircuitNode[] = [
+      makeInputNode("in", "x", "X"),
+      makeSplitterNode("split", "si", splitOuts),
+      makeMergerNode("merge", mergeIns, "mo"),
+      makeOutputNode("out", "op", "Out"),
+    ];
+    const edges: Edge[] = [
+      makeEdge("e0", "in", "x", "split", "si"),
+      ...splitOuts.map((_, i) =>
+        makeEdge(`em${i}`, "split", splitOuts[i]!, "merge", mergeIns[i]!),
+      ),
+      makeEdge("eo", "merge", "mo", "out", "op"),
+    ];
+    const circuit = makeCircuit("roundtrip", nodes, edges);
+
+    for (const val of [0x00, 0xff, 0xa5, 0x3c, 0x01]) {
+      expect(evaluateCircuit(circuit, { x: val })).toEqual({ op: val });
+    }
   });
 });

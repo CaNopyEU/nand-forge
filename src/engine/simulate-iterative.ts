@@ -1,5 +1,5 @@
 import type { Circuit, Module, PinId } from "./types.ts";
-import { buildAdjacencyList, evaluateNode, pinKey, type InstanceState } from "./simulate.ts";
+import { buildAdjacencyList, evaluateNode, pinKey, resolveTunnels, type InstanceState } from "./simulate.ts";
 
 // === Constants ===
 
@@ -8,7 +8,7 @@ export const MAX_ITERATIONS = 100;
 // === Types ===
 
 export interface IterativeResult {
-  pinValues: Map<string, boolean>;
+  pinValues: Map<string, number>;
   stable: boolean;
   unstableKeys: Set<string>;
   iterations: number;
@@ -18,16 +18,17 @@ export interface IterativeResult {
 
 export function evaluateCircuitIterative(
   circuit: Circuit,
-  inputs: Record<PinId, boolean>,
+  inputs: Record<PinId, number>,
   modules: Module[] | undefined,
-  prevPinValues: Map<string, boolean>,
+  prevPinValues: Map<string, number>,
   instanceStates?: Map<string, InstanceState>,
 ): IterativeResult {
-  const adj = buildAdjacencyList(circuit);
+  const resolved = resolveTunnels(circuit);
+  const adj = buildAdjacencyList(resolved);
   const currentValues = new Map(prevPinValues);
 
   // Seed source nodes (input/constant/clock/button) with current inputs
-  for (const node of circuit.nodes) {
+  for (const node of resolved.nodes) {
     if (
       node.type === "input" ||
       node.type === "constant" ||
@@ -38,7 +39,7 @@ export function evaluateCircuitIterative(
         if (pin.direction === "output") {
           currentValues.set(
             pinKey(node.id, pin.id),
-            inputs[pin.id] ?? false,
+            inputs[pin.id] ?? 0,
           );
         }
       }
@@ -49,7 +50,7 @@ export function evaluateCircuitIterative(
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     const snapshot = new Map(currentValues);
 
-    for (const node of circuit.nodes) {
+    for (const node of resolved.nodes) {
       evaluateNode(node, adj, currentValues, modules, instanceStates);
     }
 
@@ -78,7 +79,7 @@ export function evaluateCircuitIterative(
 
   // Did not converge — find unstable keys
   const beforeLast = new Map(currentValues);
-  for (const node of circuit.nodes) {
+  for (const node of resolved.nodes) {
     evaluateNode(node, adj, currentValues, modules);
   }
 

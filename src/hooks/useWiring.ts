@@ -1,7 +1,26 @@
 import { useCallback } from "react";
 import type { Connection, Edge as RFEdge, IsValidConnection } from "@xyflow/react";
-import { useCircuitStore } from "../store/circuit-store.ts";
+import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData } from "../store/circuit-store.ts";
 import { generateId } from "../utils/id.ts";
+import type { BitWidth } from "../engine/types.ts";
+
+/**
+ * Get bit width for a pin on a node.
+ * Module nodes carry pin metadata; Input/Output nodes carry bits in data.
+ */
+function getPinBits(nodes: AppNode[], nodeId: string, pinId: string): BitWidth {
+  const node = nodes.find((n) => n.id === nodeId);
+  if (node?.type === "module") {
+    return node.data.pins.find((p) => p.id === pinId)?.bits ?? 1;
+  }
+  if (node?.type === "circuitInput") return (node.data as InputNodeData).bits ?? 1;
+  if (node?.type === "circuitOutput") return (node.data as OutputNodeData).bits ?? 1;
+  if (node?.type === "dipSwitch") return (node.data as DipSwitchNodeData).bits ?? 8;
+  if (node?.type === "hexDisplay") return (node.data as HexDisplayNodeData).bits ?? 8;
+  if (node?.type === "ledBar") return (node.data as LedBarNodeData).bits ?? 8;
+  if (node?.type === "tunnel") return (node.data as TunnelNodeData).bits ?? 1;
+  return 1;
+}
 
 /**
  * Wiring hook — provides onConnect handler and isValidConnection checker.
@@ -10,6 +29,7 @@ import { generateId } from "../utils/id.ts";
  * 1. No self-connections (source node === target node)
  * 2. No duplicate edges (same source+sourceHandle → target+targetHandle)
  * 3. Each input pin can only have one incoming wire
+ * 4. Bit width must match between source and target pins
  */
 export function useWiring() {
   const addEdge = useCircuitStore((s) => s.addEdge);
@@ -24,7 +44,7 @@ export function useWiring() {
       // 2. Handles must be specified
       if (!sourceHandle || !targetHandle) return false;
 
-      const edges = useCircuitStore.getState().edges;
+      const { edges, nodes } = useCircuitStore.getState();
 
       // 3. No duplicate edges
       const duplicate = edges.some(
@@ -42,6 +62,11 @@ export function useWiring() {
       );
       if (inputOccupied) return false;
 
+      // 5. Bit width must match
+      const sourceBits = getPinBits(nodes, source, sourceHandle);
+      const targetBits = getPinBits(nodes, target, targetHandle);
+      if (sourceBits !== targetBits) return false;
+
       return true;
     },
     [],
@@ -51,6 +76,9 @@ export function useWiring() {
     (connection: Connection) => {
       if (!isValidConnection(connection)) return;
 
+      const { nodes } = useCircuitStore.getState();
+      const bits = getPinBits(nodes, connection.source, connection.sourceHandle!);
+
       const edge: RFEdge = {
         id: generateId(),
         source: connection.source,
@@ -58,6 +86,7 @@ export function useWiring() {
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
         type: "manhattan",
+        data: { bits },
       };
       addEdge(edge);
     },

@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-hex-monitor",
+      "name": "Hex Monitor",
+      "inputs": [
+        { "id": "data", "name": "Data", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "pass", "name": "Pass", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "hexmon-circuit", "name": "Hex Monitor",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "data", "name": "Data", "direction": "output", "bits": 8 }] },
+          { "id": "hex1", "type": "output", "variant": "hex-display", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "hp1", "name": "HEX", "direction": "input", "bits": 8 }] },
+          { "id": "led1", "type": "output", "variant": "led-bar", "position": { "x": 300, "y": 200 }, "rotation": 0, "pins": [{ "id": "lp1", "name": "LEDs", "direction": "input", "bits": 8 }] },
+          { "id": "po", "type": "output", "position": { "x": 500, "y": 100 }, "rotation": 0, "pins": [{ "id": "pass", "name": "Pass", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "data", "toNodeId": "hex1", "toPinId": "hp1" },
+          { "id": "e2", "fromNodeId": "di", "fromPinId": "data", "toNodeId": "led1", "toPinId": "lp1" },
+          { "id": "e3", "fromNodeId": "di", "fromPinId": "data", "toNodeId": "po", "toPinId": "pass" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-tunnel-bridge",
+      "name": "Tunnel Bridge",
+      "inputs": [
+        { "id": "in", "name": "In", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tunbridge-circuit", "name": "Tunnel Bridge",
+        "nodes": [
+          { "id": "ini", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "in", "name": "In", "direction": "output", "bits": 1 }] },
+          { "id": "tin", "type": "tunnel", "variant": "in", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tp_vis", "name": "SIG", "direction": "input", "bits": 1 },
+            { "id": "tp_int", "name": "SIG", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tp2_int", "name": "SIG", "direction": "input", "bits": 1 },
+            { "id": "tp2_vis", "name": "SIG", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "outo", "type": "output", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ini", "fromPinId": "in", "toNodeId": "tin", "toPinId": "tp_vis" },
+          { "id": "e2", "fromNodeId": "tout", "fromPinId": "tp2_vis", "toNodeId": "outo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-dip-demo",
+      "name": "DIP to Hex",
+      "inputs": [],
+      "outputs": [
+        { "id": "val", "name": "Val", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "dipdemo-circuit", "name": "DIP to Hex",
+        "nodes": [
+          { "id": "dip1", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "dp1", "name": "DIP", "direction": "output", "bits": 8 }] },
+          { "id": "hex1", "type": "output", "variant": "hex-display", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "hp1", "name": "HEX", "direction": "input", "bits": 8 }] },
+          { "id": "vo", "type": "output", "position": { "x": 300, "y": 150 }, "rotation": 0, "pins": [{ "id": "val", "name": "Val", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "dip1", "fromPinId": "dp1", "toNodeId": "hex1", "toPinId": "hp1" },
+          { "id": "e2", "fromNodeId": "dip1", "fromPinId": "dp1", "toNodeId": "vo", "toPinId": "val" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-hex-monitor" },
+    { "type": "module", "moduleId": "mod-tunnel-bridge" },
+    { "type": "module", "moduleId": "mod-dip-demo" }
+  ]
+}

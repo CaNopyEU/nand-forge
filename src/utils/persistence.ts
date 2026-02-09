@@ -52,13 +52,29 @@ export function saveCanvasState(state: CanvasState): void {
   }
 }
 
+/** Migrate boolean node data values to numbers (backward compat). */
+function migrateNodeValues(nodes: AppNode[]): AppNode[] {
+  return nodes.map((n) => {
+    const d = n.data as Record<string, unknown>;
+    if ("value" in d && typeof d["value"] === "boolean") {
+      return { ...n, data: { ...n.data, value: d["value"] ? 1 : 0 } } as AppNode;
+    }
+    if ("pressed" in d && typeof d["pressed"] === "boolean") {
+      return { ...n, data: { ...n.data, pressed: d["pressed"] ? 1 : 0 } } as AppNode;
+    }
+    return n;
+  });
+}
+
 export function loadCanvasState(): CanvasState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.canvas);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    return parsed as CanvasState;
+    const state = parsed as CanvasState;
+    state.nodes = migrateNodeValues(state.nodes);
+    return state;
   } catch {
     return null;
   }

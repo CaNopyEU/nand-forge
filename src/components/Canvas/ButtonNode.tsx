@@ -11,11 +11,11 @@ function ButtonNodeComponent({ id, data, selected }: NodeProps<ButtonNodeType>) 
   const [draft, setDraft] = useState(data.label);
 
   const handlePress = useCallback(() => {
-    setButtonPressed(id, true);
+    setButtonPressed(id, 1);
   }, [id, setButtonPressed]);
 
   const handleRelease = useCallback(() => {
-    setButtonPressed(id, false);
+    setButtonPressed(id, 0);
   }, [id, setButtonPressed]);
 
   const commitLabel = useCallback(() => {

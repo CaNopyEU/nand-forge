@@ -8,7 +8,7 @@ import {
   type EdgeChange,
   type XYPosition,
 } from "@xyflow/react";
-import type { Pin } from "../engine/types.ts";
+import type { BitWidth, Pin } from "../engine/types.ts";
 import { generateId } from "../utils/id.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../engine/simulate.ts";
 import { type Rotation, nextRotation } from "../utils/layout.ts";
@@ -18,20 +18,22 @@ import { type Rotation, nextRotation } from "../utils/layout.ts";
 export type InputNodeData = {
   label: string;
   pinId: string;
-  value: boolean;
+  value: number;
+  bits: BitWidth;
   rotation: Rotation;
 };
 
 export type OutputNodeData = {
   label: string;
   pinId: string;
+  bits: BitWidth;
   rotation: Rotation;
 };
 
 export type ConstantNodeData = {
   label: string;
   pinId: string;
-  value: boolean;
+  value: number;
   rotation: Rotation;
 };
 
@@ -42,14 +44,42 @@ export type ProbeNodeData = {
 
 export type ClockNodeData = {
   pinId: string;
-  value: boolean;
+  value: number;
   rotation: Rotation;
 };
 
 export type ButtonNodeData = {
   label: string;
   pinId: string;
-  pressed: boolean;
+  pressed: number;
+  rotation: Rotation;
+};
+
+export type DipSwitchNodeData = {
+  label: string;
+  pinId: string;
+  value: number;
+  bits: BitWidth;
+  rotation: Rotation;
+};
+
+export type HexDisplayNodeData = {
+  pinId: string;
+  bits: BitWidth;
+  rotation: Rotation;
+};
+
+export type LedBarNodeData = {
+  pinId: string;
+  bits: BitWidth;
+  rotation: Rotation;
+};
+
+export type TunnelNodeData = {
+  label: string;
+  pinId: string;
+  bits: BitWidth;
+  direction: "in" | "out";
   rotation: Rotation;
 };
 
@@ -68,6 +98,10 @@ export type ConstantNodeType = Node<ConstantNodeData, "constant">;
 export type ProbeNodeType = Node<ProbeNodeData, "probe">;
 export type ClockNodeType = Node<ClockNodeData, "clock">;
 export type ButtonNodeType = Node<ButtonNodeData, "button">;
+export type DipSwitchNodeType = Node<DipSwitchNodeData, "dipSwitch">;
+export type HexDisplayNodeType = Node<HexDisplayNodeData, "hexDisplay">;
+export type LedBarNodeType = Node<LedBarNodeData, "ledBar">;
+export type TunnelNodeType = Node<TunnelNodeData, "tunnel">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
@@ -76,6 +110,10 @@ export type AppNode =
   | ProbeNodeType
   | ClockNodeType
   | ButtonNodeType
+  | DipSwitchNodeType
+  | HexDisplayNodeType
+  | LedBarNodeType
+  | TunnelNodeType
   | ModuleNodeType;
 
 // === Helpers ===
@@ -96,13 +134,13 @@ export function extractInterface(
     id: node.data.pinId,
     name: node.data.label,
     direction: "input" as const,
-    bits: 1 as const,
+    bits: (node.data as InputNodeData).bits ?? 1,
   }));
   const outputs: Pin[] = outputNodes.map((node) => ({
     id: node.data.pinId,
     name: node.data.label,
     direction: "output" as const,
-    bits: 1 as const,
+    bits: (node.data as OutputNodeData).bits ?? 1,
   }));
 
   if (existingOrder) {
@@ -164,17 +202,20 @@ interface CircuitStore {
     position: XYPosition,
     moduleId?: string,
     moduleData?: { label: string; pins: Pin[] },
+    bits?: BitWidth,
   ) => void;
   removeNode: (id: string) => void;
   addEdge: (edge: RFEdge) => void;
   removeEdge: (id: string) => void;
   toggleInputValue: (nodeId: string) => void;
+  setInputValue: (nodeId: string, value: number) => void;
   toggleConstantValue: (nodeId: string) => void;
   rotateNode: (nodeId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
   setEdgeColor: (edgeId: string, color: string | undefined) => void;
   tickClocks: () => void;
-  setButtonPressed: (nodeId: string, pressed: boolean) => void;
+  setButtonPressed: (nodeId: string, pressed: number) => void;
+  setDipSwitchValue: (nodeId: string, value: number) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
@@ -241,9 +282,10 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       };
     }),
 
-  addNode: (type, position, moduleId, moduleData) =>
+  addNode: (type, position, moduleId, moduleData, bits) =>
     set((state) => {
       const id = generateId();
+      const bw: BitWidth = bits ?? 1;
 
       let node: AppNode;
       switch (type) {
@@ -252,7 +294,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             id,
             type: "circuitInput",
             position,
-            data: { label: "Input", pinId: generateId(), value: false, rotation: 0 },
+            data: { label: "Input", pinId: generateId(), value: 0, bits: bw, rotation: 0 },
           };
           break;
         case "circuitOutput":
@@ -260,7 +302,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             id,
             type: "circuitOutput",
             position,
-            data: { label: "Output", pinId: generateId(), rotation: 0 },
+            data: { label: "Output", pinId: generateId(), bits: bw, rotation: 0 },
           };
           break;
         case "constant":
@@ -268,7 +310,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             id,
             type: "constant",
             position,
-            data: { label: "0", pinId: generateId(), value: false, rotation: 0 },
+            data: { label: "0", pinId: generateId(), value: 0, rotation: 0 },
           };
           break;
         case "probe":
@@ -284,7 +326,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             id,
             type: "clock",
             position,
-            data: { pinId: generateId(), value: false, rotation: 0 },
+            data: { pinId: generateId(), value: 0, rotation: 0 },
           };
           break;
         case "button":
@@ -292,7 +334,39 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             id,
             type: "button",
             position,
-            data: { label: "BTN", pinId: generateId(), pressed: false, rotation: 0 },
+            data: { label: "BTN", pinId: generateId(), pressed: 0, rotation: 0 },
+          };
+          break;
+        case "dipSwitch":
+          node = {
+            id,
+            type: "dipSwitch",
+            position,
+            data: { label: "DIP", pinId: generateId(), value: 0, bits: 8 as BitWidth, rotation: 0 },
+          };
+          break;
+        case "hexDisplay":
+          node = {
+            id,
+            type: "hexDisplay",
+            position,
+            data: { pinId: generateId(), bits: 8 as BitWidth, rotation: 0 },
+          };
+          break;
+        case "ledBar":
+          node = {
+            id,
+            type: "ledBar",
+            position,
+            data: { pinId: generateId(), bits: 8 as BitWidth, rotation: 0 },
+          };
+          break;
+        case "tunnel":
+          node = {
+            id,
+            type: "tunnel",
+            position,
+            data: { label: "T", pinId: generateId(), bits: 1 as BitWidth, direction: (moduleData?.label === "out" ? "out" : "in") as "in" | "out", rotation: 0 },
           };
           break;
         case "module": {
@@ -362,7 +436,20 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       ...pushSnapshot(state),
       nodes: state.nodes.map((n) => {
         if (n.id !== nodeId || n.type !== "circuitInput") return n;
-        return { ...n, data: { ...n.data, value: !n.data.value } };
+        return { ...n, data: { ...n.data, value: n.data.value ? 0 : 1 } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    })),
+
+  setInputValue: (nodeId, value) =>
+    set((state) => ({
+      ...pushSnapshot(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "circuitInput") return n;
+        const nodeBits = n.data.bits ?? 1;
+        const max = (1 << nodeBits) - 1;
+        return { ...n, data: { ...n.data, value: Math.min(Math.max(0, value), max) } };
       }),
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
@@ -377,8 +464,8 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
           ...n,
           data: {
             ...n.data,
-            value: !n.data.value,
-            label: n.data.value ? "0" : "1",
+            value: n.data.value ? 0 : 1,
+            label: n.data.value === 0 ? "1" : "0",
           },
         };
       }),
@@ -423,7 +510,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((n) => {
         if (n.type !== "clock") return n;
-        return { ...n, data: { ...n.data, value: !n.data.value } };
+        return { ...n, data: { ...n.data, value: n.data.value ? 0 : 1 } };
       }),
       simulationVersion: state.simulationVersion + 1,
     })),
@@ -435,6 +522,18 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
         return { ...n, data: { ...n.data, pressed } };
       }),
       simulationVersion: state.simulationVersion + 1,
+    })),
+
+  setDipSwitchValue: (nodeId, value) =>
+    set((state) => ({
+      ...pushSnapshot(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "dipSwitch") return n;
+        const max = (1 << (n.data.bits ?? 8)) - 1;
+        return { ...n, data: { ...n.data, value: Math.min(Math.max(0, value), max) } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
     })),
 
   clearCanvas: () =>

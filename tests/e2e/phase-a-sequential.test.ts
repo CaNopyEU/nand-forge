@@ -30,7 +30,7 @@ function makePin(id: string, name: string, direction: "input" | "output"): Pin {
   return { id, name, direction, bits: 1 };
 }
 
-function inputNode(id: string, pinId: string, label: string, value = false): InputNodeType {
+function inputNode(id: string, pinId: string, label: string, value = 0): InputNodeType {
   return {
     id, type: "circuitInput",
     position: { x: 0, y: 0 },
@@ -46,7 +46,7 @@ function outputNode(id: string, pinId: string, label: string): OutputNodeType {
   } as OutputNodeType;
 }
 
-function clockNode(id: string, pinId: string, value = false): ClockNodeType {
+function clockNode(id: string, pinId: string, value = 0): ClockNodeType {
   return {
     id, type: "clock",
     position: { x: 0, y: 0 },
@@ -54,7 +54,7 @@ function clockNode(id: string, pinId: string, value = false): ClockNodeType {
   } as ClockNodeType;
 }
 
-function buttonNode(id: string, pinId: string, label: string, pressed = false): ButtonNodeType {
+function buttonNode(id: string, pinId: string, label: string, pressed = 0): ButtonNodeType {
   return {
     id, type: "button",
     position: { x: 0, y: 0 },
@@ -70,7 +70,7 @@ function probeNode(id: string, pinId: string): ProbeNodeType {
   } as ProbeNodeType;
 }
 
-function constantNode(id: string, pinId: string, label: string, value: boolean): ConstantNodeType {
+function constantNode(id: string, pinId: string, label: string, value: number): ConstantNodeType {
   return {
     id, type: "constant",
     position: { x: 0, y: 0 },
@@ -193,94 +193,94 @@ beforeEach(() => {
 
 describe("I14 — Clock source + Button", () => {
   describe("Clock node seeding", () => {
-    it("clock value=false propagates 0 through wire to output", () => {
+    it("clock value=0 propagates 0 through wire to output", () => {
       const nodes: AppNode[] = [
-        clockNode("clk", "cp", false),
+        clockNode("clk", "cp", 0),
         outputNode("out", "op", "Q"),
       ];
       const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
-      expect(s.edgeSignals["e1"]).toBe(false);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
+      expect(s.edgeSignals["e1"]).toBe(0);
     });
 
-    it("clock value=true propagates 1 through wire to output", () => {
+    it("clock value=1 propagates 1 through wire to output", () => {
       const nodes: AppNode[] = [
-        clockNode("clk", "cp", true),
+        clockNode("clk", "cp", 1),
         outputNode("out", "op", "Q"),
       ];
       const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
-      expect(s.edgeSignals["e1"]).toBe(true);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
+      expect(s.edgeSignals["e1"]).toBe(1);
     });
   });
 
   describe("Clock toggle (tickClocks simulation)", () => {
     it("alternating clock value toggles output across ticks", () => {
-      // Tick 0: CLK=false → Out=false
+      // Tick 0: CLK=0 → Out=0
       const nodes0: AppNode[] = [
-        clockNode("clk", "cp", false),
+        clockNode("clk", "cp", 0),
         outputNode("out", "op", "Q"),
       ];
       const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
 
       let s = runSim(nodes0, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
 
-      // Tick 1: CLK toggled → true
+      // Tick 1: CLK toggled → 1
       const nodes1: AppNode[] = [
-        clockNode("clk", "cp", true),
+        clockNode("clk", "cp", 1),
         outputNode("out", "op", "Q"),
       ];
       s = runSim(nodes1, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
 
-      // Tick 2: CLK toggled → false
+      // Tick 2: CLK toggled → 0
       s = runSim(nodes0, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
     });
   });
 
   describe("Button node seeding", () => {
-    it("button pressed=false propagates 0", () => {
+    it("button pressed=0 propagates 0", () => {
       const nodes: AppNode[] = [
-        buttonNode("btn", "bp", "BTN", false),
+        buttonNode("btn", "bp", "BTN", 0),
         outputNode("out", "op", "Q"),
       ];
       const edges: RFEdge[] = [edge("e1", "btn", "bp", "out", "op")];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
     });
 
-    it("button pressed=true propagates 1", () => {
+    it("button pressed=1 propagates 1", () => {
       const nodes: AppNode[] = [
-        buttonNode("btn", "bp", "BTN", true),
+        buttonNode("btn", "bp", "BTN", 1),
         outputNode("out", "op", "Q"),
       ];
       const edges: RFEdge[] = [edge("e1", "btn", "bp", "out", "op")];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
     });
 
     it("button pulse: press → release changes output", () => {
       const edges: RFEdge[] = [edge("e1", "btn", "bp", "out", "op")];
 
       // Released
-      let s = runSim([buttonNode("btn", "bp", "BTN", false), outputNode("out", "op", "Q")], edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      let s = runSim([buttonNode("btn", "bp", "BTN", 0), outputNode("out", "op", "Q")], edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
 
       // Pressed
-      s = runSim([buttonNode("btn", "bp", "BTN", true), outputNode("out", "op", "Q")], edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      s = runSim([buttonNode("btn", "bp", "BTN", 1), outputNode("out", "op", "Q")], edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
 
       // Released again
-      s = runSim([buttonNode("btn", "bp", "BTN", false), outputNode("out", "op", "Q")], edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      s = runSim([buttonNode("btn", "bp", "BTN", 0), outputNode("out", "op", "Q")], edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
     });
   });
 
@@ -288,8 +288,8 @@ describe("I14 — Clock source + Button", () => {
     it("CLK → NAND(CLK, 1) = NOT(CLK)", () => {
       // Clock → NAND.A, Constant(1) → NAND.B, NAND.Out → Output
       const nodes: AppNode[] = [
-        clockNode("clk", "cp", false),
-        constantNode("c1", "vcc", "VCC", true),
+        clockNode("clk", "cp", 0),
+        constantNode("c1", "vcc", "VCC", 1),
         nandNode("nand", "na", "nb", "no"),
         outputNode("out", "op", "Q"),
       ];
@@ -301,26 +301,26 @@ describe("I14 — Clock source + Button", () => {
 
       // CLK=0 → NAND(0,1)=1
       let s = runSim(nodes, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
 
       // CLK=1 → NAND(1,1)=0
       const nodes1 = [...nodes];
-      nodes1[0] = clockNode("clk", "cp", true);
+      nodes1[0] = clockNode("clk", "cp", 1);
       s = runSim(nodes1, edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
     });
   });
 
   describe("Probe node reads signal", () => {
     it("probe shows value from upstream wire", () => {
       const nodes: AppNode[] = [
-        inputNode("in", "ip", "A", true),
+        inputNode("in", "ip", "A", 1),
         probeNode("prb", "pp"),
       ];
       const edges: RFEdge[] = [edge("e1", "in", "ip", "prb", "pp")];
 
       const s = runSim(nodes, edges);
-      expect(s.pinValues[pin("prb", "pp")]).toBe(true);
+      expect(s.pinValues[pin("prb", "pp")]).toBe(1);
     });
   });
 
@@ -336,7 +336,7 @@ describe("I14 — Clock source + Button", () => {
   describe("Edge signals", () => {
     it("each edge carries source pin value", () => {
       const nodes: AppNode[] = [
-        inputNode("in", "ip", "A", true),
+        inputNode("in", "ip", "A", 1),
         outputNode("out1", "op1", "Q1"),
         outputNode("out2", "op2", "Q2"),
       ];
@@ -346,8 +346,8 @@ describe("I14 — Clock source + Button", () => {
       ];
 
       const s = runSim(nodes, edges);
-      expect(s.edgeSignals["e1"]).toBe(true);
-      expect(s.edgeSignals["e2"]).toBe(true);
+      expect(s.edgeSignals["e1"]).toBe(1);
+      expect(s.edgeSignals["e2"]).toBe(1);
     });
   });
 });
@@ -362,7 +362,7 @@ describe("I15 — Controlled feedback loops", () => {
     // R → NAND2.B, NAND1.Out → NAND2.A
     // NAND1.Out → Q, NAND2.Out → Qbar
 
-    function srLatchNodes(sVal: boolean, rVal: boolean, clkVal: boolean): AppNode[] {
+    function srLatchNodes(sVal: number, rVal: number, clkVal: number): AppNode[] {
       return [
         inputNode("s", "sp", "S", sVal),
         inputNode("r", "rp", "R", rVal),
@@ -384,51 +384,51 @@ describe("I15 — Controlled feedback loops", () => {
     ];
 
     it("Set (S=0, R=1) → Q=1, Qbar=0, stable", () => {
-      const s = runSim(srLatchNodes(false, true, false), srEdges);
+      const s = runSim(srLatchNodes(0, 1, 0), srEdges);
       expect(s.oscillating).toBe(false);
-      expect(s.pinValues[pin("q", "qp")]).toBe(true);
-      expect(s.pinValues[pin("qbar", "qbp")]).toBe(false);
+      expect(s.pinValues[pin("q", "qp")]).toBe(1);
+      expect(s.pinValues[pin("qbar", "qbp")]).toBe(0);
     });
 
     it("Reset (S=1, R=0) → Q=0, Qbar=1, stable", () => {
-      const s = runSim(srLatchNodes(true, false, false), srEdges);
+      const s = runSim(srLatchNodes(1, 0, 0), srEdges);
       expect(s.oscillating).toBe(false);
-      expect(s.pinValues[pin("q", "qp")]).toBe(false);
-      expect(s.pinValues[pin("qbar", "qbp")]).toBe(true);
+      expect(s.pinValues[pin("q", "qp")]).toBe(0);
+      expect(s.pinValues[pin("qbar", "qbp")]).toBe(1);
     });
 
     it("Hold after Set — retains Q=1 via prevPinValues", () => {
       // Tick 1: Set
-      runSim(srLatchNodes(false, true, false), srEdges);
+      runSim(srLatchNodes(0, 1, 0), srEdges);
 
       // Tick 2: Hold (S=1, R=1) — prevPinValues carry state
-      const s = runSim(srLatchNodes(true, true, true), srEdges);
+      const s = runSim(srLatchNodes(1, 1, 1), srEdges);
       expect(s.oscillating).toBe(false);
-      expect(s.pinValues[pin("q", "qp")]).toBe(true);
-      expect(s.pinValues[pin("qbar", "qbp")]).toBe(false);
+      expect(s.pinValues[pin("q", "qp")]).toBe(1);
+      expect(s.pinValues[pin("qbar", "qbp")]).toBe(0);
     });
 
     it("Hold after Reset — retains Q=0 via prevPinValues", () => {
       // Tick 1: Reset
-      runSim(srLatchNodes(true, false, false), srEdges);
+      runSim(srLatchNodes(1, 0, 0), srEdges);
 
       // Tick 2: Hold
-      const s = runSim(srLatchNodes(true, true, true), srEdges);
+      const s = runSim(srLatchNodes(1, 1, 1), srEdges);
       expect(s.oscillating).toBe(false);
-      expect(s.pinValues[pin("q", "qp")]).toBe(false);
-      expect(s.pinValues[pin("qbar", "qbp")]).toBe(true);
+      expect(s.pinValues[pin("q", "qp")]).toBe(0);
+      expect(s.pinValues[pin("qbar", "qbp")]).toBe(1);
     });
 
     it("Set → Hold → Reset → Hold state sequence", () => {
       // Set
-      runSim(srLatchNodes(false, true, false), srEdges);
-      let s = runSim(srLatchNodes(true, true, true), srEdges);
-      expect(s.pinValues[pin("q", "qp")]).toBe(true);
+      runSim(srLatchNodes(0, 1, 0), srEdges);
+      let s = runSim(srLatchNodes(1, 1, 1), srEdges);
+      expect(s.pinValues[pin("q", "qp")]).toBe(1);
 
       // Reset
-      runSim(srLatchNodes(true, false, false), srEdges);
-      s = runSim(srLatchNodes(true, true, true), srEdges);
-      expect(s.pinValues[pin("q", "qp")]).toBe(false);
+      runSim(srLatchNodes(1, 0, 0), srEdges);
+      s = runSim(srLatchNodes(1, 1, 1), srEdges);
+      expect(s.pinValues[pin("q", "qp")]).toBe(0);
     });
   });
 
@@ -453,7 +453,7 @@ describe("I15 — Controlled feedback loops", () => {
   describe("Ring oscillator detection", () => {
     it("NAND feedback with clock → oscillating=true, unstable edges marked", () => {
       const nodes: AppNode[] = [
-        clockNode("clk", "clkp", false),
+        clockNode("clk", "clkp", 0),
         nandNode("n1", "a", "b", "o"),
       ];
       const edges: RFEdge[] = [
@@ -472,7 +472,7 @@ describe("I15 — Controlled feedback loops", () => {
   describe("Acyclic circuits still work through full pipeline", () => {
     it("NOT gate: Input(1) → NAND(A,A) → Output = 0", () => {
       const nodes: AppNode[] = [
-        inputNode("in", "ip", "A", true),
+        inputNode("in", "ip", "A", 1),
         nandNode("nand", "na", "nb", "no"),
         outputNode("out", "op", "Q"),
       ];
@@ -484,7 +484,7 @@ describe("I15 — Controlled feedback loops", () => {
 
       const s = runSim(nodes, edges);
       expect(s.oscillating).toBe(false);
-      expect(s.pinValues[pin("out", "op")]).toBe(false); // NOT(1) = 0
+      expect(s.pinValues[pin("out", "op")]).toBe(0); // NOT(1) = 0
     });
   });
 });
@@ -499,7 +499,7 @@ describe("I16 — Per-instance state for sub-modules", () => {
       useModuleStore.setState({ modules: [makeSRLatchModule()] });
     });
 
-    function topCircuit(sVal: boolean, rVal: boolean): { nodes: AppNode[]; edges: RFEdge[] } {
+    function topCircuit(sVal: number, rVal: number): { nodes: AppNode[]; edges: RFEdge[] } {
       const nodes: AppNode[] = [
         inputNode("ts", "tsp", "S", sVal),
         inputNode("tr", "trp", "R", rVal),
@@ -520,39 +520,39 @@ describe("I16 — Per-instance state for sub-modules", () => {
     }
 
     it("Set → Hold retains Q=1 via instanceStates", () => {
-      const { nodes: n1, edges } = topCircuit(false, true);
+      const { nodes: n1, edges } = topCircuit(0, 1);
       let s = runSim(n1, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(true);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(1);
 
-      const { nodes: n2 } = topCircuit(true, true);
+      const { nodes: n2 } = topCircuit(1, 1);
       s = runSim(n2, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(true);
-      expect(s.pinValues[pin("oqb", "oqbp")]).toBe(false);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(1);
+      expect(s.pinValues[pin("oqb", "oqbp")]).toBe(0);
     });
 
     it("Reset → Hold retains Q=0 via instanceStates", () => {
-      const { nodes: n1, edges } = topCircuit(true, false);
+      const { nodes: n1, edges } = topCircuit(1, 0);
       let s = runSim(n1, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(false);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(0);
 
-      const { nodes: n2 } = topCircuit(true, true);
+      const { nodes: n2 } = topCircuit(1, 1);
       s = runSim(n2, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(false);
-      expect(s.pinValues[pin("oqb", "oqbp")]).toBe(true);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(0);
+      expect(s.pinValues[pin("oqb", "oqbp")]).toBe(1);
     });
 
     it("Set → Hold → Reset → Hold full cycle", () => {
-      const { edges } = topCircuit(false, true);
+      const { edges } = topCircuit(0, 1);
 
       // Set
-      runSim(topCircuit(false, true).nodes, edges);
-      let s = runSim(topCircuit(true, true).nodes, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(true);
+      runSim(topCircuit(0, 1).nodes, edges);
+      let s = runSim(topCircuit(1, 1).nodes, edges);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(1);
 
       // Reset
-      runSim(topCircuit(true, false).nodes, edges);
-      s = runSim(topCircuit(true, true).nodes, edges);
-      expect(s.pinValues[pin("oq", "oqp")]).toBe(false);
+      runSim(topCircuit(1, 0).nodes, edges);
+      s = runSim(topCircuit(1, 1).nodes, edges);
+      expect(s.pinValues[pin("oq", "oqp")]).toBe(0);
     });
   });
 
@@ -563,10 +563,10 @@ describe("I16 — Per-instance state for sub-modules", () => {
 
     it("each instance holds its own state independently", () => {
       const nodes: AppNode[] = [
-        inputNode("s1", "s1p", "S1", false),
-        inputNode("r1", "r1p", "R1", true),
-        inputNode("s2", "s2p", "S2", true),
-        inputNode("r2", "r2p", "R2", false),
+        inputNode("s1", "s1p", "S1", 0),
+        inputNode("r1", "r1p", "R1", 1),
+        inputNode("s2", "s2p", "S2", 1),
+        inputNode("r2", "r2p", "R2", 0),
         moduleNode("sr1", "mod-sr", "SR1",
           [{ id: "sr1_s", name: "S" }, { id: "sr1_r", name: "R" }],
           [{ id: "sr1_q", name: "Q" }, { id: "sr1_qb", name: "Qbar" }],
@@ -589,20 +589,20 @@ describe("I16 — Per-instance state for sub-modules", () => {
 
       // Tick 1: Set SR1 (S=0,R=1→Q=1), Reset SR2 (S=1,R=0→Q=0)
       let s = runSim(nodes, edges);
-      expect(s.pinValues[pin("q1", "q1p")]).toBe(true);
-      expect(s.pinValues[pin("q2", "q2p")]).toBe(false);
+      expect(s.pinValues[pin("q1", "q1p")]).toBe(1);
+      expect(s.pinValues[pin("q2", "q2p")]).toBe(0);
 
       // Tick 2: Hold both (S=1, R=1)
       const holdNodes: AppNode[] = [
-        inputNode("s1", "s1p", "S1", true),
-        inputNode("r1", "r1p", "R1", true),
-        inputNode("s2", "s2p", "S2", true),
-        inputNode("r2", "r2p", "R2", true),
+        inputNode("s1", "s1p", "S1", 1),
+        inputNode("r1", "r1p", "R1", 1),
+        inputNode("s2", "s2p", "S2", 1),
+        inputNode("r2", "r2p", "R2", 1),
         nodes[4]!, nodes[5]!, nodes[6]!, nodes[7]!,
       ];
       s = runSim(holdNodes, edges);
-      expect(s.pinValues[pin("q1", "q1p")]).toBe(true);  // SR1 holds 1
-      expect(s.pinValues[pin("q2", "q2p")]).toBe(false); // SR2 holds 0
+      expect(s.pinValues[pin("q1", "q1p")]).toBe(1);  // SR1 holds 1
+      expect(s.pinValues[pin("q2", "q2p")]).toBe(0); // SR2 holds 0
     });
   });
 
@@ -612,8 +612,8 @@ describe("I16 — Per-instance state for sub-modules", () => {
 
       // Build some state
       const nodes: AppNode[] = [
-        inputNode("s", "sp", "S", false),
-        inputNode("r", "rp", "R", true),
+        inputNode("s", "sp", "S", 0),
+        inputNode("r", "rp", "R", 1),
         moduleNode("sr", "mod-sr", "SR",
           [{ id: "ms", name: "S" }, { id: "mr", name: "R" }],
           [{ id: "mq", name: "Q" }, { id: "mqb", name: "Qbar" }],
@@ -641,7 +641,7 @@ describe("I16 — Per-instance state for sub-modules", () => {
 describe("I16 — Signal history recording", () => {
   it("no recording by default — history stays empty", () => {
     const nodes: AppNode[] = [
-      clockNode("clk", "cp", false),
+      clockNode("clk", "cp", 0),
       outputNode("out", "op", "Q"),
     ];
     const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
@@ -664,31 +664,31 @@ describe("I16 — Signal history recording", () => {
 
     const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
 
-    // Tick 1: CLK=false
-    runSim([clockNode("clk", "cp", false), outputNode("out", "op", "Q")], edges);
-    // Tick 2: CLK=true
-    runSim([clockNode("clk", "cp", true), outputNode("out", "op", "Q")], edges);
-    // Tick 3: CLK=false
-    runSim([clockNode("clk", "cp", false), outputNode("out", "op", "Q")], edges);
+    // Tick 1: CLK=0
+    runSim([clockNode("clk", "cp", 0), outputNode("out", "op", "Q")], edges);
+    // Tick 2: CLK=1
+    runSim([clockNode("clk", "cp", 1), outputNode("out", "op", "Q")], edges);
+    // Tick 3: CLK=0
+    runSim([clockNode("clk", "cp", 0), outputNode("out", "op", "Q")], edges);
 
     const s = useSimulationStore.getState();
     expect(s.signalHistory).toHaveLength(3);
 
     // Verify clock signal alternates in history
-    expect(s.signalHistory[0]![pin("clk", "cp")]).toBe(false);
-    expect(s.signalHistory[1]![pin("clk", "cp")]).toBe(true);
-    expect(s.signalHistory[2]![pin("clk", "cp")]).toBe(false);
+    expect(s.signalHistory[0]![pin("clk", "cp")]).toBe(0);
+    expect(s.signalHistory[1]![pin("clk", "cp")]).toBe(1);
+    expect(s.signalHistory[2]![pin("clk", "cp")]).toBe(0);
 
     // Output follows clock
-    expect(s.signalHistory[0]![pin("out", "op")]).toBe(false);
-    expect(s.signalHistory[1]![pin("out", "op")]).toBe(true);
-    expect(s.signalHistory[2]![pin("out", "op")]).toBe(false);
+    expect(s.signalHistory[0]![pin("out", "op")]).toBe(0);
+    expect(s.signalHistory[1]![pin("out", "op")]).toBe(1);
+    expect(s.signalHistory[2]![pin("out", "op")]).toBe(0);
   });
 
   it("clearHistory resets signal history", () => {
     useSimulationStore.getState().toggleRecording();
 
-    const nodes: AppNode[] = [clockNode("clk", "cp", false), outputNode("out", "op", "Q")];
+    const nodes: AppNode[] = [clockNode("clk", "cp", 0), outputNode("out", "op", "Q")];
     const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
     runSim(nodes, edges);
 
@@ -706,7 +706,7 @@ describe("I16 — Signal history recording", () => {
     // Run 6 ticks — only last 4 should remain
     for (let i = 0; i < 6; i++) {
       runSim(
-        [clockNode("clk", "cp", i % 2 === 1), outputNode("out", "op", "Q")],
+        [clockNode("clk", "cp", i % 2 === 1 ? 1 : 0), outputNode("out", "op", "Q")],
         edges,
       );
     }
@@ -714,18 +714,18 @@ describe("I16 — Signal history recording", () => {
     const s = useSimulationStore.getState();
     expect(s.signalHistory).toHaveLength(4);
 
-    // 6 ticks: i=0→false, i=1→true, i=2→false, i=3→true, i=4→false, i=5→true
-    // maxHistoryLength=4, so last 4 remain: i=2→false, i=3→true, i=4→false, i=5→true
-    expect(s.signalHistory[0]![pin("clk", "cp")]).toBe(false);
-    expect(s.signalHistory[1]![pin("clk", "cp")]).toBe(true);
-    expect(s.signalHistory[2]![pin("clk", "cp")]).toBe(false);
-    expect(s.signalHistory[3]![pin("clk", "cp")]).toBe(true);
+    // 6 ticks: i=0→0, i=1→1, i=2→0, i=3→1, i=4→0, i=5→1
+    // maxHistoryLength=4, so last 4 remain: i=2→0, i=3→1, i=4→0, i=5→1
+    expect(s.signalHistory[0]![pin("clk", "cp")]).toBe(0);
+    expect(s.signalHistory[1]![pin("clk", "cp")]).toBe(1);
+    expect(s.signalHistory[2]![pin("clk", "cp")]).toBe(0);
+    expect(s.signalHistory[3]![pin("clk", "cp")]).toBe(1);
   });
 
   it("stopping recording freezes history", () => {
     useSimulationStore.getState().toggleRecording(); // on
 
-    const nodes: AppNode[] = [clockNode("clk", "cp", false), outputNode("out", "op", "Q")];
+    const nodes: AppNode[] = [clockNode("clk", "cp", 0), outputNode("out", "op", "Q")];
     const edges: RFEdge[] = [edge("e1", "clk", "cp", "out", "op")];
 
     runSim(nodes, edges);
@@ -759,11 +759,11 @@ describe("Cross-iteration integration", () => {
         edge("e4", "clk", "clkp", "probe", "pp"),
       ];
 
-      // Tick 0: Set (S=0, R=1), CLK=false
+      // Tick 0: Set (S=0, R=1), CLK=0
       runSim([
-        inputNode("s", "sp", "S", false),
-        inputNode("r", "rp", "R", true),
-        clockNode("clk", "clkp", false),
+        inputNode("s", "sp", "S", 0),
+        inputNode("r", "rp", "R", 1),
+        clockNode("clk", "clkp", 0),
         moduleNode("sr", "mod-sr", "SR",
           [{ id: "ms", name: "S" }, { id: "mr", name: "R" }],
           [{ id: "mq", name: "Q" }, { id: "mqb", name: "Qbar" }],
@@ -772,11 +772,11 @@ describe("Cross-iteration integration", () => {
         probeNode("probe", "pp"),
       ], edges);
 
-      // Tick 1: Hold (S=1, R=1), CLK=true
+      // Tick 1: Hold (S=1, R=1), CLK=1
       runSim([
-        inputNode("s", "sp", "S", true),
-        inputNode("r", "rp", "R", true),
-        clockNode("clk", "clkp", true),
+        inputNode("s", "sp", "S", 1),
+        inputNode("r", "rp", "R", 1),
+        clockNode("clk", "clkp", 1),
         moduleNode("sr", "mod-sr", "SR",
           [{ id: "ms", name: "S" }, { id: "mr", name: "R" }],
           [{ id: "mq", name: "Q" }, { id: "mqb", name: "Qbar" }],
@@ -785,11 +785,11 @@ describe("Cross-iteration integration", () => {
         probeNode("probe", "pp"),
       ], edges);
 
-      // Tick 2: Still Hold, CLK=false
+      // Tick 2: Still Hold, CLK=0
       runSim([
-        inputNode("s", "sp", "S", true),
-        inputNode("r", "rp", "R", true),
-        clockNode("clk", "clkp", false),
+        inputNode("s", "sp", "S", 1),
+        inputNode("r", "rp", "R", 1),
+        clockNode("clk", "clkp", 0),
         moduleNode("sr", "mod-sr", "SR",
           [{ id: "ms", name: "S" }, { id: "mr", name: "R" }],
           [{ id: "mq", name: "Q" }, { id: "mqb", name: "Qbar" }],
@@ -798,11 +798,11 @@ describe("Cross-iteration integration", () => {
         probeNode("probe", "pp"),
       ], edges);
 
-      // Tick 3: Still Hold, CLK=true
+      // Tick 3: Still Hold, CLK=1
       runSim([
-        inputNode("s", "sp", "S", true),
-        inputNode("r", "rp", "R", true),
-        clockNode("clk", "clkp", true),
+        inputNode("s", "sp", "S", 1),
+        inputNode("r", "rp", "R", 1),
+        clockNode("clk", "clkp", 1),
         moduleNode("sr", "mod-sr", "SR",
           [{ id: "ms", name: "S" }, { id: "mr", name: "R" }],
           [{ id: "mq", name: "Q" }, { id: "mqb", name: "Qbar" }],
@@ -818,18 +818,18 @@ describe("Cross-iteration integration", () => {
 
       // Q stays 1 across all ticks (Set then Hold)
       for (let i = 0; i < 4; i++) {
-        expect(s.signalHistory[i]![pin("q", "qp")]).toBe(true);
+        expect(s.signalHistory[i]![pin("q", "qp")]).toBe(1);
       }
 
       // Clock alternates in history
-      expect(s.signalHistory[0]![pin("clk", "clkp")]).toBe(false);
-      expect(s.signalHistory[1]![pin("clk", "clkp")]).toBe(true);
-      expect(s.signalHistory[2]![pin("clk", "clkp")]).toBe(false);
-      expect(s.signalHistory[3]![pin("clk", "clkp")]).toBe(true);
+      expect(s.signalHistory[0]![pin("clk", "clkp")]).toBe(0);
+      expect(s.signalHistory[1]![pin("clk", "clkp")]).toBe(1);
+      expect(s.signalHistory[2]![pin("clk", "clkp")]).toBe(0);
+      expect(s.signalHistory[3]![pin("clk", "clkp")]).toBe(1);
 
       // Probe mirrors clock
-      expect(s.signalHistory[0]![pin("probe", "pp")]).toBe(false);
-      expect(s.signalHistory[1]![pin("probe", "pp")]).toBe(true);
+      expect(s.signalHistory[0]![pin("probe", "pp")]).toBe(0);
+      expect(s.signalHistory[1]![pin("probe", "pp")]).toBe(1);
     });
   });
 
@@ -843,24 +843,24 @@ describe("Cross-iteration integration", () => {
         edge("e3", "nand", "no", "out", "op"),
       ];
 
-      const mkNodes = (pressed: boolean): AppNode[] => [
+      const mkNodes = (pressed: number): AppNode[] => [
         buttonNode("btn", "bp", "BTN", pressed),
-        constantNode("c1", "vcc", "VCC", true),
+        constantNode("c1", "vcc", "VCC", 1),
         nandNode("nand", "na", "nb", "no"),
         outputNode("out", "op", "Q"),
       ];
 
       // Not pressed → NAND(0,1) = 1
-      let s = runSim(mkNodes(false), edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      let s = runSim(mkNodes(0), edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
 
       // Pressed → NAND(1,1) = 0
-      s = runSim(mkNodes(true), edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(false);
+      s = runSim(mkNodes(1), edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(0);
 
       // Released → NAND(0,1) = 1 again
-      s = runSim(mkNodes(false), edges);
-      expect(s.pinValues[pin("out", "op")]).toBe(true);
+      s = runSim(mkNodes(0), edges);
+      expect(s.pinValues[pin("out", "op")]).toBe(1);
     });
   });
 

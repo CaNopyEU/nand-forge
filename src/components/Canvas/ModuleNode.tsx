@@ -60,7 +60,7 @@ function ModuleNodeComponent({ id, data, selected }: NodeProps<ModuleNodeType>) 
     >
       {/* Input handles */}
       {inputPins.map((pin, i) => {
-        const signal = pinValues[pinKey(id, pin.id)] ?? false;
+        const signal = pinValues[pinKey(id, pin.id)] ?? 0;
         return (
           <Handle
             key={pin.id}
@@ -104,7 +104,7 @@ function ModuleNodeComponent({ id, data, selected }: NodeProps<ModuleNodeType>) 
 
       {/* Output handles */}
       {outputPins.map((pin, i) => {
-        const signal = pinValues[pinKey(id, pin.id)] ?? false;
+        const signal = pinValues[pinKey(id, pin.id)] ?? 0;
         return (
           <Handle
             key={pin.id}

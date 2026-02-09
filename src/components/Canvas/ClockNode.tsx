@@ -7,7 +7,7 @@ import { pinKey } from "../../engine/simulate.ts";
 
 function ClockNodeComponent({ id, data, selected }: NodeProps<ClockNodeType>) {
   const signal = useSimulationStore(
-    (s) => s.pinValues[pinKey(id, data.pinId)] ?? false,
+    (s) => s.pinValues[pinKey(id, data.pinId)] ?? 0,
   );
 
   return (

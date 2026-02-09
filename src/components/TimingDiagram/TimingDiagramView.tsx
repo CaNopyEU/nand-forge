@@ -219,7 +219,7 @@ export function TimingDiagramView({ open, onClose }: TimingDiagramViewProps) {
                       // Build waveform path
                       let d = "";
                       for (let t = 0; t < tickCount; t++) {
-                        const val = signalHistory[t]?.[sig.key] ?? false;
+                        const val = signalHistory[t]?.[sig.key] ?? 0;
                         const y = val ? y1 : y0;
                         const x = t * TICK_WIDTH;
 
@@ -227,7 +227,7 @@ export function TimingDiagramView({ open, onClose }: TimingDiagramViewProps) {
                           d += `M ${x} ${y}`;
                         } else {
                           const prevVal =
-                            signalHistory[t - 1]?.[sig.key] ?? false;
+                            signalHistory[t - 1]?.[sig.key] ?? 0;
                           const prevY = prevVal ? y1 : y0;
                           // Vertical transition at tick boundary
                           if (prevY !== y) {

@@ -1,0 +1,235 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-not",
+      "name": "NOT",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "not-circuit", "name": "NOT",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "n1a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n1b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n1o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1a" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1b" },
+          { "id": "e3", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "oo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-and",
+      "name": "AND",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "and-circuit", "name": "AND",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "bi", "type": "input", "position": { "x": 0, "y": 120 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "n1a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n1b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n1o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "n2", "type": "module", "moduleId": "builtin:nand", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "n2a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n2b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n2o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1a" },
+          { "id": "e2", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "n1", "toPinId": "n1b" },
+          { "id": "e3", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "n2", "toPinId": "n2a" },
+          { "id": "e4", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "n2", "toPinId": "n2b" },
+          { "id": "e5", "fromNodeId": "n2", "fromPinId": "n2o", "toNodeId": "oo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-or",
+      "name": "OR",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "out", "name": "Out", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "or-circuit", "name": "OR",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "bi", "type": "input", "position": { "x": 0, "y": 120 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "n1a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n1b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n1o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "n2", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 120 }, "rotation": 0, "pins": [
+            { "id": "n2a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n2b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n2o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "n3", "type": "module", "moduleId": "builtin:nand", "position": { "x": 400, "y": 60 }, "rotation": 0, "pins": [
+            { "id": "n3a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n3b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n3o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 600, "y": 60 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1a" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1b" },
+          { "id": "e3", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "n2", "toPinId": "n2a" },
+          { "id": "e4", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "n2", "toPinId": "n2b" },
+          { "id": "e5", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "n3", "toPinId": "n3a" },
+          { "id": "e6", "fromNodeId": "n2", "fromPinId": "n2o", "toNodeId": "n3", "toPinId": "n3b" },
+          { "id": "e7", "fromNodeId": "n3", "fromPinId": "n3o", "toNodeId": "oo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-mux2",
+      "name": "MUX2",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 1 },
+        { "id": "s", "name": "S", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "mux2-circuit", "name": "MUX2",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "bi", "type": "input", "position": { "x": 0, "y": 120 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 1 }] },
+          { "id": "si", "type": "input", "position": { "x": 0, "y": 240 }, "rotation": 0, "pins": [{ "id": "s", "name": "S", "direction": "output", "bits": 1 }] },
+          { "id": "not1", "type": "module", "moduleId": "mod-not", "position": { "x": 200, "y": 240 }, "rotation": 0, "pins": [
+            { "id": "not1_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "not1_out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "and1", "type": "module", "moduleId": "mod-and", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "and1_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "and1_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "and1_out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "and2", "type": "module", "moduleId": "mod-and", "position": { "x": 400, "y": 120 }, "rotation": 0, "pins": [
+            { "id": "and2_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "and2_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "and2_out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "or1", "type": "module", "moduleId": "mod-or", "position": { "x": 600, "y": 60 }, "rotation": 0, "pins": [
+            { "id": "or1_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "or1_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "or1_out", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 800, "y": 60 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "si", "fromPinId": "s", "toNodeId": "not1", "toPinId": "not1_a" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "and1", "toPinId": "and1_a" },
+          { "id": "e3", "fromNodeId": "not1", "fromPinId": "not1_out", "toNodeId": "and1", "toPinId": "and1_b" },
+          { "id": "e4", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "and2", "toPinId": "and2_a" },
+          { "id": "e5", "fromNodeId": "si", "fromPinId": "s", "toNodeId": "and2", "toPinId": "and2_b" },
+          { "id": "e6", "fromNodeId": "and1", "fromPinId": "and1_out", "toNodeId": "or1", "toPinId": "or1_a" },
+          { "id": "e7", "fromNodeId": "and2", "fromPinId": "and2_out", "toNodeId": "or1", "toPinId": "or1_b" },
+          { "id": "e8", "fromNodeId": "or1", "fromPinId": "or1_out", "toNodeId": "oo", "toPinId": "y" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "mod-mux4",
+      "name": "MUX4",
+      "inputs": [
+        { "id": "d0", "name": "D0", "direction": "input", "bits": 1 },
+        { "id": "d1", "name": "D1", "direction": "input", "bits": 1 },
+        { "id": "d2", "name": "D2", "direction": "input", "bits": 1 },
+        { "id": "d3", "name": "D3", "direction": "input", "bits": 1 },
+        { "id": "s0", "name": "S0", "direction": "input", "bits": 1 },
+        { "id": "s1", "name": "S1", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "mux4-circuit", "name": "MUX4",
+        "nodes": [
+          { "id": "d0i", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d0", "name": "D0", "direction": "output", "bits": 1 }] },
+          { "id": "d1i", "type": "input", "position": { "x": 0, "y": 120 }, "rotation": 0, "pins": [{ "id": "d1", "name": "D1", "direction": "output", "bits": 1 }] },
+          { "id": "d2i", "type": "input", "position": { "x": 0, "y": 240 }, "rotation": 0, "pins": [{ "id": "d2", "name": "D2", "direction": "output", "bits": 1 }] },
+          { "id": "d3i", "type": "input", "position": { "x": 0, "y": 360 }, "rotation": 0, "pins": [{ "id": "d3", "name": "D3", "direction": "output", "bits": 1 }] },
+          { "id": "s0i", "type": "input", "position": { "x": 0, "y": 480 }, "rotation": 0, "pins": [{ "id": "s0", "name": "S0", "direction": "output", "bits": 1 }] },
+          { "id": "s1i", "type": "input", "position": { "x": 0, "y": 600 }, "rotation": 0, "pins": [{ "id": "s1", "name": "S1", "direction": "output", "bits": 1 }] },
+          { "id": "mux_lo", "type": "module", "moduleId": "mod-mux2", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "mlo_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "mlo_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "mlo_s", "name": "S", "direction": "input", "bits": 1 },
+            { "id": "mlo_y", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mux_hi", "type": "module", "moduleId": "mod-mux2", "position": { "x": 200, "y": 240 }, "rotation": 0, "pins": [
+            { "id": "mhi_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "mhi_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "mhi_s", "name": "S", "direction": "input", "bits": 1 },
+            { "id": "mhi_y", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mux_out", "type": "module", "moduleId": "mod-mux2", "position": { "x": 400, "y": 120 }, "rotation": 0, "pins": [
+            { "id": "mout_a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "mout_b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "mout_s", "name": "S", "direction": "input", "bits": 1 },
+            { "id": "mout_y", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 600, "y": 120 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "d0i", "fromPinId": "d0", "toNodeId": "mux_lo", "toPinId": "mlo_a" },
+          { "id": "e2", "fromNodeId": "d1i", "fromPinId": "d1", "toNodeId": "mux_lo", "toPinId": "mlo_b" },
+          { "id": "e3", "fromNodeId": "s0i", "fromPinId": "s0", "toNodeId": "mux_lo", "toPinId": "mlo_s" },
+          { "id": "e4", "fromNodeId": "d2i", "fromPinId": "d2", "toNodeId": "mux_hi", "toPinId": "mhi_a" },
+          { "id": "e5", "fromNodeId": "d3i", "fromPinId": "d3", "toNodeId": "mux_hi", "toPinId": "mhi_b" },
+          { "id": "e6", "fromNodeId": "s0i", "fromPinId": "s0", "toNodeId": "mux_hi", "toPinId": "mhi_s" },
+          { "id": "e7", "fromNodeId": "mux_lo", "fromPinId": "mlo_y", "toNodeId": "mux_out", "toPinId": "mout_a" },
+          { "id": "e8", "fromNodeId": "mux_hi", "fromPinId": "mhi_y", "toNodeId": "mux_out", "toPinId": "mout_b" },
+          { "id": "e9", "fromNodeId": "s1i", "fromPinId": "s1", "toNodeId": "mux_out", "toPinId": "mout_s" },
+          { "id": "e10", "fromNodeId": "mux_out", "fromPinId": "mout_y", "toNodeId": "oo", "toPinId": "y" }
+        ]
+      },
+      "createdAt": "2026-02-09T00:00:00.000Z",
+      "updatedAt": "2026-02-09T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-not" },
+    { "type": "module", "moduleId": "mod-and" },
+    { "type": "module", "moduleId": "mod-or" },
+    { "type": "module", "moduleId": "mod-mux2" },
+    { "type": "module", "moduleId": "mod-mux4" }
+  ]
+}
