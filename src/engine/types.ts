@@ -52,6 +52,10 @@ export interface Module {
   outputs: Pin[];
   circuit: Circuit;
   pinOrder?: { inputIds: PinId[]; outputIds: PinId[] };
+  color?: string;
+  icon?: string;
+  description?: string;
+  customWidth?: number;
   createdAt: string;
   updatedAt: string;
 }

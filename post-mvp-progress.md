@@ -166,7 +166,26 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 - Interaktivne nody: `InputNode`, `ButtonNode`, `DipSwitchNode`, `ConstantNode` — disabled toggle/click/input ked `readOnly`
 - Library: stamp mode blokovany ked `readOnly`
 
-### Iteracia 20 — Vizualne customizovanie [PENDING]
+### Iteracia 20 — Vizualne customizovanie [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 20.1 | Farba modulu (color picker, per-definition) | DONE |
+| 20.2 | Ikona modulu (emoji selector, per-definition) | DONE |
+| 20.3 | Popis modulu (description textarea, tooltip) | DONE |
+| 20.4 | Custom velkosc bloku (width slider, override auto-resize) | DONE |
+
+**Implementacia:**
+- Engine: `Module` rozsireny o `color?`, `icon?`, `description?`, `customWidth?` (vsetky optional — backward kompatibilne)
+- Store: `ModuleNodeData` rozsireny o rovnake 4 vizualne polia
+- Store: `addNode()` kopiruje vizualne props z Module definition pri vytvarani instancie
+- Store: nova akcia `updateModuleVisuals(id, visuals)` — updatne Module definition + refreshne vsetky instancie na aktualnom platne
+- Konverzia: `circuitNodesToAppNodes()` kopiruje vizualne props z Module definition do node data
+- Novy komponent: `ModulePropertiesDialog.tsx` — farebna paleta (8 tmavych farieb), emoji selector (12 ikon), description textarea, custom width slider (72–200px), Save/Cancel
+- `ModuleCard.tsx` — dynamicka background color, ikona vedla nazvu, description v tooltip, context menu (pravy klik → "Properties")
+- `ModuleNode.tsx` — dynamicka `backgroundColor` (fallback zinc-800), ikona pred labelom, `title` tooltip s popisom, custom width override
+- `Canvas.tsx` — node context menu rozsireny o "Properties" pre non-builtin module nody, renderuje `ModulePropertiesDialog`
+- `LibraryPanel.tsx` + `LibraryTree.tsx` — threading `onProperties` callbacku, renderovanie dialogu
 
 ---
 
@@ -189,3 +208,4 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 17B | 2026-02-09 | — | Bus I/O nody, Splitter/Merger, bus wire rendering |
 | 17C | 2026-02-09 | — | DIP Switch, Hex Display, LED Bar, Tunnel nodes |
 | 19 | 2026-02-14 | — | Drill-down do modulov: double-click, breadcrumb, read-only, live sim |
+| 20 | 2026-02-14 | — | Vizualne customizovanie: farba, ikona, popis, custom sirka modulov |

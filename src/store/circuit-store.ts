@@ -90,6 +90,10 @@ export type ModuleNodeData = {
   moduleId: string;
   pins: Pin[];
   rotation: Rotation;
+  color?: string;
+  icon?: string;
+  description?: string;
+  customWidth?: number;
 };
 
 // === App node types ===
@@ -414,11 +418,22 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
                 ]
               : [];
           const label = moduleData ? moduleData.label : isNand ? "NAND" : "Module";
+          // Copy visual properties from module definition
+          const modDef = getModuleById(mid);
           node = {
             id,
             type: "module",
             position,
-            data: { label, moduleId: mid, pins, rotation: 0 },
+            data: {
+              label,
+              moduleId: mid,
+              pins,
+              rotation: 0,
+              ...(modDef?.color ? { color: modDef.color } : {}),
+              ...(modDef?.icon ? { icon: modDef.icon } : {}),
+              ...(modDef?.description ? { description: modDef.description } : {}),
+              ...(modDef?.customWidth ? { customWidth: modDef.customWidth } : {}),
+            },
           };
           break;
         }

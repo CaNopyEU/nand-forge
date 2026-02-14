@@ -165,6 +165,10 @@ export function circuitNodesToAppNodes(
             moduleId: mid,
             pins: node.pins,
             rotation: (node.rotation ?? 0) as Rotation,
+            ...(mod?.color ? { color: mod.color } : {}),
+            ...(mod?.icon ? { icon: mod.icon } : {}),
+            ...(mod?.description ? { description: mod.description } : {}),
+            ...(mod?.customWidth ? { customWidth: mod.customWidth } : {}),
           },
         };
       }

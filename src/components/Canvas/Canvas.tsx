@@ -32,6 +32,7 @@ import { LedBarNode } from "./LedBarNode.tsx";
 import { TunnelNode } from "./TunnelNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
+import { ModulePropertiesDialog } from "../Library/ModulePropertiesDialog.tsx";
 import { useClockTick } from "../../hooks/useClockTick.ts";
 
 // P1: nodeTypes & edgeTypes defined outside component — stable reference
@@ -76,6 +77,7 @@ function CanvasInner() {
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
+  const [propertiesModuleId, setPropertiesModuleId] = useState<string | null>(null);
 
   const { onConnect, isValidConnection } = useWiring();
   const { screenToFlowPosition } = useReactFlow();
@@ -483,22 +485,42 @@ function CanvasInner() {
       </ReactFlow>
 
       {/* Context menu */}
-      {contextMenu && (
-        <div
-          className="fixed z-50 rounded border border-zinc-600 bg-zinc-800 py-1 shadow-lg"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            className="w-full px-4 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-700"
-            onClick={() => {
-              rotateNode(contextMenu.nodeId);
-              setContextMenu(null);
-            }}
+      {contextMenu && (() => {
+        const ctxNode = nodes.find((n) => n.id === contextMenu.nodeId);
+        const isModuleNode = ctxNode?.type === "module";
+        const ctxModuleId = isModuleNode ? (ctxNode.data as { moduleId: string }).moduleId : null;
+        const isBuiltinModule = ctxModuleId === BUILTIN_NAND_MODULE_ID
+          || ctxModuleId === BUILTIN_SPLITTER_MODULE_ID
+          || ctxModuleId === BUILTIN_MERGER_MODULE_ID;
+        const showProperties = isModuleNode && !isBuiltinModule;
+        return (
+          <div
+            className="fixed z-50 rounded border border-zinc-600 bg-zinc-800 py-1 shadow-lg"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
           >
-            Rotate
-          </button>
-        </div>
-      )}
+            <button
+              className="w-full px-4 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-700"
+              onClick={() => {
+                rotateNode(contextMenu.nodeId);
+                setContextMenu(null);
+              }}
+            >
+              Rotate
+            </button>
+            {showProperties && ctxModuleId && (
+              <button
+                className="w-full px-4 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-700"
+                onClick={() => {
+                  setPropertiesModuleId(ctxModuleId);
+                  setContextMenu(null);
+                }}
+              >
+                Properties
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Edge color picker */}
       {edgeColorMenu && (
@@ -509,6 +531,13 @@ function CanvasInner() {
           onClose={() => setEdgeColorMenu(null)}
         />
       )}
+
+      {/* Module properties dialog */}
+      <ModulePropertiesDialog
+        open={propertiesModuleId !== null}
+        module={propertiesModuleId ? (getModuleById(propertiesModuleId) ?? null) : null}
+        onClose={() => setPropertiesModuleId(null)}
+      />
     </>
   );
 }

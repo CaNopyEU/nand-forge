@@ -25,12 +25,20 @@ export interface SaveAnalysis {
 
 // === Store ===
 
+export interface ModuleVisuals {
+  color?: string;
+  icon?: string;
+  description?: string;
+  customWidth?: number;
+}
+
 interface ModuleStore {
   modules: Module[];
   addModule: (module: Module) => void;
   updateModule: (id: ModuleId, module: Module) => void;
   deleteModule: (id: ModuleId) => void;
   reorderPins: (moduleId: ModuleId, direction: "input" | "output", orderedIds: PinId[]) => void;
+  updateModuleVisuals: (id: ModuleId, visuals: ModuleVisuals) => void;
   prepareSave: () => SaveAnalysis;
   executeSave: (analysis: SaveAnalysis) => SaveResult;
   saveCurrentModule: () => SaveResult;
@@ -154,6 +162,42 @@ export const useModuleStore = create<ModuleStore>((set, get) => ({
     set((state) => ({
       modules: state.modules.filter((m) => m.id !== id),
     })),
+
+  updateModuleVisuals: (id, visuals) => {
+    const modules = get().modules;
+    const mod = modules.find((m) => m.id === id);
+    if (!mod) return;
+
+    const updatedModule: Module = {
+      ...mod,
+      color: visuals.color,
+      icon: visuals.icon,
+      description: visuals.description,
+      customWidth: visuals.customWidth,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({ modules: modules.map((m) => (m.id === id ? updatedModule : m)) });
+
+    // Refresh instances on current canvas
+    const { nodes } = useCircuitStore.getState();
+    const updatedNodes = nodes.map((n) => {
+      if (n.type !== "module" || n.data.moduleId !== id) return n;
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          color: visuals.color,
+          icon: visuals.icon,
+          description: visuals.description,
+          customWidth: visuals.customWidth,
+        },
+      } as typeof n;
+    });
+    if (updatedNodes !== nodes) {
+      useCircuitStore.setState({ nodes: updatedNodes });
+    }
+  },
 
   reorderPins: (moduleId, direction, orderedIds) => {
     const modules = get().modules;

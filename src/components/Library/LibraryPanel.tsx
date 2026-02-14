@@ -10,6 +10,7 @@ import { ModuleCard } from "./ModuleCard.tsx";
 import { LibraryTree } from "./LibraryTree.tsx";
 import { SaveWarningDialog } from "../SaveModule/SaveWarningDialog.tsx";
 import { UnsavedChangesDialog } from "../UnsavedChangesDialog.tsx";
+import { ModulePropertiesDialog } from "./ModulePropertiesDialog.tsx";
 
 const NAND_MODULE: Module = {
   id: BUILTIN_NAND_MODULE_ID,
@@ -45,6 +46,7 @@ export function LibraryPanel() {
 
   const [deleteTarget, setDeleteTarget] = useState<{ module: Module; dependents: Module[] } | null>(null);
   const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
+  const [propertiesModuleId, setPropertiesModuleId] = useState<string | null>(null);
 
   const forbiddenIds = useMemo(
     () => activeModuleId ? getForbiddenModuleIds(activeModuleId, modules) : new Set<string>(),
@@ -130,6 +132,14 @@ export function LibraryPanel() {
     setStampModuleId(stampModuleId === moduleId ? null : moduleId);
   }, [stampModuleId, setStampModuleId, readOnly]);
 
+  const handleProperties = useCallback((moduleId: string) => {
+    setPropertiesModuleId(moduleId);
+  }, []);
+
+  const propertiesModule = propertiesModuleId
+    ? modules.find((m) => m.id === propertiesModuleId) ?? null
+    : null;
+
   const handleAddFolder = useCallback(() => {
     addFolder(null, "New Folder");
   }, [addFolder]);
@@ -194,6 +204,7 @@ export function LibraryPanel() {
             onOpen={handleOpen}
             onDelete={handleDelete}
             onStamp={handleStamp}
+            onProperties={handleProperties}
             stampModuleId={stampModuleId}
             forbiddenIds={forbiddenIds}
             onReorder={handleReorder}
@@ -217,6 +228,12 @@ export function LibraryPanel() {
         onSave={handleUnsavedSave}
         onDiscard={handleUnsavedDiscard}
         onCancel={handleUnsavedCancel}
+      />
+
+      <ModulePropertiesDialog
+        open={propertiesModuleId !== null}
+        module={propertiesModule}
+        onClose={() => setPropertiesModuleId(null)}
       />
     </>
   );

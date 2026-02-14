@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import type { Module } from "../../engine/types.ts";
 import { BUILTIN_NAND_MODULE_ID } from "../../engine/simulate.ts";
 
@@ -7,6 +7,7 @@ interface ModuleCardProps {
   onOpen: (moduleId: string) => void;
   onDelete?: (moduleId: string) => void;
   onStamp?: (moduleId: string) => void;
+  onProperties?: (moduleId: string) => void;
   disabled?: boolean;
   stampActive?: boolean;
   parentFolderId?: string | null;
@@ -20,6 +21,7 @@ export const ModuleCard = React.memo(function ModuleCard({
   onOpen,
   onDelete,
   onStamp,
+  onProperties,
   disabled,
   stampActive,
   parentFolderId,
@@ -32,6 +34,7 @@ export const ModuleCard = React.memo(function ModuleCard({
   const outputCount = module.outputs.length;
 
   const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (disabled) {
@@ -83,47 +86,84 @@ export const ModuleCard = React.memo(function ModuleCard({
     onStamp(module.id);
   }, [disabled, onStamp, module.id]);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (isBuiltin || !onProperties) return;
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY });
+  }, [isBuiltin, onProperties]);
+
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = () => setCtxMenu(null);
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, [ctxMenu]);
+
   return (
-    <div
-      draggable={!disabled}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={handleClick}
-      className={`flex items-center gap-1 rounded border bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 ${stampActive ? "border-blue-500 ring-1 ring-blue-500/50" : "border-zinc-600"} ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${dropClass}`}
-      title={disabled ? "Cannot place — would create circular dependency" : "Click to stamp, drag to canvas"}
-    >
-      <span className="flex-1 font-medium">{module.name}</span>
-      <span className="text-[10px] text-zinc-500">
-        {inputCount}in {outputCount}out
-      </span>
-      {!isBuiltin && (
-        <>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpen(module.id);
-            }}
-            className="ml-1 rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-600 hover:text-zinc-200"
-            title="Edit module"
-          >
-            Edit
-          </button>
-          {onDelete && (
+    <>
+      <div
+        draggable={!disabled}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        className={`flex items-center gap-1 rounded border px-2 py-1.5 text-xs text-zinc-200 ${stampActive ? "border-blue-500 ring-1 ring-blue-500/50" : "border-zinc-600"} ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"} ${dropClass}`}
+        style={{ backgroundColor: module.color ?? "#27272a" }}
+        title={module.description ?? (disabled ? "Cannot place — would create circular dependency" : "Click to stamp, drag to canvas")}
+      >
+        {module.icon && <span className="flex-shrink-0">{module.icon}</span>}
+        <span className="flex-1 font-medium truncate">{module.name}</span>
+        <span className="text-[10px] text-zinc-400 flex-shrink-0">
+          {inputCount}in {outputCount}out
+        </span>
+        {!isBuiltin && (
+          <>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(module.id);
+                onOpen(module.id);
               }}
-              className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-red-600 hover:text-zinc-200"
-              title="Delete module"
+              className="ml-1 rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-600 hover:text-zinc-200"
+              title="Edit module"
             >
-              Del
+              Edit
             </button>
-          )}
-        </>
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(module.id);
+                }}
+                className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-red-600 hover:text-zinc-200"
+                title="Delete module"
+              >
+                Del
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          className="fixed z-50 rounded border border-zinc-600 bg-zinc-800 py-1 shadow-lg"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <button
+            className="w-full px-4 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-700"
+            onClick={() => {
+              setCtxMenu(null);
+              onProperties?.(module.id);
+            }}
+          >
+            Properties
+          </button>
+        </div>
       )}
-    </div>
+    </>
   );
 });

@@ -7,6 +7,7 @@ interface LibraryTreeProps {
   onOpen: (moduleId: string) => void;
   onDelete: (moduleId: string) => void;
   onStamp: (moduleId: string) => void;
+  onProperties: (moduleId: string) => void;
   stampModuleId: string | null;
   forbiddenIds: Set<string>;
   onReorder: (moduleId: string, targetFolderId: string | null, insertIndex: number) => void;
@@ -17,6 +18,7 @@ function RenderNode({
   onOpen,
   onDelete,
   onStamp,
+  onProperties,
   stampModuleId,
   forbiddenIds,
   parentFolderId,
@@ -28,6 +30,7 @@ function RenderNode({
   onOpen: (moduleId: string) => void;
   onDelete: (moduleId: string) => void;
   onStamp: (moduleId: string) => void;
+  onProperties: (moduleId: string) => void;
   stampModuleId: string | null;
   forbiddenIds: Set<string>;
   parentFolderId: string | null;
@@ -44,6 +47,7 @@ function RenderNode({
         onOpen={onOpen}
         onDelete={onDelete}
         onStamp={onStamp}
+        onProperties={onProperties}
         stampActive={stampModuleId === mod.id}
         disabled={forbiddenIds.has(mod.id)}
         parentFolderId={parentFolderId}
@@ -70,6 +74,7 @@ function RenderNode({
           onOpen={onOpen}
           onDelete={onDelete}
           onStamp={onStamp}
+          onProperties={onProperties}
           stampModuleId={stampModuleId}
           forbiddenIds={forbiddenIds}
           parentFolderId={node.id}
@@ -82,7 +87,7 @@ function RenderNode({
   );
 }
 
-export function LibraryTree({ onOpen, onDelete, onStamp, stampModuleId, forbiddenIds, onReorder }: LibraryTreeProps) {
+export function LibraryTree({ onOpen, onDelete, onStamp, onProperties, stampModuleId, forbiddenIds, onReorder }: LibraryTreeProps) {
   const tree = useLibraryStore((s) => s.tree);
   const locked = useLibraryStore((s) => s.locked);
 
@@ -95,6 +100,7 @@ export function LibraryTree({ onOpen, onDelete, onStamp, stampModuleId, forbidde
           onOpen={onOpen}
           onDelete={onDelete}
           onStamp={onStamp}
+          onProperties={onProperties}
           stampModuleId={stampModuleId}
           forbiddenIds={forbiddenIds}
           parentFolderId={null}

@@ -49,14 +49,25 @@ function ModuleNodeComponent({ id, data, selected }: NodeProps<ModuleNodeType>) 
 
   // When pins are on Top/Bottom (90°/270°), the node should be wider instead of taller.
   const isHorizontalLayout = !isVerticalSide(inputPos);
-  const sizeStyle = isHorizontalLayout
+  const autoSize = isHorizontalLayout
     ? { minWidth: `${rows * 24 + 16}px`, minHeight: "72px" }
     : { minHeight: `${rows * 24 + 16}px`, minWidth: "72px" };
 
+  // Custom width override
+  const sizeStyle = data.customWidth
+    ? isHorizontalLayout
+      ? { minWidth: `${data.customWidth}px`, minHeight: "72px" }
+      : { minHeight: `${rows * 24 + 16}px`, minWidth: `${data.customWidth}px` }
+    : autoSize;
+
   return (
     <div
-      className={`relative rounded border bg-zinc-800 px-4 ${selected ? "border-blue-500" : "border-zinc-600"}`}
-      style={sizeStyle}
+      className={`relative rounded border px-4 ${selected ? "border-blue-500" : "border-zinc-600"}`}
+      style={{
+        ...sizeStyle,
+        backgroundColor: data.color ?? "#27272a", // zinc-800 fallback
+      }}
+      title={data.description ?? undefined}
     >
       {/* Input handles */}
       {inputPins.map((pin, i) => {
@@ -78,7 +89,10 @@ function ModuleNodeComponent({ id, data, selected }: NodeProps<ModuleNodeType>) 
 
       {/* Label */}
       <div className="flex h-full items-center justify-center py-2">
-        <span className="text-xs font-bold text-zinc-200">{data.label}</span>
+        <span className="text-xs font-bold text-zinc-200">
+          {data.icon && <span className="mr-0.5">{data.icon}</span>}
+          {data.label}
+        </span>
       </div>
 
       {/* Pin names — inputs */}
