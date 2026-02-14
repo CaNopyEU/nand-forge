@@ -142,7 +142,30 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 > Pozn.: Undo/Redo bol implementovany uz v MVP iteracii 13 (snapshot-based pristup).
 
-### Iteracia 19 — Drill-down do modulov [PENDING]
+### Iteracia 19 — Drill-down do modulov [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 19.1 | Drill-down stav v circuit-store (stack, root context, readOnly) | DONE |
+| 19.2 | Double-click na modul → drill-down (read-only canvas) | DONE |
+| 19.3 | Breadcrumb navigacia v toolbare (Root / ModuleA / ModuleB) | DONE |
+| 19.4 | Live simulacne hodnoty v drill-down (root simulacia + instanceState traversal) | DONE |
+| 19.5 | Read-only guards (nodes, edges, input interakcie, library stamp/drag) | DONE |
+| 19.6 | Escape → navigate up, Enter Edit Mode button | DONE |
+
+**Implementacia:**
+- Store: `DrilldownFrame` a `DrilldownRootContext` typy, 3 nove state polia (`drilldownStack`, `drilldownRoot`, `readOnly`)
+- Store: 3 nove akcie — `drillDown(instanceNodeId)` (push frame, save root, load sub-module, set readOnly), `navigateToLevel(level)` (truncate stack alebo restore root), `enterEditMode()` (clear drill-down, keep module on canvas)
+- Store: `tickClocks` modifikovany — v drill-down toggleuje clocky v root kontexte
+- Canvas: `onNodeDoubleClick` handler — double-click na module node spusti `drillDown`, built-in moduly (NAND/Splitter/Merger) ignorovane
+- Canvas: read-only guards — `nodesDraggable`, `nodesConnectable`, `deleteKeyCode`, guarded `onNodesChange` (len select+dimensions), `onEdgesChange` (len select), guarded `handleDrop`/`handlePaneClick`/`handleNodeContextMenu`
+- Canvas: skryty add-node panel, zobrazeny "Read-only view" indikator
+- Canvas: Escape handler — naviguje o uroven hore v drill-down
+- Toolbar: breadcrumb UI s kliknutelnymi levelmi, "Edit" button, disabled Undo/Redo/Save/New Module
+- Simulacia: `useSimulation` — v drill-down simuluje root obvod, traversuje `instanceStates` hierarchiu podla `drilldownStack`, injektuje `pinValues`/`edgeSignals` pre drilled-down view
+- Interaktivne nody: `InputNode`, `ButtonNode`, `DipSwitchNode`, `ConstantNode` — disabled toggle/click/input ked `readOnly`
+- Library: stamp mode blokovany ked `readOnly`
+
 ### Iteracia 20 — Vizualne customizovanie [PENDING]
 
 ---
@@ -165,3 +188,4 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 17A | 2026-02-08 | — | Core multi-bit engine: boolean→number, BitWidth type, bus validacia |
 | 17B | 2026-02-09 | — | Bus I/O nody, Splitter/Merger, bus wire rendering |
 | 17C | 2026-02-09 | — | DIP Switch, Hex Display, LED Bar, Tunnel nodes |
+| 19 | 2026-02-14 | — | Drill-down do modulov: double-click, breadcrumb, read-only, live sim |

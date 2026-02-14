@@ -41,6 +41,7 @@ export function LibraryPanel() {
   const toggleLock = useLibraryStore((s) => s.toggleLock);
   const stampModuleId = useCircuitStore((s) => s.stampModuleId);
   const setStampModuleId = useCircuitStore((s) => s.setStampModuleId);
+  const readOnly = useCircuitStore((s) => s.readOnly);
 
   const [deleteTarget, setDeleteTarget] = useState<{ module: Module; dependents: Module[] } | null>(null);
   const [pendingOpenId, setPendingOpenId] = useState<string | null>(null);
@@ -124,9 +125,10 @@ export function LibraryPanel() {
   );
 
   const handleStamp = useCallback((moduleId: string) => {
+    if (readOnly) return;
     // Toggle: clicking the same module again deactivates stamp mode
     setStampModuleId(stampModuleId === moduleId ? null : moduleId);
-  }, [stampModuleId, setStampModuleId]);
+  }, [stampModuleId, setStampModuleId, readOnly]);
 
   const handleAddFolder = useCallback(() => {
     addFolder(null, "New Folder");

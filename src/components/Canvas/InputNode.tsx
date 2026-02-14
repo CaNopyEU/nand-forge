@@ -13,6 +13,7 @@ function InputNodeComponent({ id, data, selected }: NodeProps<InputNodeType>) {
   const toggleInputValue = useCircuitStore((s) => s.toggleInputValue);
   const setInputValue = useCircuitStore((s) => s.setInputValue);
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
+  const readOnly = useCircuitStore((s) => s.readOnly);
 
   const bits = data.bits ?? 1;
   const isBus = bits > 1;
@@ -49,6 +50,7 @@ function InputNodeComponent({ id, data, selected }: NodeProps<InputNodeType>) {
           onKeyDown={(e) => {
             if (e.key === "Enter") { commitHex(); setHexDraft(""); (e.target as HTMLInputElement).blur(); }
           }}
+          readOnly={readOnly}
         />
       ) : (
         <button
@@ -57,7 +59,8 @@ function InputNodeComponent({ id, data, selected }: NodeProps<InputNodeType>) {
               ? "bg-emerald-500 text-white"
               : "bg-zinc-600 text-zinc-300"
           }`}
-          onClick={handleToggle}
+          onClick={readOnly ? undefined : handleToggle}
+          disabled={readOnly}
         >
           {data.value ? "1" : "0"}
         </button>

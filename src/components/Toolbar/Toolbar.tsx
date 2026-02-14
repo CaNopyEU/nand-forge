@@ -26,6 +26,11 @@ export function Toolbar() {
   const redo = useCircuitStore((s) => s.redo);
   const canUndo = useCircuitStore((s) => s.past.length > 0);
   const canRedo = useCircuitStore((s) => s.future.length > 0);
+  const drilldownStack = useCircuitStore((s) => s.drilldownStack);
+  const drilldownRoot = useCircuitStore((s) => s.drilldownRoot);
+  const navigateToLevel = useCircuitStore((s) => s.navigateToLevel);
+  const enterEditMode = useCircuitStore((s) => s.enterEditMode);
+  const inDrilldown = drilldownStack.length > 0;
 
   const running = useSimulationStore((s) => s.running);
   const tickRate = useSimulationStore((s) => s.tickRate);
@@ -211,21 +216,60 @@ export function Toolbar() {
       <div className="flex h-10 items-center border-b border-zinc-700 px-4">
         <span className="text-sm font-bold">NAND Forge</span>
 
-        {activeModule && (
-          <span className="ml-3 rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-            {activeModule.name}
-            {isDirty && <span className="ml-1 text-amber-400">*</span>}
-          </span>
-        )}
+        {inDrilldown ? (
+          <div className="ml-3 flex items-center gap-0.5 text-xs">
+            <button
+              onClick={() => navigateToLevel(0)}
+              className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+            >
+              {drilldownRoot?.moduleId
+                ? getModuleById(drilldownRoot.moduleId)?.name ?? "Root"
+                : "Root"}
+            </button>
+            {drilldownStack.map((frame, i) => (
+              <span key={frame.instanceNodeId} className="flex items-center gap-0.5">
+                <span className="text-zinc-600">/</span>
+                {i < drilldownStack.length - 1 ? (
+                  <button
+                    onClick={() => navigateToLevel(i + 1)}
+                    className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                  >
+                    {frame.label}
+                  </button>
+                ) : (
+                  <span className="rounded bg-zinc-600 px-1.5 py-0.5 text-zinc-200 font-medium">
+                    {frame.label}
+                  </span>
+                )}
+              </span>
+            ))}
+            <button
+              onClick={enterEditMode}
+              className="ml-2 rounded bg-blue-600/80 px-2 py-0.5 text-xs text-zinc-100 hover:bg-blue-500"
+              title="Switch to full edit mode for this module"
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeModule && (
+              <span className="ml-3 rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                {activeModule.name}
+                {isDirty && <span className="ml-1 text-amber-400">*</span>}
+              </span>
+            )}
 
-        {!activeModule && isDirty && (
-          <span className="ml-3 text-xs text-zinc-500">unsaved circuit</span>
+            {!activeModule && isDirty && (
+              <span className="ml-3 text-xs text-zinc-500">unsaved circuit</span>
+            )}
+          </>
         )}
 
         <div className="ml-4 flex gap-1">
           <button
             onClick={undo}
-            disabled={!canUndo}
+            disabled={!canUndo || inDrilldown}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Undo (Ctrl+Z)"
           >
@@ -233,7 +277,7 @@ export function Toolbar() {
           </button>
           <button
             onClick={redo}
-            disabled={!canRedo}
+            disabled={!canRedo || inDrilldown}
             className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Redo (Ctrl+Shift+Z)"
           >
@@ -302,13 +346,15 @@ export function Toolbar() {
           />
           <button
             onClick={handleNewModule}
-            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+            disabled={inDrilldown}
+            className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             New Module
           </button>
           <button
             onClick={handleSave}
-            className="rounded bg-blue-600 px-2 py-1 text-xs text-zinc-100 hover:bg-blue-500"
+            disabled={inDrilldown}
+            className="rounded bg-blue-600 px-2 py-1 text-xs text-zinc-100 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Save
           </button>

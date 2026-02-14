@@ -6,6 +6,7 @@ import { getOutputPosition } from "../../utils/layout.ts";
 function DipSwitchNodeComponent({ id, data, selected }: NodeProps<DipSwitchNodeType>) {
   const setDipSwitchValue = useCircuitStore((s) => s.setDipSwitchValue);
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
+  const readOnly = useCircuitStore((s) => s.readOnly);
 
   const bits = data.bits ?? 8;
   const value = data.value ?? 0;
@@ -64,7 +65,8 @@ function DipSwitchNodeComponent({ id, data, selected }: NodeProps<DipSwitchNodeT
                   ? "bg-emerald-500 text-white"
                   : "bg-zinc-600 text-zinc-400"
               }`}
-              onClick={() => toggleBit(bitIndex)}
+              onClick={readOnly ? undefined : () => toggleBit(bitIndex)}
+              disabled={readOnly}
             >
               {bitVal}
             </button>

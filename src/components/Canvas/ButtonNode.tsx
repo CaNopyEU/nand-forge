@@ -6,6 +6,7 @@ import { getOutputPosition } from "../../utils/layout.ts";
 function ButtonNodeComponent({ id, data, selected }: NodeProps<ButtonNodeType>) {
   const setButtonPressed = useCircuitStore((s) => s.setButtonPressed);
   const updateNodeLabel = useCircuitStore((s) => s.updateNodeLabel);
+  const readOnly = useCircuitStore((s) => s.readOnly);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -33,9 +34,10 @@ function ButtonNodeComponent({ id, data, selected }: NodeProps<ButtonNodeType>) 
             ? "bg-rose-500 text-white"
             : "bg-zinc-600 text-zinc-300"
         }`}
-        onPointerDown={handlePress}
-        onPointerUp={handleRelease}
-        onPointerLeave={handleRelease}
+        onPointerDown={readOnly ? undefined : handlePress}
+        onPointerUp={readOnly ? undefined : handleRelease}
+        onPointerLeave={readOnly ? undefined : handleRelease}
+        disabled={readOnly}
       >
         {data.pressed ? "1" : "0"}
       </button>

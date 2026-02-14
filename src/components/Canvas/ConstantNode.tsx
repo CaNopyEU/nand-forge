@@ -5,6 +5,7 @@ import { getOutputPosition } from "../../utils/layout.ts";
 
 function ConstantNodeComponent({ id, data, selected }: NodeProps<ConstantNodeType>) {
   const toggleConstantValue = useCircuitStore((s) => s.toggleConstantValue);
+  const readOnly = useCircuitStore((s) => s.readOnly);
 
   const handleToggle = useCallback(() => {
     toggleConstantValue(id);
@@ -18,7 +19,8 @@ function ConstantNodeComponent({ id, data, selected }: NodeProps<ConstantNodeTyp
             ? "bg-amber-500 text-white"
             : "bg-zinc-600 text-zinc-300"
         }`}
-        onClick={handleToggle}
+        onClick={readOnly ? undefined : handleToggle}
+        disabled={readOnly}
       >
         {data.value ? "1" : "0"}
       </button>

@@ -70,6 +70,9 @@ function CanvasInner() {
   const takeSnapshot = useCircuitStore((s) => s.takeSnapshot);
   const stampModuleId = useCircuitStore((s) => s.stampModuleId);
   const setStampModuleId = useCircuitStore((s) => s.setStampModuleId);
+  const readOnly = useCircuitStore((s) => s.readOnly);
+  const drillDown = useCircuitStore((s) => s.drillDown);
+  const navigateToLevel = useCircuitStore((s) => s.navigateToLevel);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
@@ -78,6 +81,40 @@ function CanvasInner() {
   const { screenToFlowPosition } = useReactFlow();
   useSimulation();
   useClockTick();
+
+  // Read-only guards for node/edge changes
+  const guardedOnNodesChange = useCallback(
+    (changes: import("@xyflow/react").NodeChange<AppNode>[]) => {
+      if (readOnly) {
+        const allowed = changes.filter((c) => c.type === "select" || c.type === "dimensions");
+        if (allowed.length > 0) onNodesChange(allowed);
+        return;
+      }
+      onNodesChange(changes);
+    },
+    [readOnly, onNodesChange],
+  );
+
+  const guardedOnEdgesChange = useCallback(
+    (changes: import("@xyflow/react").EdgeChange<RFEdge>[]) => {
+      if (readOnly) {
+        const allowed = changes.filter((c) => c.type === "select");
+        if (allowed.length > 0) onEdgesChange(allowed);
+        return;
+      }
+      onEdgesChange(changes);
+    },
+    [readOnly, onEdgesChange],
+  );
+
+  // Double-click to drill down into module instances
+  const handleNodeDoubleClick = useCallback(
+    (_event: ReactMouseEvent, node: AppNode) => {
+      if (node.type !== "module") return;
+      drillDown(node.id);
+    },
+    [drillDown],
+  );
 
   // Keyboard shortcut: R to rotate selected nodes
   useEffect(() => {
@@ -122,11 +159,16 @@ function CanvasInner() {
     takeSnapshot();
   }, [takeSnapshot]);
 
-  // Escape: clear stamp mode, close context menu
+  // Escape: navigate up in drill-down, clear stamp mode, close context menu
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (useCircuitStore.getState().stampModuleId) {
+      const state = useCircuitStore.getState();
+      if (state.drilldownStack.length > 0) {
+        navigateToLevel(state.drilldownStack.length - 1 || 0);
+        return;
+      }
+      if (state.stampModuleId) {
         setStampModuleId(null);
         return;
       }
@@ -134,7 +176,7 @@ function CanvasInner() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [contextMenu, setStampModuleId]);
+  }, [contextMenu, setStampModuleId, navigateToLevel]);
 
   const getCenter = useCallback(() => {
     const position = screenToFlowPosition({
@@ -237,19 +279,21 @@ function CanvasInner() {
   const handleDrop = useCallback(
     (e: DragEvent) => {
       e.preventDefault();
+      if (readOnly) return;
       const moduleId = e.dataTransfer.getData("application/nandforge-module");
       if (!moduleId) return;
       placeModule(moduleId, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
     },
-    [screenToFlowPosition, placeModule],
+    [screenToFlowPosition, placeModule, readOnly],
   );
 
   const handleNodeContextMenu = useCallback(
     (e: ReactMouseEvent, node: AppNode) => {
       e.preventDefault();
+      if (readOnly) return;
       setContextMenu({ nodeId: node.id, x: e.clientX, y: e.clientY });
     },
-    [],
+    [readOnly],
   );
 
   const handleEdgeContextMenu = useCallback(
@@ -276,13 +320,15 @@ function CanvasInner() {
       setContextMenu(null);
       setEdgeColorMenu(null);
 
+      if (readOnly) return;
+
       const stamp = useCircuitStore.getState().stampModuleId;
       if (stamp) {
         const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
         placeModule(stamp, position);
       }
     },
-    [screenToFlowPosition, placeModule],
+    [screenToFlowPosition, placeModule, readOnly],
   );
 
   return (
@@ -290,21 +336,24 @@ function CanvasInner() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
+        onNodesChange={guardedOnNodesChange}
+        onEdgesChange={guardedOnEdgesChange}
+        onConnect={readOnly ? undefined : onConnect}
+        isValidConnection={readOnly ? undefined : isValidConnection}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStart={readOnly ? undefined : handleNodeDragStart}
+        onNodeDoubleClick={handleNodeDoubleClick}
         onNodeContextMenu={handleNodeContextMenu}
-        onEdgeContextMenu={handleEdgeContextMenu}
+        onEdgeContextMenu={readOnly ? undefined : handleEdgeContextMenu}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
-        deleteKeyCode={["Backspace", "Delete"]}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         className={`bg-zinc-900 ${stampModuleId ? "!cursor-crosshair" : ""}`}
       >
         <Background
@@ -320,108 +369,117 @@ function CanvasInner() {
             </p>
           </Panel>
         )}
-        <Panel position="top-left">
-          <div className="flex gap-1">
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-              onClick={() => handleAddNode("circuitInput")}
-            >
-              + Input
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-              onClick={() => handleAddNode("circuitOutput")}
-            >
-              + Output
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-              onClick={() => handleAddNode("constant")}
-            >
-              + Constant
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-              onClick={() => handleAddNode("module")}
-            >
-              + NAND
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-              onClick={() => handleAddNode("probe")}
-            >
-              + Probe
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-cyan-300 hover:bg-zinc-600"
-              onClick={() => handleAddNode("clock")}
-            >
-              + Clock
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-rose-300 hover:bg-zinc-600"
-              onClick={() => handleAddNode("button")}
-            >
-              + Button
-            </button>
-            <span className="mx-1 text-zinc-600">|</span>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddBusInput}
-            >
-              + Bus In
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddBusOutput}
-            >
-              + Bus Out
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddSplitter}
-            >
-              + Splitter
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddMerger}
-            >
-              + Merger
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddDipSwitch}
-            >
-              + DIP
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddHexDisplay}
-            >
-              + Hex
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
-              onClick={handleAddLedBar}
-            >
-              + LEDs
-            </button>
-            <span className="mx-1 text-zinc-600">|</span>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
-              onClick={handleAddTunnelIn}
-            >
-              + Tun In
-            </button>
-            <button
-              className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
-              onClick={handleAddTunnelOut}
-            >
-              + Tun Out
-            </button>
-          </div>
-        </Panel>
+        {readOnly && (
+          <Panel position="top-left">
+            <span className="rounded bg-zinc-700/80 px-2 py-1 text-xs text-zinc-400">
+              Read-only view
+            </span>
+          </Panel>
+        )}
+        {!readOnly && (
+          <Panel position="top-left">
+            <div className="flex gap-1">
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+                onClick={() => handleAddNode("circuitInput")}
+              >
+                + Input
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+                onClick={() => handleAddNode("circuitOutput")}
+              >
+                + Output
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+                onClick={() => handleAddNode("constant")}
+              >
+                + Constant
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+                onClick={() => handleAddNode("module")}
+              >
+                + NAND
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+                onClick={() => handleAddNode("probe")}
+              >
+                + Probe
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-cyan-300 hover:bg-zinc-600"
+                onClick={() => handleAddNode("clock")}
+              >
+                + Clock
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-rose-300 hover:bg-zinc-600"
+                onClick={() => handleAddNode("button")}
+              >
+                + Button
+              </button>
+              <span className="mx-1 text-zinc-600">|</span>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddBusInput}
+              >
+                + Bus In
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddBusOutput}
+              >
+                + Bus Out
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddSplitter}
+              >
+                + Splitter
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddMerger}
+              >
+                + Merger
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddDipSwitch}
+              >
+                + DIP
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddHexDisplay}
+              >
+                + Hex
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-amber-300 hover:bg-zinc-600"
+                onClick={handleAddLedBar}
+              >
+                + LEDs
+              </button>
+              <span className="mx-1 text-zinc-600">|</span>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddTunnelIn}
+              >
+                + Tun In
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddTunnelOut}
+              >
+                + Tun Out
+              </button>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
 
       {/* Context menu */}

@@ -10,7 +10,9 @@ import {
 } from "@xyflow/react";
 import type { BitWidth, Pin } from "../engine/types.ts";
 import { generateId } from "../utils/id.ts";
-import { BUILTIN_NAND_MODULE_ID } from "../engine/simulate.ts";
+import { BUILTIN_NAND_MODULE_ID, BUILTIN_SPLITTER_MODULE_ID, BUILTIN_MERGER_MODULE_ID } from "../engine/simulate.ts";
+import { getModuleById, useModuleStore } from "./module-store.ts";
+import { circuitNodesToAppNodes, circuitEdgesToRFEdges } from "../utils/circuit-converters.ts";
 import { type Rotation, nextRotation } from "../utils/layout.ts";
 
 // === Node data types ===
@@ -116,6 +118,21 @@ export type AppNode =
   | TunnelNodeType
   | ModuleNodeType;
 
+// === Drill-down types ===
+
+export interface DrilldownFrame {
+  moduleId: string;
+  instanceNodeId: string;
+  label: string;
+}
+
+export interface DrilldownRootContext {
+  moduleId: string | null;
+  nodes: AppNode[];
+  edges: RFEdge[];
+  isDirty: boolean;
+}
+
 // === Helpers ===
 
 export function extractInterface(
@@ -194,6 +211,9 @@ interface CircuitStore {
   past: Snapshot[];
   future: Snapshot[];
   stampModuleId: string | null;
+  drilldownStack: DrilldownFrame[];
+  drilldownRoot: DrilldownRootContext | null;
+  readOnly: boolean;
 
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
@@ -224,6 +244,9 @@ interface CircuitStore {
   redo: () => void;
   takeSnapshot: () => void;
   setStampModuleId: (moduleId: string | null) => void;
+  drillDown: (instanceNodeId: string) => void;
+  navigateToLevel: (level: number) => void;
+  enterEditMode: () => void;
 }
 
 export const useCircuitStore = create<CircuitStore>((set, get) => ({
@@ -235,6 +258,9 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
   past: [],
   future: [],
   stampModuleId: null,
+  drilldownStack: [],
+  drilldownRoot: null,
+  readOnly: false,
 
   onNodesChange: (changes) =>
     set((state) => {
@@ -507,13 +533,28 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
     })),
 
   tickClocks: () =>
-    set((state) => ({
-      nodes: state.nodes.map((n) => {
-        if (n.type !== "clock") return n;
-        return { ...n, data: { ...n.data, value: n.data.value ? 0 : 1 } };
-      }),
-      simulationVersion: state.simulationVersion + 1,
-    })),
+    set((state) => {
+      if (state.drilldownRoot) {
+        // In drill-down: tick clocks in the root context
+        return {
+          drilldownRoot: {
+            ...state.drilldownRoot,
+            nodes: state.drilldownRoot.nodes.map((n) => {
+              if (n.type !== "clock") return n;
+              return { ...n, data: { ...n.data, value: n.data.value ? 0 : 1 } };
+            }),
+          },
+          simulationVersion: state.simulationVersion + 1,
+        };
+      }
+      return {
+        nodes: state.nodes.map((n) => {
+          if (n.type !== "clock") return n;
+          return { ...n, data: { ...n.data, value: n.data.value ? 0 : 1 } };
+        }),
+        simulationVersion: state.simulationVersion + 1,
+      };
+    }),
 
   setButtonPressed: (nodeId, pressed) =>
     set((state) => ({
@@ -595,4 +636,110 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
 
   setStampModuleId: (moduleId) =>
     set({ stampModuleId: moduleId }),
+
+  drillDown: (instanceNodeId) => {
+    const state = get();
+    const node = state.nodes.find((n) => n.id === instanceNodeId);
+    if (!node || node.type !== "module") return;
+
+    const moduleId = node.data.moduleId;
+    // Built-in modules have no internal circuit
+    if (
+      moduleId === BUILTIN_NAND_MODULE_ID ||
+      moduleId === BUILTIN_SPLITTER_MODULE_ID ||
+      moduleId === BUILTIN_MERGER_MODULE_ID
+    ) return;
+
+    const mod = getModuleById(moduleId);
+    if (!mod) return;
+
+    // Save root context on first drill
+    const drilldownRoot = state.drilldownRoot ?? {
+      moduleId: state.activeModuleId,
+      nodes: state.nodes,
+      edges: state.edges,
+      isDirty: state.isDirty,
+    };
+
+    const frame: DrilldownFrame = {
+      moduleId,
+      instanceNodeId,
+      label: mod.name,
+    };
+
+    const modules = useModuleStore.getState().modules;
+    const appNodes = circuitNodesToAppNodes(mod.circuit.nodes, modules);
+    const rfEdges = circuitEdgesToRFEdges(mod.circuit.edges);
+
+    set({
+      drilldownRoot,
+      drilldownStack: [...state.drilldownStack, frame],
+      nodes: appNodes,
+      edges: rfEdges,
+      readOnly: true,
+      stampModuleId: null,
+      past: [],
+      future: [],
+      simulationVersion: state.simulationVersion + 1,
+    });
+  },
+
+  navigateToLevel: (level) => {
+    const state = get();
+    if (!state.drilldownRoot) return;
+
+    if (level === 0) {
+      // Restore root context
+      set({
+        nodes: state.drilldownRoot.nodes,
+        edges: state.drilldownRoot.edges,
+        activeModuleId: state.drilldownRoot.moduleId,
+        isDirty: state.drilldownRoot.isDirty,
+        drilldownStack: [],
+        drilldownRoot: null,
+        readOnly: false,
+        past: [],
+        future: [],
+        simulationVersion: state.simulationVersion + 1,
+      });
+      return;
+    }
+
+    // Navigate to an intermediate level
+    const targetFrame = state.drilldownStack[level - 1];
+    if (!targetFrame) return;
+
+    const mod = getModuleById(targetFrame.moduleId);
+    if (!mod) return;
+
+    const modules = useModuleStore.getState().modules;
+    const appNodes = circuitNodesToAppNodes(mod.circuit.nodes, modules);
+    const rfEdges = circuitEdgesToRFEdges(mod.circuit.edges);
+
+    set({
+      drilldownStack: state.drilldownStack.slice(0, level),
+      nodes: appNodes,
+      edges: rfEdges,
+      past: [],
+      future: [],
+      simulationVersion: state.simulationVersion + 1,
+    });
+  },
+
+  enterEditMode: () => {
+    const state = get();
+    if (state.drilldownStack.length === 0) return;
+
+    const currentFrame = state.drilldownStack[state.drilldownStack.length - 1]!;
+
+    set({
+      activeModuleId: currentFrame.moduleId,
+      drilldownStack: [],
+      drilldownRoot: null,
+      readOnly: false,
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+  },
 }));
