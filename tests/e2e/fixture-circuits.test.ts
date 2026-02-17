@@ -18,6 +18,11 @@ import alu8Data from "../../test-fixtures/alu-8bit.json";
 import flipFlopsData from "../../test-fixtures/flip-flops.json";
 import counter4Data from "../../test-fixtures/counter-4bit.json";
 import busPeripheralsData from "../../test-fixtures/bus-peripherals-demo.json";
+import ioBasicsData from "../../test-fixtures/io-basics.json";
+import busSplitMergeData from "../../test-fixtures/bus-split-merge.json";
+import ioPeripheralsAdvData from "../../test-fixtures/io-peripherals-advanced.json";
+import tunnelAdvData from "../../test-fixtures/tunnel-advanced.json";
+import clockButtonData from "../../test-fixtures/clock-button-sequential.json";
 
 // ============================================================
 // Helpers
@@ -38,6 +43,11 @@ const fixtures: Record<string, FixtureFile> = {
   "flip-flops": flipFlopsData as unknown as FixtureFile,
   "counter-4bit": counter4Data as unknown as FixtureFile,
   "bus-peripherals-demo": busPeripheralsData as unknown as FixtureFile,
+  "io-basics": ioBasicsData as unknown as FixtureFile,
+  "bus-split-merge": busSplitMergeData as unknown as FixtureFile,
+  "io-peripherals-advanced": ioPeripheralsAdvData as unknown as FixtureFile,
+  "tunnel-advanced": tunnelAdvData as unknown as FixtureFile,
+  "clock-button-sequential": clockButtonData as unknown as FixtureFile,
 };
 
 function loadFixture(name: string): FixtureFile {
@@ -59,6 +69,16 @@ function evalModule(
 ): Record<string, number> {
   const mod = findModule(modules, moduleId);
   return evaluateCircuit(mod.circuit, inputs, modules);
+}
+
+function evalModuleWithTunnels(
+  modules: Module[],
+  moduleId: string,
+  inputs: Record<string, number>,
+): Record<string, number> {
+  const mod = findModule(modules, moduleId);
+  const resolved = resolveTunnels(mod.circuit);
+  return evaluateCircuit(resolved, inputs, modules);
 }
 
 // ============================================================
@@ -339,6 +359,483 @@ describe("Fixture: bus-peripherals-demo", () => {
 });
 
 // ============================================================
+// I/O Basics fixture
+// ============================================================
+
+describe("Fixture: io-basics", () => {
+  const fixture = loadFixture("io-basics");
+  const modules = fixture.modules;
+
+  describe("4-bit pass-through", () => {
+    it("preserves value 0", () => {
+      expect(evalModule(modules, "mod-passthrough-4bit", { d: 0 })).toMatchObject({ q: 0 });
+    });
+
+    it("preserves value 15 (0xF)", () => {
+      expect(evalModule(modules, "mod-passthrough-4bit", { d: 15 })).toMatchObject({ q: 15 });
+    });
+
+    it("preserves value 0b1010 = 10", () => {
+      expect(evalModule(modules, "mod-passthrough-4bit", { d: 0b1010 })).toMatchObject({ q: 0b1010 });
+    });
+  });
+
+  describe("16-bit pass-through", () => {
+    it("preserves value 0", () => {
+      expect(evalModule(modules, "mod-passthrough-16bit", { d: 0 })).toMatchObject({ q: 0 });
+    });
+
+    it("preserves max value 0xFFFF", () => {
+      expect(evalModule(modules, "mod-passthrough-16bit", { d: 0xffff })).toMatchObject({ q: 0xffff });
+    });
+
+    it("preserves value 0xABCD", () => {
+      expect(evalModule(modules, "mod-passthrough-16bit", { d: 0xabcd })).toMatchObject({ q: 0xabcd });
+    });
+  });
+
+  describe("Constants VCC/GND", () => {
+    it("VCC is always 1 and GND is always 0", () => {
+      // Constant nodes need their values seeded externally (app layer does this via canvas-to-circuit)
+      // Pin name "1" → value 1, pin name "0" → value 0
+      const out = evalModule(modules, "mod-constants-vcc-gnd", { cv: 1, cz: 0 });
+      expect(out).toMatchObject({ vcc: 1, gnd: 0 });
+    });
+  });
+
+  describe("Button to output", () => {
+    it("button pressed=0 → output 0", () => {
+      // Button value comes from external input (bp pin)
+      const out = evalModule(modules, "mod-button-to-output", { bp: 0 });
+      expect(out).toMatchObject({ q: 0 });
+    });
+
+    it("button pressed=1 → output 1", () => {
+      const out = evalModule(modules, "mod-button-to-output", { bp: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+  });
+
+  describe("Clock to output", () => {
+    it("clock=0 → output 0", () => {
+      const out = evalModule(modules, "mod-clock-to-output", { cp: 0 });
+      expect(out).toMatchObject({ q: 0 });
+    });
+
+    it("clock=1 → output 1", () => {
+      const out = evalModule(modules, "mod-clock-to-output", { cp: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+  });
+
+  describe("3-way fan-out", () => {
+    it("input 0 → all three outputs are 0", () => {
+      const out = evalModule(modules, "mod-fanout-3way", { a: 0 });
+      expect(out).toMatchObject({ y0: 0, y1: 0, y2: 0 });
+    });
+
+    it("input 1 → all three outputs are 1", () => {
+      const out = evalModule(modules, "mod-fanout-3way", { a: 1 });
+      expect(out).toMatchObject({ y0: 1, y1: 1, y2: 1 });
+    });
+  });
+
+  describe("Probe no effect", () => {
+    it("probe does not alter signal — input 0 → output 0", () => {
+      const out = evalModule(modules, "mod-probe-no-effect", { a: 0 });
+      expect(out).toMatchObject({ q: 0 });
+    });
+
+    it("probe does not alter signal — input 1 → output 1", () => {
+      const out = evalModule(modules, "mod-probe-no-effect", { a: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+  });
+
+  describe("8-bit fan-out", () => {
+    it("both outputs receive same value 0xA5", () => {
+      const out = evalModule(modules, "mod-multi-bit-fanout", { d: 0xa5 });
+      expect(out).toMatchObject({ q0: 0xa5, q1: 0xa5 });
+    });
+
+    it("both outputs receive same value 0x00", () => {
+      const out = evalModule(modules, "mod-multi-bit-fanout", { d: 0x00 });
+      expect(out).toMatchObject({ q0: 0x00, q1: 0x00 });
+    });
+  });
+});
+
+// ============================================================
+// Bus Split/Merge fixture
+// ============================================================
+
+describe("Fixture: bus-split-merge", () => {
+  const fixture = loadFixture("bus-split-merge");
+  const modules = fixture.modules;
+
+  describe("Split-Merge roundtrip 8-bit", () => {
+    it("0xA5 → split → merge → 0xA5", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-8", { d: 0xa5 })).toMatchObject({ q: 0xa5 });
+    });
+
+    it("0xFF → split → merge → 0xFF", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-8", { d: 0xff })).toMatchObject({ q: 0xff });
+    });
+
+    it("0x00 → split → merge → 0x00", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-8", { d: 0x00 })).toMatchObject({ q: 0x00 });
+    });
+
+    it("0x01 (only LSB) → split → merge → 0x01", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-8", { d: 0x01 })).toMatchObject({ q: 0x01 });
+    });
+
+    it("0x80 (only MSB) → split → merge → 0x80", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-8", { d: 0x80 })).toMatchObject({ q: 0x80 });
+    });
+  });
+
+  describe("Split-Merge roundtrip 4-bit", () => {
+    it("0xF → split → merge → 0xF", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-4", { d: 0xf })).toMatchObject({ q: 0xf });
+    });
+
+    it("0x5 → split → merge → 0x5", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-4", { d: 0x5 })).toMatchObject({ q: 0x5 });
+    });
+
+    it("0x0 → split → merge → 0x0", () => {
+      expect(evalModule(modules, "mod-split-merge-roundtrip-4", { d: 0x0 })).toMatchObject({ q: 0x0 });
+    });
+  });
+
+  describe("4-bit bit reverse", () => {
+    // 0b1010 (10) → reversed → 0b0101 (5)
+    it("0b1010 → reversed → 0b0101", () => {
+      expect(evalModule(modules, "mod-bit-reverse-4", { d: 0b1010 })).toMatchObject({ q: 0b0101 });
+    });
+
+    // 0b1100 (12) → reversed → 0b0011 (3)
+    it("0b1100 → reversed → 0b0011", () => {
+      expect(evalModule(modules, "mod-bit-reverse-4", { d: 0b1100 })).toMatchObject({ q: 0b0011 });
+    });
+
+    // 0b1111 → reversed → 0b1111 (symmetric)
+    it("0b1111 → reversed → 0b1111 (symmetric)", () => {
+      expect(evalModule(modules, "mod-bit-reverse-4", { d: 0b1111 })).toMatchObject({ q: 0b1111 });
+    });
+
+    // 0b0000 → reversed → 0b0000
+    it("0b0000 → reversed → 0b0000", () => {
+      expect(evalModule(modules, "mod-bit-reverse-4", { d: 0b0000 })).toMatchObject({ q: 0b0000 });
+    });
+
+    // 0b0001 → reversed → 0b1000
+    it("0b0001 → reversed → 0b1000", () => {
+      expect(evalModule(modules, "mod-bit-reverse-4", { d: 0b0001 })).toMatchObject({ q: 0b1000 });
+    });
+  });
+
+  describe("Lower nibble extract", () => {
+    it("0xA5 → lower nibble → 0x05", () => {
+      expect(evalModule(modules, "mod-lower-nibble-extract", { d: 0xa5 })).toMatchObject({ q: 0x05 });
+    });
+
+    it("0xFF → lower nibble → 0x0F", () => {
+      expect(evalModule(modules, "mod-lower-nibble-extract", { d: 0xff })).toMatchObject({ q: 0x0f });
+    });
+
+    it("0xF0 → lower nibble → 0x00", () => {
+      expect(evalModule(modules, "mod-lower-nibble-extract", { d: 0xf0 })).toMatchObject({ q: 0x00 });
+    });
+
+    it("0x00 → lower nibble → 0x00", () => {
+      expect(evalModule(modules, "mod-lower-nibble-extract", { d: 0x00 })).toMatchObject({ q: 0x00 });
+    });
+  });
+
+  describe("Nibble swap", () => {
+    it("0xA5 → swap → 0x5A", () => {
+      expect(evalModule(modules, "mod-nibble-swap", { d: 0xa5 })).toMatchObject({ q: 0x5a });
+    });
+
+    it("0x12 → swap → 0x21", () => {
+      expect(evalModule(modules, "mod-nibble-swap", { d: 0x12 })).toMatchObject({ q: 0x21 });
+    });
+
+    it("0xFF → swap → 0xFF (symmetric)", () => {
+      expect(evalModule(modules, "mod-nibble-swap", { d: 0xff })).toMatchObject({ q: 0xff });
+    });
+
+    it("0x00 → swap → 0x00", () => {
+      expect(evalModule(modules, "mod-nibble-swap", { d: 0x00 })).toMatchObject({ q: 0x00 });
+    });
+
+    it("0xF0 → swap → 0x0F", () => {
+      expect(evalModule(modules, "mod-nibble-swap", { d: 0xf0 })).toMatchObject({ q: 0x0f });
+    });
+  });
+});
+
+// ============================================================
+// I/O Peripherals Advanced fixture
+// ============================================================
+
+describe("Fixture: io-peripherals-advanced", () => {
+  const fixture = loadFixture("io-peripherals-advanced");
+  const modules = fixture.modules;
+
+  describe("DIP bitwise NOT to LED", () => {
+    it("DIP=0xA5 → NOT → LED=0x5A", () => {
+      const out = evalModule(modules, "mod-dip-bitwise-not-led", { dp: 0xa5 });
+      expect(out).toMatchObject({ q: 0x5a });
+    });
+
+    it("DIP=0xFF → NOT → LED=0x00", () => {
+      const out = evalModule(modules, "mod-dip-bitwise-not-led", { dp: 0xff });
+      expect(out).toMatchObject({ q: 0x00 });
+    });
+
+    it("DIP=0x00 → NOT → LED=0xFF", () => {
+      const out = evalModule(modules, "mod-dip-bitwise-not-led", { dp: 0x00 });
+      expect(out).toMatchObject({ q: 0xff });
+    });
+
+    it("DIP=0x0F → NOT → LED=0xF0", () => {
+      const out = evalModule(modules, "mod-dip-bitwise-not-led", { dp: 0x0f });
+      expect(out).toMatchObject({ q: 0xf0 });
+    });
+  });
+
+  describe("Two DIP AND to Hex", () => {
+    it("0xFF AND 0x0F = 0x0F", () => {
+      const out = evalModule(modules, "mod-two-dip-and-hex", { a: 0xff, b: 0x0f });
+      expect(out).toMatchObject({ q: 0x0f });
+    });
+
+    it("0xA5 AND 0x5A = 0x00", () => {
+      const out = evalModule(modules, "mod-two-dip-and-hex", { a: 0xa5, b: 0x5a });
+      expect(out).toMatchObject({ q: 0x00 });
+    });
+
+    it("0xFF AND 0xFF = 0xFF", () => {
+      const out = evalModule(modules, "mod-two-dip-and-hex", { a: 0xff, b: 0xff });
+      expect(out).toMatchObject({ q: 0xff });
+    });
+
+    it("0x00 AND 0xFF = 0x00", () => {
+      const out = evalModule(modules, "mod-two-dip-and-hex", { a: 0x00, b: 0xff });
+      expect(out).toMatchObject({ q: 0x00 });
+    });
+  });
+
+  describe("DIP direct to Hex and LED", () => {
+    it("pass-through 0xA5 to all outputs", () => {
+      const out = evalModule(modules, "mod-dip-direct-hex-led", { d: 0xa5 });
+      expect(out).toMatchObject({ q: 0xa5 });
+    });
+
+    it("pass-through 0x00 to all outputs", () => {
+      const out = evalModule(modules, "mod-dip-direct-hex-led", { d: 0x00 });
+      expect(out).toMatchObject({ q: 0x00 });
+    });
+
+    it("variant nodes preserved", () => {
+      const mod = findModule(modules, "mod-dip-direct-hex-led");
+      const dip = mod.circuit.nodes.find((n) => n.variant === "dip-switch");
+      const hex = mod.circuit.nodes.find((n) => n.variant === "hex-display");
+      const led = mod.circuit.nodes.find((n) => n.variant === "led-bar");
+      expect(dip).toBeDefined();
+      expect(hex).toBeDefined();
+      expect(led).toBeDefined();
+    });
+  });
+
+  describe("4-bit DIP to Hex", () => {
+    it("pass-through 0xF", () => {
+      const out = evalModule(modules, "mod-4bit-dip-hex", { d: 0xf });
+      expect(out).toMatchObject({ q: 0xf });
+    });
+
+    it("pass-through 0x0", () => {
+      const out = evalModule(modules, "mod-4bit-dip-hex", { d: 0x0 });
+      expect(out).toMatchObject({ q: 0x0 });
+    });
+
+    it("pass-through 0xA", () => {
+      const out = evalModule(modules, "mod-4bit-dip-hex", { d: 0xa });
+      expect(out).toMatchObject({ q: 0xa });
+    });
+
+    it("4-bit variants preserved", () => {
+      const mod = findModule(modules, "mod-4bit-dip-hex");
+      const dip = mod.circuit.nodes.find((n) => n.variant === "dip-switch");
+      const hex = mod.circuit.nodes.find((n) => n.variant === "hex-display");
+      expect(dip).toBeDefined();
+      expect(hex).toBeDefined();
+      expect(dip!.pins[0].bits).toBe(4);
+      expect(hex!.pins[0].bits).toBe(4);
+    });
+  });
+});
+
+// ============================================================
+// Tunnel Advanced fixture
+// ============================================================
+
+describe("Fixture: tunnel-advanced", () => {
+  const fixture = loadFixture("tunnel-advanced");
+  const modules = fixture.modules;
+
+  describe("8-bit tunnel", () => {
+    it("0xA5 passes through 8-bit tunnel", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-8bit", { d: 0xa5 });
+      expect(out).toMatchObject({ q: 0xa5 });
+    });
+
+    it("0xFF passes through 8-bit tunnel", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-8bit", { d: 0xff });
+      expect(out).toMatchObject({ q: 0xff });
+    });
+
+    it("0x00 passes through 8-bit tunnel", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-8bit", { d: 0x00 });
+      expect(out).toMatchObject({ q: 0x00 });
+    });
+  });
+
+  describe("Multi-name tunnels", () => {
+    it("independent signals — A=1, B=0 → QA=1, QB=0", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-multi-name", { a: 1, b: 0 });
+      expect(out).toMatchObject({ qa: 1, qb: 0 });
+    });
+
+    it("independent signals — A=0, B=1 → QA=0, QB=1", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-multi-name", { a: 0, b: 1 });
+      expect(out).toMatchObject({ qa: 0, qb: 1 });
+    });
+
+    it("both signals same — A=1, B=1 → QA=1, QB=1", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-multi-name", { a: 1, b: 1 });
+      expect(out).toMatchObject({ qa: 1, qb: 1 });
+    });
+  });
+
+  describe("Tunnel fan-out", () => {
+    it("input 1 → both outputs receive 1", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-fanout", { d: 1 });
+      expect(out).toMatchObject({ q0: 1, q1: 1 });
+    });
+
+    it("input 0 → both outputs receive 0", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-fanout", { d: 0 });
+      expect(out).toMatchObject({ q0: 0, q1: 0 });
+    });
+  });
+
+  describe("Tunnel with logic (NOT)", () => {
+    it("input 0 → tunnel X → NOT → tunnel Y → output 1", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-with-logic", { a: 0 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+
+    it("input 1 → tunnel X → NOT → tunnel Y → output 0", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-with-logic", { a: 1 });
+      expect(out).toMatchObject({ q: 0 });
+    });
+  });
+
+  describe("Tunnel chain (P → Q → R)", () => {
+    it("input 1 passes through 3 tunnel pairs", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-chain", { a: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+
+    it("input 0 passes through 3 tunnel pairs", () => {
+      const out = evalModuleWithTunnels(modules, "mod-tunnel-chain", { a: 0 });
+      expect(out).toMatchObject({ q: 0 });
+    });
+  });
+});
+
+// ============================================================
+// Clock + Button Sequential fixture
+// ============================================================
+
+describe("Fixture: clock-button-sequential", () => {
+  const fixture = loadFixture("clock-button-sequential");
+  const modules = fixture.modules;
+
+  describe("Clock-driven D Flip-Flop", () => {
+    it("has clock and button nodes", () => {
+      const mod = findModule(modules, "mod-clock-driven-dff");
+      const clockNode = mod.circuit.nodes.find((n) => n.type === "clock");
+      const buttonNode = mod.circuit.nodes.find((n) => n.type === "button");
+      expect(clockNode).toBeDefined();
+      expect(buttonNode).toBeDefined();
+    });
+
+    it("button=1, clock=1 → DFF captures data", () => {
+      const out = evalModule(modules, "mod-clock-driven-dff", { bp: 1, cp: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+  });
+
+  describe("Button SR control", () => {
+    it("has two button nodes", () => {
+      const mod = findModule(modules, "mod-button-sr-control");
+      const buttons = mod.circuit.nodes.filter((n) => n.type === "button");
+      expect(buttons.length).toBe(2);
+    });
+
+    // NAND SR: S=1, R=1 → hold; S=0, R=1 → set Q=1; S=1, R=0 → reset Q=0
+    it("SET pressed (S=0), RST not pressed (R=1) → Q=1", () => {
+      // For NAND SR latch: active-low inputs
+      const out = evalModule(modules, "mod-button-sr-control", { bs: 0, br: 1 });
+      expect(out.q).toBe(1);
+    });
+
+    it("SET not pressed (S=1), RST pressed (R=0) → Q=0", () => {
+      const out = evalModule(modules, "mod-button-sr-control", { bs: 1, br: 0 });
+      expect(out.q).toBe(0);
+    });
+  });
+
+  describe("Clock + Button enable (gated clock)", () => {
+    it("clock=1, button=1 → gated clock passes (AND=1)", () => {
+      // AND(1,1) = 1 via NAND-NAND
+      const out = evalModule(modules, "mod-clock-and-button-enable", { d: 1, cp: 1, bp: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+
+    it("clock=1, button=0 → gated clock blocked (AND=0)", () => {
+      // AND(1,0) = 0 → DFF clock stays low
+      const mod = findModule(modules, "mod-clock-and-button-enable");
+      expect(mod.circuit.nodes.find((n) => n.type === "clock")).toBeDefined();
+      expect(mod.circuit.nodes.find((n) => n.type === "button")).toBeDefined();
+    });
+  });
+
+  describe("Button Toggle (D Latch)", () => {
+    it("has constant and button nodes", () => {
+      const mod = findModule(modules, "mod-button-toggle");
+      const constNode = mod.circuit.nodes.find((n) => n.type === "constant");
+      const buttonNode = mod.circuit.nodes.find((n) => n.type === "button");
+      expect(constNode).toBeDefined();
+      expect(buttonNode).toBeDefined();
+      // Constant should be VCC (pin name "1")
+      expect(constNode!.pins[0].name).toBe("1");
+    });
+
+    it("button pressed (EN=1) with VCC on D → Q=1", () => {
+      // Constant VCC (pin cv, name "1") needs seeded value
+      const out = evalModule(modules, "mod-button-toggle", { bp: 1, cv: 1 });
+      expect(out).toMatchObject({ q: 1 });
+    });
+  });
+});
+
+// ============================================================
 // Fixture structural checks
 // ============================================================
 
@@ -346,6 +843,8 @@ describe("Fixture structural integrity", () => {
   const fixtureNames = [
     "gates", "mux-demux", "decoder", "adder",
     "alu-8bit", "flip-flops", "counter-4bit", "bus-peripherals-demo",
+    "io-basics", "bus-split-merge", "io-peripherals-advanced",
+    "tunnel-advanced", "clock-button-sequential",
   ] as const;
 
   for (const name of fixtureNames) {

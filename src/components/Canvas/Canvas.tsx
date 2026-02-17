@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import {
   ReactFlow,
   Background,
@@ -79,10 +79,22 @@ function CanvasInner() {
   const [edgeColorMenu, setEdgeColorMenu] = useState<{ edgeId: string; x: number; y: number } | null>(null);
   const [propertiesModuleId, setPropertiesModuleId] = useState<string | null>(null);
 
+  const drilldownStack = useCircuitStore((s) => s.drilldownStack);
+
   const { onConnect, isValidConnection } = useWiring();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   useSimulation();
   useClockTick();
+
+  // Fit view when drill-down level changes (entering or navigating)
+  const drilldownDepth = drilldownStack.length;
+  const activeModuleId = useCircuitStore((s) => s.activeModuleId);
+  useEffect(() => {
+    // Small delay so ReactFlow can lay out the new nodes first
+    const timer = setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 50);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drilldownDepth, activeModuleId, fitView]);
 
   // Read-only guards for node/edge changes
   const guardedOnNodesChange = useCallback(
@@ -110,6 +122,24 @@ function CanvasInner() {
   );
 
   // Double-click to drill down into module instances
+  // Native onDoubleClick doesn't fire reliably in read-only mode (node re-render
+  // on selection breaks browser double-click detection), so we detect it manually.
+  const lastClickRef = useRef<{ nodeId: string; time: number }>({ nodeId: "", time: 0 });
+
+  const handleNodeClick = useCallback(
+    (_event: ReactMouseEvent, node: AppNode) => {
+      if (node.type !== "module") return;
+      const now = Date.now();
+      if (lastClickRef.current.nodeId === node.id && now - lastClickRef.current.time < 400) {
+        lastClickRef.current = { nodeId: "", time: 0 };
+        drillDown(node.id);
+        return;
+      }
+      lastClickRef.current = { nodeId: node.id, time: now };
+    },
+    [drillDown],
+  );
+
   const handleNodeDoubleClick = useCallback(
     (_event: ReactMouseEvent, node: AppNode) => {
       if (node.type !== "module") return;
@@ -345,6 +375,7 @@ function CanvasInner() {
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onNodeDragStart={readOnly ? undefined : handleNodeDragStart}
+        onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
         onNodeContextMenu={handleNodeContextMenu}
         onEdgeContextMenu={readOnly ? undefined : handleEdgeContextMenu}
