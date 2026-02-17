@@ -1,0 +1,227 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-tunnel-8bit",
+      "name": "8-bit Tunnel",
+      "description": "8-bitovy signal prechadzajuci cez tunnel pair (in→out). Overuje, ze tunnely funguju aj pre multi-bit signaly, nie len pre 1-bit. Hodnoty 0x00..0xFF musia byt zachovane. Tunnel-in a tunnel-out su sparovane podla nazvu 'BUS'.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "t8-circuit", "name": "8-bit Tunnel",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "tin", "type": "tunnel", "variant": "in", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tv", "name": "BUS", "direction": "input", "bits": 8 },
+            { "id": "ti", "name": "BUS", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "tout", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "to", "name": "BUS", "direction": "input", "bits": 8 },
+            { "id": "tv2", "name": "BUS", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "tin", "toPinId": "tv" },
+          { "id": "e2", "fromNodeId": "tout", "fromPinId": "tv2", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-tunnel-multi-name",
+      "name": "Multi-name Tunnels",
+      "description": "Dva nezavisle tunnel pary s roznymi nazvami ('SIG_A' a 'SIG_B'). Kazdy par prenasa nezavisly signal. Overuje, ze tunnely s roznymi nazvami sa NEMIESIA — signaly su uplne izolovane. Ak A=1, B=0, potom QA=1, QB=0.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "qa", "name": "QA", "direction": "output", "bits": 1 },
+        { "id": "qb", "name": "QB", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tmn-circuit", "name": "Multi-name Tunnels",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "bi", "type": "input", "position": { "x": 0, "y": 200 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 1 }] },
+          { "id": "tin_a", "type": "tunnel", "variant": "in", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tav", "name": "SIG_A", "direction": "input", "bits": 1 },
+            { "id": "tai", "name": "SIG_A", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tin_b", "type": "tunnel", "variant": "in", "position": { "x": 200, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "tbv", "name": "SIG_B", "direction": "input", "bits": 1 },
+            { "id": "tbi", "name": "SIG_B", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_a", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tao", "name": "SIG_A", "direction": "input", "bits": 1 },
+            { "id": "tav2", "name": "SIG_A", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_b", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "tbo", "name": "SIG_B", "direction": "input", "bits": 1 },
+            { "id": "tbv2", "name": "SIG_B", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "qao", "type": "output", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [{ "id": "qa", "name": "QA", "direction": "input", "bits": 1 }] },
+          { "id": "qbo", "type": "output", "position": { "x": 600, "y": 200 }, "rotation": 0, "pins": [{ "id": "qb", "name": "QB", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "tin_a", "toPinId": "tav" },
+          { "id": "e2", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "tin_b", "toPinId": "tbv" },
+          { "id": "e3", "fromNodeId": "tout_a", "fromPinId": "tav2", "toNodeId": "qao", "toPinId": "qa" },
+          { "id": "e4", "fromNodeId": "tout_b", "fromPinId": "tbv2", "toNodeId": "qbo", "toPinId": "qb" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-tunnel-fanout",
+      "name": "Tunnel Fan-out",
+      "description": "Jeden tunnel-in ('CLK') a dva tunnel-out nody s rovnakym nazvom ('CLK'). Signal z jedneho zdroja sa distribuuje na viacero cielov cez tunnel system. Overuje, ze tunnel fan-out funguje — obe vystupy musia dostat rovnaku hodnotu.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q0", "name": "Q0", "direction": "output", "bits": 1 },
+        { "id": "q1", "name": "Q1", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tfo-circuit", "name": "Tunnel Fan-out",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 1 }] },
+          { "id": "tin", "type": "tunnel", "variant": "in", "position": { "x": 200, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "tv", "name": "CLK", "direction": "input", "bits": 1 },
+            { "id": "ti", "name": "CLK", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout0", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "t0o", "name": "CLK", "direction": "input", "bits": 1 },
+            { "id": "t0v", "name": "CLK", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout1", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "t1o", "name": "CLK", "direction": "input", "bits": 1 },
+            { "id": "t1v", "name": "CLK", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "q0o", "type": "output", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [{ "id": "q0", "name": "Q0", "direction": "input", "bits": 1 }] },
+          { "id": "q1o", "type": "output", "position": { "x": 600, "y": 200 }, "rotation": 0, "pins": [{ "id": "q1", "name": "Q1", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "tin", "toPinId": "tv" },
+          { "id": "e2", "fromNodeId": "tout0", "fromPinId": "t0v", "toNodeId": "q0o", "toPinId": "q0" },
+          { "id": "e3", "fromNodeId": "tout1", "fromPinId": "t1v", "toNodeId": "q1o", "toPinId": "q1" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-tunnel-with-logic",
+      "name": "Tunnel with Logic",
+      "description": "Signal ide cez tunnel 'X', potom prechádza cez NAND gate (NOT — oba vstupy su rovnake), a vysledok ide cez druhy tunnel 'Y' na output. Testuje, ze tunnely mozno kombinovat s logickymi hradlami v lubovolnom poradi. Input=0 → tunel X → NOT → tunel Y → Output=1.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "twl-circuit", "name": "Tunnel with Logic",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "tin_x", "type": "tunnel", "variant": "in", "position": { "x": 150, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "txv", "name": "X", "direction": "input", "bits": 1 },
+            { "id": "txi", "name": "X", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_x", "type": "tunnel", "variant": "out", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "txo", "name": "X", "direction": "input", "bits": 1 },
+            { "id": "txv2", "name": "X", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "nand1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 450, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "na", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "nb", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "no", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tin_y", "type": "tunnel", "variant": "in", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tyv", "name": "Y", "direction": "input", "bits": 1 },
+            { "id": "tyi", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_y", "type": "tunnel", "variant": "out", "position": { "x": 750, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "tyo", "name": "Y", "direction": "input", "bits": 1 },
+            { "id": "tyv2", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 900, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "tin_x", "toPinId": "txv" },
+          { "id": "e2", "fromNodeId": "tout_x", "fromPinId": "txv2", "toNodeId": "nand1", "toPinId": "na" },
+          { "id": "e3", "fromNodeId": "tout_x", "fromPinId": "txv2", "toNodeId": "nand1", "toPinId": "nb" },
+          { "id": "e4", "fromNodeId": "nand1", "fromPinId": "no", "toNodeId": "tin_y", "toPinId": "tyv" },
+          { "id": "e5", "fromNodeId": "tout_y", "fromPinId": "tyv2", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-tunnel-chain",
+      "name": "Tunnel Chain",
+      "description": "Signal prechádza cez tri tunnely za sebou: A → tunnel 'P' → tunnel 'Q' → tunnel 'R' → output. Overuje, ze tunnely mozno retazit a signal nepresne po prechode viacerymi tunnel parmi. Toto je extremny pripad — vacsinou sa pouziva 1 tunel, ale chain musi fungovat.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tch-circuit", "name": "Tunnel Chain",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "tin_p", "type": "tunnel", "variant": "in", "position": { "x": 100, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "pv", "name": "P", "direction": "input", "bits": 1 },
+            { "id": "pi", "name": "P", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_p", "type": "tunnel", "variant": "out", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "po", "name": "P", "direction": "input", "bits": 1 },
+            { "id": "pv2", "name": "P", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tin_q", "type": "tunnel", "variant": "in", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "qv", "name": "Q", "direction": "input", "bits": 1 },
+            { "id": "qi", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_q", "type": "tunnel", "variant": "out", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "qo2", "name": "Q", "direction": "input", "bits": 1 },
+            { "id": "qv2", "name": "Q", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tin_r", "type": "tunnel", "variant": "in", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "rv", "name": "R", "direction": "input", "bits": 1 },
+            { "id": "ri", "name": "R", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tout_r", "type": "tunnel", "variant": "out", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "ro", "name": "R", "direction": "input", "bits": 1 },
+            { "id": "rv2", "name": "R", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "tin_p", "toPinId": "pv" },
+          { "id": "e2", "fromNodeId": "tout_p", "fromPinId": "pv2", "toNodeId": "tin_q", "toPinId": "qv" },
+          { "id": "e3", "fromNodeId": "tout_q", "fromPinId": "qv2", "toNodeId": "tin_r", "toPinId": "rv" },
+          { "id": "e4", "fromNodeId": "tout_r", "fromPinId": "rv2", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-tunnel-8bit" },
+    { "type": "module", "moduleId": "mod-tunnel-multi-name" },
+    { "type": "module", "moduleId": "mod-tunnel-fanout" },
+    { "type": "module", "moduleId": "mod-tunnel-with-logic" },
+    { "type": "module", "moduleId": "mod-tunnel-chain" }
+  ]
+}

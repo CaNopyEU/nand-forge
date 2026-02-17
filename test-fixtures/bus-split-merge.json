@@ -1,0 +1,259 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-split-merge-roundtrip-8",
+      "name": "Split-Merge Roundtrip 8-bit",
+      "description": "8-bitovy signal sa rozlozi splitterom na 8 jednotlivych bitov a potom sa znova zlozi mergerom. Vysledok MUSI byt identicky s povodnym vstupom. Testuje, ze splitter/merger zachovava bit ordering (LSB=bit0, MSB=bit7).",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "smr8-circuit", "name": "Split-Merge Roundtrip 8-bit",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "s4", "name": "4", "direction": "output", "bits": 1 },
+            { "id": "s5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "s6", "name": "6", "direction": "output", "bits": 1 },
+            { "id": "s7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "m4", "name": "4", "direction": "input", "bits": 1 },
+            { "id": "m5", "name": "5", "direction": "input", "bits": 1 },
+            { "id": "m6", "name": "6", "direction": "input", "bits": 1 },
+            { "id": "m7", "name": "7", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e_in", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "e0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "e1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "e2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "e3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "e4", "fromNodeId": "spl", "fromPinId": "s4", "toNodeId": "mrg", "toPinId": "m4" },
+          { "id": "e5", "fromNodeId": "spl", "fromPinId": "s5", "toNodeId": "mrg", "toPinId": "m5" },
+          { "id": "e6", "fromNodeId": "spl", "fromPinId": "s6", "toNodeId": "mrg", "toPinId": "m6" },
+          { "id": "e7", "fromNodeId": "spl", "fromPinId": "s7", "toNodeId": "mrg", "toPinId": "m7" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-split-merge-roundtrip-4",
+      "name": "Split-Merge Roundtrip 4-bit",
+      "description": "Rovnaky princip ako 8-bit, ale pre 4-bitovy signal. Overuje, ze splitter/merger funguje aj pre mensie bit-widths. Hodnoty 0..15 musia byt zachovane.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 4 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 4 }
+      ],
+      "circuit": {
+        "id": "smr4-circuit", "name": "Split-Merge Roundtrip 4-bit",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 4 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 4 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 4 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 4 }] }
+        ],
+        "edges": [
+          { "id": "e_in", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "e0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "e1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "e2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "e3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-bit-reverse-4",
+      "name": "4-bit Bit Reverse",
+      "description": "Rozlozi 4-bitovy signal a znova ho zlozi s obratenim poradia bitov. Bit 0 sa stane bit 3, bit 1 sa stane bit 2, atd. Napr. 0b1010 (10) → 0b0101 (5). Toto testuje, ze merger nezavisi na poradi pripojenia splitterovych vystupov.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 4 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 4 }
+      ],
+      "circuit": {
+        "id": "brev4-circuit", "name": "4-bit Bit Reverse",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 4 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 4 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 4 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 4 }] }
+        ],
+        "edges": [
+          { "id": "e_in", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "e0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "e1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "e2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "e3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-lower-nibble-extract",
+      "name": "Lower Nibble Extract",
+      "description": "Z 8-bitoveho signalu sa extractne dolny nibble (bity 0-3) a horny nibble (bity 4-7) sa nastavia na 0 pomocou GND konstant. Napr. 0xA5 → 0x05. Testuje kombinaciu splitter + constant + merger.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "lnib-circuit", "name": "Lower Nibble Extract",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "s4", "name": "4", "direction": "output", "bits": 1 },
+            { "id": "s5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "s6", "name": "6", "direction": "output", "bits": 1 },
+            { "id": "s7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "gnd", "type": "constant", "position": { "x": 350, "y": 200 }, "rotation": 0, "pins": [{ "id": "gz", "name": "0", "direction": "output", "bits": 1 }] },
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "m4", "name": "4", "direction": "input", "bits": 1 },
+            { "id": "m5", "name": "5", "direction": "input", "bits": 1 },
+            { "id": "m6", "name": "6", "direction": "input", "bits": 1 },
+            { "id": "m7", "name": "7", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e_in", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "e0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "e1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "e2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "e3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "e4", "fromNodeId": "gnd", "fromPinId": "gz", "toNodeId": "mrg", "toPinId": "m4" },
+          { "id": "e5", "fromNodeId": "gnd", "fromPinId": "gz", "toNodeId": "mrg", "toPinId": "m5" },
+          { "id": "e6", "fromNodeId": "gnd", "fromPinId": "gz", "toNodeId": "mrg", "toPinId": "m6" },
+          { "id": "e7", "fromNodeId": "gnd", "fromPinId": "gz", "toNodeId": "mrg", "toPinId": "m7" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-nibble-swap",
+      "name": "Nibble Swap",
+      "description": "Prehadze horny a dolny nibble 8-bitoveho signalu. Bity 0-3 sa presunu na pozicie 4-7 a naopak. Napr. 0xA5 → 0x5A, 0x12 → 0x21. Testuje kryzove prepojenie medzi splitter a merger.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "nswp-circuit", "name": "Nibble Swap",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "s4", "name": "4", "direction": "output", "bits": 1 },
+            { "id": "s5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "s6", "name": "6", "direction": "output", "bits": 1 },
+            { "id": "s7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 500, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "m4", "name": "4", "direction": "input", "bits": 1 },
+            { "id": "m5", "name": "5", "direction": "input", "bits": 1 },
+            { "id": "m6", "name": "6", "direction": "input", "bits": 1 },
+            { "id": "m7", "name": "7", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "qo", "type": "output", "position": { "x": 700, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e_in", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "e0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "mrg", "toPinId": "m4" },
+          { "id": "e1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "mrg", "toPinId": "m5" },
+          { "id": "e2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "mrg", "toPinId": "m6" },
+          { "id": "e3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "mrg", "toPinId": "m7" },
+          { "id": "e4", "fromNodeId": "spl", "fromPinId": "s4", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "e5", "fromNodeId": "spl", "fromPinId": "s5", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "e6", "fromNodeId": "spl", "fromPinId": "s6", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "e7", "fromNodeId": "spl", "fromPinId": "s7", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-split-merge-roundtrip-8" },
+    { "type": "module", "moduleId": "mod-split-merge-roundtrip-4" },
+    { "type": "module", "moduleId": "mod-bit-reverse-4" },
+    { "type": "module", "moduleId": "mod-lower-nibble-extract" },
+    { "type": "module", "moduleId": "mod-nibble-swap" }
+  ]
+}

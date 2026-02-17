@@ -1,0 +1,278 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-not",
+      "name": "NOT",
+      "inputs": [{ "id": "a", "name": "A", "direction": "input", "bits": 1 }],
+      "outputs": [{ "id": "out", "name": "Out", "direction": "output", "bits": 1 }],
+      "circuit": {
+        "id": "not-circuit", "name": "NOT",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "n1a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n1b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n1o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1a" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1b" },
+          { "id": "e3", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "oo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-and",
+      "name": "AND",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [{ "id": "out", "name": "Out", "direction": "output", "bits": 1 }],
+      "circuit": {
+        "id": "and-circuit", "name": "AND",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "bi", "type": "input", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 1 }] },
+          { "id": "n1", "type": "module", "moduleId": "builtin:nand", "position": { "x": 200, "y": 50 }, "rotation": 0, "pins": [
+            { "id": "n1a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n1b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n1o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "n2", "type": "module", "moduleId": "builtin:nand", "position": { "x": 400, "y": 50 }, "rotation": 0, "pins": [
+            { "id": "n2a", "name": "A", "direction": "input", "bits": 1 },
+            { "id": "n2b", "name": "B", "direction": "input", "bits": 1 },
+            { "id": "n2o", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "oo", "type": "output", "position": { "x": 600, "y": 50 }, "rotation": 0, "pins": [{ "id": "out", "name": "Out", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "n1", "toPinId": "n1a" },
+          { "id": "e2", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "n1", "toPinId": "n1b" },
+          { "id": "e3", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "n2", "toPinId": "n2a" },
+          { "id": "e4", "fromNodeId": "n1", "fromPinId": "n1o", "toNodeId": "n2", "toPinId": "n2b" },
+          { "id": "e5", "fromNodeId": "n2", "fromPinId": "n2o", "toNodeId": "oo", "toPinId": "out" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-dip-bitwise-not-led",
+      "name": "DIP Bitwise NOT to LED",
+      "description": "DIP Switch (8-bit) sa rozlozi splitterom, kazdy bit sa invertuje cez NOT gate, a potom sa zlozi mergerom a zobrazi na LED Bar. Napr. DIP=0xA5 (10100101) → LED=0x5A (01011010). Overuje celu pipeline: DIP → Splitter → logika → Merger → LED.",
+      "inputs": [],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "dbnl-circuit", "name": "DIP Bitwise NOT to LED",
+        "nodes": [
+          { "id": "dip", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "dp", "name": "DIP", "direction": "output", "bits": 8 }] },
+          { "id": "spl", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 200, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "si", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "s0", "name": "0", "direction": "output", "bits": 1 },
+            { "id": "s1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "s2", "name": "2", "direction": "output", "bits": 1 },
+            { "id": "s3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "s4", "name": "4", "direction": "output", "bits": 1 },
+            { "id": "s5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "s6", "name": "6", "direction": "output", "bits": 1 },
+            { "id": "s7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "inv0", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 0 }, "rotation": 0, "pins": [{ "id": "i0a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i0o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv1", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 50 }, "rotation": 0, "pins": [{ "id": "i1a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i1o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv2", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 100 }, "rotation": 0, "pins": [{ "id": "i2a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i2o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv3", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 150 }, "rotation": 0, "pins": [{ "id": "i3a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i3o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv4", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 200 }, "rotation": 0, "pins": [{ "id": "i4a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i4o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv5", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 250 }, "rotation": 0, "pins": [{ "id": "i5a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i5o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv6", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 300 }, "rotation": 0, "pins": [{ "id": "i6a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i6o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "inv7", "type": "module", "moduleId": "mod-not", "position": { "x": 400, "y": 350 }, "rotation": 0, "pins": [{ "id": "i7a", "name": "A", "direction": "input", "bits": 1 }, { "id": "i7o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 600, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 },
+            { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 },
+            { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "m4", "name": "4", "direction": "input", "bits": 1 },
+            { "id": "m5", "name": "5", "direction": "input", "bits": 1 },
+            { "id": "m6", "name": "6", "direction": "input", "bits": 1 },
+            { "id": "m7", "name": "7", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "led", "type": "output", "variant": "led-bar", "position": { "x": 800, "y": 0 }, "rotation": 0, "pins": [{ "id": "lp", "name": "LEDs", "direction": "input", "bits": 8 }] },
+          { "id": "qo", "type": "output", "position": { "x": 800, "y": 100 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e_dip", "fromNodeId": "dip", "fromPinId": "dp", "toNodeId": "spl", "toPinId": "si" },
+          { "id": "es0", "fromNodeId": "spl", "fromPinId": "s0", "toNodeId": "inv0", "toPinId": "i0a" },
+          { "id": "es1", "fromNodeId": "spl", "fromPinId": "s1", "toNodeId": "inv1", "toPinId": "i1a" },
+          { "id": "es2", "fromNodeId": "spl", "fromPinId": "s2", "toNodeId": "inv2", "toPinId": "i2a" },
+          { "id": "es3", "fromNodeId": "spl", "fromPinId": "s3", "toNodeId": "inv3", "toPinId": "i3a" },
+          { "id": "es4", "fromNodeId": "spl", "fromPinId": "s4", "toNodeId": "inv4", "toPinId": "i4a" },
+          { "id": "es5", "fromNodeId": "spl", "fromPinId": "s5", "toNodeId": "inv5", "toPinId": "i5a" },
+          { "id": "es6", "fromNodeId": "spl", "fromPinId": "s6", "toNodeId": "inv6", "toPinId": "i6a" },
+          { "id": "es7", "fromNodeId": "spl", "fromPinId": "s7", "toNodeId": "inv7", "toPinId": "i7a" },
+          { "id": "em0", "fromNodeId": "inv0", "fromPinId": "i0o", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "em1", "fromNodeId": "inv1", "fromPinId": "i1o", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "em2", "fromNodeId": "inv2", "fromPinId": "i2o", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "em3", "fromNodeId": "inv3", "fromPinId": "i3o", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "em4", "fromNodeId": "inv4", "fromPinId": "i4o", "toNodeId": "mrg", "toPinId": "m4" },
+          { "id": "em5", "fromNodeId": "inv5", "fromPinId": "i5o", "toNodeId": "mrg", "toPinId": "m5" },
+          { "id": "em6", "fromNodeId": "inv6", "fromPinId": "i6o", "toNodeId": "mrg", "toPinId": "m6" },
+          { "id": "em7", "fromNodeId": "inv7", "fromPinId": "i7o", "toNodeId": "mrg", "toPinId": "m7" },
+          { "id": "e_led", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "led", "toPinId": "lp" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-two-dip-and-hex",
+      "name": "Two DIP AND to Hex",
+      "description": "Dva DIP Switch vstupy (A a B, oba 8-bit) sa rozlozia splittermi, kazdy pár bitov sa AND-uje, a vysledok sa zlozi mergerom a zobrazi na Hex Display. Napr. A=0xFF, B=0x0F → Hex=0x0F. Testuje kombinaciu dvoch vstupov cez bitovu operaciu.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 8 },
+        { "id": "b", "name": "B", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "2dah-circuit", "name": "Two DIP AND to Hex",
+        "nodes": [
+          { "id": "ai", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 8 }] },
+          { "id": "bi", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "b", "name": "B", "direction": "output", "bits": 8 }] },
+          { "id": "spla", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 150, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "sai", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "sa0", "name": "0", "direction": "output", "bits": 1 }, { "id": "sa1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "sa2", "name": "2", "direction": "output", "bits": 1 }, { "id": "sa3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "sa4", "name": "4", "direction": "output", "bits": 1 }, { "id": "sa5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "sa6", "name": "6", "direction": "output", "bits": 1 }, { "id": "sa7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "splb", "type": "module", "moduleId": "builtin:splitter", "position": { "x": 150, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "sbi", "name": "In", "direction": "input", "bits": 8 },
+            { "id": "sb0", "name": "0", "direction": "output", "bits": 1 }, { "id": "sb1", "name": "1", "direction": "output", "bits": 1 },
+            { "id": "sb2", "name": "2", "direction": "output", "bits": 1 }, { "id": "sb3", "name": "3", "direction": "output", "bits": 1 },
+            { "id": "sb4", "name": "4", "direction": "output", "bits": 1 }, { "id": "sb5", "name": "5", "direction": "output", "bits": 1 },
+            { "id": "sb6", "name": "6", "direction": "output", "bits": 1 }, { "id": "sb7", "name": "7", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "a0", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 0 }, "rotation": 0, "pins": [{ "id": "a0a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a0b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a0o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a1", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 50 }, "rotation": 0, "pins": [{ "id": "a1a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a1b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a1o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a2", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 100 }, "rotation": 0, "pins": [{ "id": "a2a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a2b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a2o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a3", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 150 }, "rotation": 0, "pins": [{ "id": "a3a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a3b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a3o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a4", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 200 }, "rotation": 0, "pins": [{ "id": "a4a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a4b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a4o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a5", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 250 }, "rotation": 0, "pins": [{ "id": "a5a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a5b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a5o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a6", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 300 }, "rotation": 0, "pins": [{ "id": "a6a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a6b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a6o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "a7", "type": "module", "moduleId": "mod-and", "position": { "x": 350, "y": 350 }, "rotation": 0, "pins": [{ "id": "a7a", "name": "A", "direction": "input", "bits": 1 }, { "id": "a7b", "name": "B", "direction": "input", "bits": 1 }, { "id": "a7o", "name": "Out", "direction": "output", "bits": 1 }] },
+          { "id": "mrg", "type": "module", "moduleId": "builtin:merger", "position": { "x": 550, "y": 0 }, "rotation": 0, "pins": [
+            { "id": "m0", "name": "0", "direction": "input", "bits": 1 }, { "id": "m1", "name": "1", "direction": "input", "bits": 1 },
+            { "id": "m2", "name": "2", "direction": "input", "bits": 1 }, { "id": "m3", "name": "3", "direction": "input", "bits": 1 },
+            { "id": "m4", "name": "4", "direction": "input", "bits": 1 }, { "id": "m5", "name": "5", "direction": "input", "bits": 1 },
+            { "id": "m6", "name": "6", "direction": "input", "bits": 1 }, { "id": "m7", "name": "7", "direction": "input", "bits": 1 },
+            { "id": "mo", "name": "Out", "direction": "output", "bits": 8 }
+          ]},
+          { "id": "hex", "type": "output", "variant": "hex-display", "position": { "x": 750, "y": 0 }, "rotation": 0, "pins": [{ "id": "hp", "name": "HEX", "direction": "input", "bits": 8 }] },
+          { "id": "qo", "type": "output", "position": { "x": 750, "y": 100 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "ea_in", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "spla", "toPinId": "sai" },
+          { "id": "eb_in", "fromNodeId": "bi", "fromPinId": "b", "toNodeId": "splb", "toPinId": "sbi" },
+          { "id": "ea0", "fromNodeId": "spla", "fromPinId": "sa0", "toNodeId": "a0", "toPinId": "a0a" },
+          { "id": "eb0", "fromNodeId": "splb", "fromPinId": "sb0", "toNodeId": "a0", "toPinId": "a0b" },
+          { "id": "ea1", "fromNodeId": "spla", "fromPinId": "sa1", "toNodeId": "a1", "toPinId": "a1a" },
+          { "id": "eb1", "fromNodeId": "splb", "fromPinId": "sb1", "toNodeId": "a1", "toPinId": "a1b" },
+          { "id": "ea2", "fromNodeId": "spla", "fromPinId": "sa2", "toNodeId": "a2", "toPinId": "a2a" },
+          { "id": "eb2", "fromNodeId": "splb", "fromPinId": "sb2", "toNodeId": "a2", "toPinId": "a2b" },
+          { "id": "ea3", "fromNodeId": "spla", "fromPinId": "sa3", "toNodeId": "a3", "toPinId": "a3a" },
+          { "id": "eb3", "fromNodeId": "splb", "fromPinId": "sb3", "toNodeId": "a3", "toPinId": "a3b" },
+          { "id": "ea4", "fromNodeId": "spla", "fromPinId": "sa4", "toNodeId": "a4", "toPinId": "a4a" },
+          { "id": "eb4", "fromNodeId": "splb", "fromPinId": "sb4", "toNodeId": "a4", "toPinId": "a4b" },
+          { "id": "ea5", "fromNodeId": "spla", "fromPinId": "sa5", "toNodeId": "a5", "toPinId": "a5a" },
+          { "id": "eb5", "fromNodeId": "splb", "fromPinId": "sb5", "toNodeId": "a5", "toPinId": "a5b" },
+          { "id": "ea6", "fromNodeId": "spla", "fromPinId": "sa6", "toNodeId": "a6", "toPinId": "a6a" },
+          { "id": "eb6", "fromNodeId": "splb", "fromPinId": "sb6", "toNodeId": "a6", "toPinId": "a6b" },
+          { "id": "ea7", "fromNodeId": "spla", "fromPinId": "sa7", "toNodeId": "a7", "toPinId": "a7a" },
+          { "id": "eb7", "fromNodeId": "splb", "fromPinId": "sb7", "toNodeId": "a7", "toPinId": "a7b" },
+          { "id": "em0", "fromNodeId": "a0", "fromPinId": "a0o", "toNodeId": "mrg", "toPinId": "m0" },
+          { "id": "em1", "fromNodeId": "a1", "fromPinId": "a1o", "toNodeId": "mrg", "toPinId": "m1" },
+          { "id": "em2", "fromNodeId": "a2", "fromPinId": "a2o", "toNodeId": "mrg", "toPinId": "m2" },
+          { "id": "em3", "fromNodeId": "a3", "fromPinId": "a3o", "toNodeId": "mrg", "toPinId": "m3" },
+          { "id": "em4", "fromNodeId": "a4", "fromPinId": "a4o", "toNodeId": "mrg", "toPinId": "m4" },
+          { "id": "em5", "fromNodeId": "a5", "fromPinId": "a5o", "toNodeId": "mrg", "toPinId": "m5" },
+          { "id": "em6", "fromNodeId": "a6", "fromPinId": "a6o", "toNodeId": "mrg", "toPinId": "m6" },
+          { "id": "em7", "fromNodeId": "a7", "fromPinId": "a7o", "toNodeId": "mrg", "toPinId": "m7" },
+          { "id": "e_hex", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "hex", "toPinId": "hp" },
+          { "id": "e_out", "fromNodeId": "mrg", "fromPinId": "mo", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-dip-direct-hex-led",
+      "name": "DIP Direct to Hex and LED",
+      "description": "DIP Switch priamo pripojeny na Hex Display aj LED Bar sucasne (fan-out). Overuje, ze DIP switch signal moze napajat viacero output periferii bez straty dat. Hodnota na oboch output-och musi byt rovnaka ako na DIP.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "ddhl-circuit", "name": "DIP Direct to Hex and LED",
+        "nodes": [
+          { "id": "di", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "hex", "type": "output", "variant": "hex-display", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "hp", "name": "HEX", "direction": "input", "bits": 8 }] },
+          { "id": "led", "type": "output", "variant": "led-bar", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "lp", "name": "LEDs", "direction": "input", "bits": 8 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 200 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "hex", "toPinId": "hp" },
+          { "id": "e2", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "led", "toPinId": "lp" },
+          { "id": "e3", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-4bit-dip-hex",
+      "name": "4-bit DIP to Hex",
+      "description": "4-bitovy DIP Switch pripojeny na 4-bitovy Hex Display. Testuje, ze periferie funguju aj s mensiim bit-width nez 8. Hodnoty 0..15 (0x0..0xF) musia byt zobrazene spravne.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 4 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 4 }
+      ],
+      "circuit": {
+        "id": "4dh-circuit", "name": "4-bit DIP to Hex",
+        "nodes": [
+          { "id": "di", "type": "input", "variant": "dip-switch", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 4 }] },
+          { "id": "hex", "type": "output", "variant": "hex-display", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "hp", "name": "HEX", "direction": "input", "bits": 4 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 4 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "hex", "toPinId": "hp" },
+          { "id": "e2", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-not" },
+    { "type": "module", "moduleId": "mod-and" },
+    { "type": "module", "moduleId": "mod-dip-bitwise-not-led" },
+    { "type": "module", "moduleId": "mod-two-dip-and-hex" },
+    { "type": "module", "moduleId": "mod-dip-direct-hex-led" },
+    { "type": "module", "moduleId": "mod-4bit-dip-hex" }
+  ]
+}

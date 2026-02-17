@@ -1,0 +1,208 @@
+{
+  "version": 2,
+  "modules": [
+    {
+      "id": "mod-passthrough-4bit",
+      "name": "4-bit Pass-through",
+      "description": "Overuje, ze 4-bitovy signal prejde z inputu na output bez zmeny. Kazda hodnota 0..15 by mala byt zachovana.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 4 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 4 }
+      ],
+      "circuit": {
+        "id": "pt4-circuit", "name": "4-bit Pass-through",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 4 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 4 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-passthrough-16bit",
+      "name": "16-bit Pass-through",
+      "description": "Overuje 16-bitovy pass-through. Maximalna hodnota 65535 (0xFFFF) musi byt zachovana.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 16 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 16 }
+      ],
+      "circuit": {
+        "id": "pt16-circuit", "name": "16-bit Pass-through",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 16 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 16 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-constants-vcc-gnd",
+      "name": "VCC and GND",
+      "description": "Dva constant nody — VCC (vzdy 1) a GND (vzdy 0). Overuje, ze constant nody vystavuju spravnu fixnu hodnotu nezavisle od cehokolvek.",
+      "inputs": [],
+      "outputs": [
+        { "id": "vcc", "name": "VCC", "direction": "output", "bits": 1 },
+        { "id": "gnd", "name": "GND", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "const-circuit", "name": "VCC and GND",
+        "nodes": [
+          { "id": "c1", "type": "constant", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "cv", "name": "1", "direction": "output", "bits": 1 }] },
+          { "id": "c0", "type": "constant", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "cz", "name": "0", "direction": "output", "bits": 1 }] },
+          { "id": "vo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "vcc", "name": "VCC", "direction": "input", "bits": 1 }] },
+          { "id": "go", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "gnd", "name": "GND", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "c1", "fromPinId": "cv", "toNodeId": "vo", "toPinId": "vcc" },
+          { "id": "e2", "fromNodeId": "c0", "fromPinId": "cz", "toNodeId": "go", "toPinId": "gnd" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-button-to-output",
+      "name": "Button to Output",
+      "description": "Button node sa sprava ako 1-bitovy vstup. Ked je stlaceny (pressed=1), output je 1. Ked nie je stlaceny (pressed=0), output je 0. Button nema ziadny debounce — je to okamzity signal.",
+      "inputs": [],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "btn-circuit", "name": "Button to Output",
+        "nodes": [
+          { "id": "btn", "type": "button", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "bp", "name": "BTN", "direction": "output", "bits": 1 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "btn", "fromPinId": "bp", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-clock-to-output",
+      "name": "Clock to Output",
+      "description": "Clock node sa sprava ako 1-bitovy vstup. Jeho hodnota sa meni externe (toggleuje sa medzi 0 a 1 kazdym tick-om). V ramci jedneho evaluateCircuit volania je to len staticka hodnota (0 alebo 1). Clock NIE JE oscilator v ramci jedneho tick-u.",
+      "inputs": [],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "clk-circuit", "name": "Clock to Output",
+        "nodes": [
+          { "id": "clk", "type": "clock", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "cp", "name": "CLK", "direction": "output", "bits": 1 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "clk", "fromPinId": "cp", "toNodeId": "qo", "toPinId": "q" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-fanout-3way",
+      "name": "3-Way Fan-out",
+      "description": "Jeden 1-bit input je pripojeny na tri vystupy. Overuje, ze jeden zdroj signalu moze napajat viacero output-ov sucasne a vsetky dostavaju rovnaku hodnotu. NEMA to sposobit conflict ani rozdelenie signalu.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y0", "name": "Y0", "direction": "output", "bits": 1 },
+        { "id": "y1", "name": "Y1", "direction": "output", "bits": 1 },
+        { "id": "y2", "name": "Y2", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "fan3-circuit", "name": "3-Way Fan-out",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 100 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "y0o", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "y0", "name": "Y0", "direction": "input", "bits": 1 }] },
+          { "id": "y1o", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "y1", "name": "Y1", "direction": "input", "bits": 1 }] },
+          { "id": "y2o", "type": "output", "position": { "x": 300, "y": 200 }, "rotation": 0, "pins": [{ "id": "y2", "name": "Y2", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "y0o", "toPinId": "y0" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "y1o", "toPinId": "y1" },
+          { "id": "e3", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "y2o", "toPinId": "y2" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-probe-no-effect",
+      "name": "Probe No Effect",
+      "description": "Probe node je pripojena na wire medzi inputom a outputom. Overuje, ze probe NEOVPLYVNUJE signal — je to len pozorovatel. Output musi mat rovnaku hodnotu ako input aj s pripojenym probe.",
+      "inputs": [
+        { "id": "a", "name": "A", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "q", "name": "Q", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "probe-circuit", "name": "Probe No Effect",
+        "nodes": [
+          { "id": "ai", "type": "input", "position": { "x": 0, "y": 0 }, "rotation": 0, "pins": [{ "id": "a", "name": "A", "direction": "output", "bits": 1 }] },
+          { "id": "prb", "type": "probe", "position": { "x": 150, "y": 100 }, "rotation": 0, "pins": [{ "id": "pp", "name": "P", "direction": "input", "bits": 1 }] },
+          { "id": "qo", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q", "name": "Q", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "qo", "toPinId": "q" },
+          { "id": "e2", "fromNodeId": "ai", "fromPinId": "a", "toNodeId": "prb", "toPinId": "pp" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    },
+    {
+      "id": "mod-multi-bit-fanout",
+      "name": "8-bit Fan-out",
+      "description": "8-bitovy input je pripojeny na dva 8-bitove vystupy. Overuje, ze multi-bit fan-out funguje rovnako ako 1-bit — obe vystupy maju rovnaku hodnotu.",
+      "inputs": [
+        { "id": "d", "name": "D", "direction": "input", "bits": 8 }
+      ],
+      "outputs": [
+        { "id": "q0", "name": "Q0", "direction": "output", "bits": 8 },
+        { "id": "q1", "name": "Q1", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "mfan-circuit", "name": "8-bit Fan-out",
+        "nodes": [
+          { "id": "di", "type": "input", "position": { "x": 0, "y": 50 }, "rotation": 0, "pins": [{ "id": "d", "name": "D", "direction": "output", "bits": 8 }] },
+          { "id": "q0o", "type": "output", "position": { "x": 300, "y": 0 }, "rotation": 0, "pins": [{ "id": "q0", "name": "Q0", "direction": "input", "bits": 8 }] },
+          { "id": "q1o", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "q1", "name": "Q1", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "q0o", "toPinId": "q0" },
+          { "id": "e2", "fromNodeId": "di", "fromPinId": "d", "toNodeId": "q1o", "toPinId": "q1" }
+        ]
+      },
+      "createdAt": "2026-02-16T00:00:00.000Z",
+      "updatedAt": "2026-02-16T00:00:00.000Z"
+    }
+  ],
+  "library": [
+    { "type": "module", "moduleId": "mod-passthrough-4bit" },
+    { "type": "module", "moduleId": "mod-passthrough-16bit" },
+    { "type": "module", "moduleId": "mod-constants-vcc-gnd" },
+    { "type": "module", "moduleId": "mod-button-to-output" },
+    { "type": "module", "moduleId": "mod-clock-to-output" },
+    { "type": "module", "moduleId": "mod-fanout-3way" },
+    { "type": "module", "moduleId": "mod-probe-no-effect" },
+    { "type": "module", "moduleId": "mod-multi-bit-fanout" }
+  ]
+}
