@@ -30,6 +30,7 @@ import { DipSwitchNode } from "./DipSwitchNode.tsx";
 import { HexDisplayNode } from "./HexDisplayNode.tsx";
 import { LedBarNode } from "./LedBarNode.tsx";
 import { TunnelNode } from "./TunnelNode.tsx";
+import { RomNode } from "./RomNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
 import { ModulePropertiesDialog } from "../Library/ModulePropertiesDialog.tsx";
@@ -47,6 +48,7 @@ const nodeTypes: NodeTypes = {
   hexDisplay: HexDisplayNode,
   ledBar: LedBarNode,
   tunnel: TunnelNode,
+  rom: RomNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -263,6 +265,14 @@ function CanvasInner() {
 
   const handleAddTunnelOut = useCallback(() => {
     addNode("tunnel", getCenter(), undefined, { label: "out", pins: [] });
+  }, [getCenter, addNode]);
+
+  const handleAddRom4 = useCallback(() => {
+    addNode("rom", getCenter(), undefined, undefined, 4);
+  }, [getCenter, addNode]);
+
+  const handleAddRom8 = useCallback(() => {
+    addNode("rom", getCenter(), undefined, undefined, 8);
   }, [getCenter, addNode]);
 
   const handleAddMerger = useCallback(() => {
@@ -509,6 +519,19 @@ function CanvasInner() {
                 onClick={handleAddTunnelOut}
               >
                 + Tun Out
+              </button>
+              <span className="mx-1 text-zinc-600">|</span>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-purple-300 hover:bg-zinc-600"
+                onClick={handleAddRom4}
+              >
+                + ROM 16
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-purple-300 hover:bg-zinc-600"
+                onClick={handleAddRom8}
+              >
+                + ROM 256
               </button>
             </div>
           </Panel>

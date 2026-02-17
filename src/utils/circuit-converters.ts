@@ -146,6 +146,23 @@ export function circuitNodesToAppNodes(
           },
         };
       }
+      case "rom": {
+        const addrPin = node.pins.find((p) => p.direction === "input");
+        const dataPin = node.pins.find((p) => p.direction === "output");
+        const addrBits = (addrPin?.bits ?? 4) as 4 | 8;
+        return {
+          id: node.id,
+          type: "rom" as const,
+          position: node.position,
+          data: {
+            addrPinId: addrPin?.id ?? node.id,
+            dataPinId: dataPin?.id ?? node.id,
+            addressBits: addrBits,
+            romData: node.romData ?? (new Array(1 << addrBits).fill(0) as number[]),
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      }
       case "module": {
         const mid = node.moduleId ?? "";
         const mod = moduleMap.get(mid);

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Connection, Edge as RFEdge, IsValidConnection } from "@xyflow/react";
-import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData } from "../store/circuit-store.ts";
+import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData, type RomNodeData } from "../store/circuit-store.ts";
 import { generateId } from "../utils/id.ts";
 import type { BitWidth } from "../engine/types.ts";
 
@@ -19,6 +19,11 @@ function getPinBits(nodes: AppNode[], nodeId: string, pinId: string): BitWidth {
   if (node?.type === "hexDisplay") return (node.data as HexDisplayNodeData).bits ?? 8;
   if (node?.type === "ledBar") return (node.data as LedBarNodeData).bits ?? 8;
   if (node?.type === "tunnel") return (node.data as TunnelNodeData).bits ?? 1;
+  if (node?.type === "rom") {
+    const romData = node.data as RomNodeData;
+    if (pinId === romData.addrPinId) return romData.addressBits;
+    return 8 as BitWidth;
+  }
   return 1;
 }
 

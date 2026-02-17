@@ -189,7 +189,35 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-## Faza C — Pamat + Tri-state buffer [PENDING]
+## Faza C — Pamat + Tri-state buffer [IN PROGRESS]
+
+### Iteracia 21 — ROM (Read-Only Memory) [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 21.1 | ROM modul koncept (novy `"rom"` node typ, 4-bit/8-bit addr, 8-bit data output) | DONE |
+| 21.2 | ROM editor (tabulkovy dialog: addr, hex input, bin, dec; highlight non-zero) | DONE |
+| 21.3 | ROM simulacia (kombinacna: addr → lookup v romData → data output, bez clocku) | DONE |
+| 21.4 | ROM import/export (Export `.hex` dump, Import `.hex`/`.txt` s komentarmi, Clear all) | DONE |
+
+**Implementacia:**
+- Engine: `CircuitNode.type` rozsireny o `"rom"`, pridany `romData?: number[]` field
+- Engine: `evaluateNode` — `case "rom"`: cita addr z upstream, maskuje na `addrPin.bits`, lookup v `romData`, outputuje data
+- Engine: `BUILTIN_ROM_MODULE_ID` konstanta
+- Store: `RomNodeData` (addrPinId, dataPinId, addressBits: 4|8, romData, rotation), `RomNodeType`, `setRomData()` akcia
+- Store: `addNode("rom", ...)` — 2 varianty: 4-bit (16 entries) a 8-bit (256 entries)
+- Konverzia: `canvas-to-circuit` + `circuit-converters` — obojsmerny handling `"rom"` uzla (zachovanie romData pri persist/load)
+- Wiring: `getPinBits` rozsireny pre ROM (addrPin → addressBits, dataPin → 8)
+- UI: `RomNode.tsx` — purple tema, addr input handle, data output handle, zobrazenie aktualneho @addr → data, "Edit" tlacidlo
+- UI: `RomEditorDialog.tsx` — fixed overlay dialog, scrollovatelna tabulka, hex input per bunka, Import/Export/Clear all toolbar
+- Canvas: `rom: RomNode` v nodeTypes, 2 tlacidla `+ ROM 16` a `+ ROM 256` (purple tema)
+- Testy: `tests/engine/rom.test.ts` — 5 testov (lookup, out-of-bounds, addr maskovanie, no-input default, 256-entry)
+
+### Iteracia 22 — RAM [PENDING]
+### Iteracia 23 — Tri-state buffer [PENDING]
+
+---
+
 ## Faza D — CPU [PENDING]
 ## Faza E — Programovanie [PENDING]
 ## Faza F — I/O & Periferie [PENDING]
@@ -209,3 +237,4 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 17C | 2026-02-09 | — | DIP Switch, Hex Display, LED Bar, Tunnel nodes |
 | 19 | 2026-02-14 | — | Drill-down do modulov: double-click, breadcrumb, read-only, live sim |
 | 20 | 2026-02-14 | — | Vizualne customizovanie: farba, ikona, popis, custom sirka modulov |
+| 21 | 2026-02-18 | — | ROM: built-in node, kombinacny lookup, editor, hex import/export |

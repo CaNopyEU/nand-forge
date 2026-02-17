@@ -85,6 +85,14 @@ export type TunnelNodeData = {
   rotation: Rotation;
 };
 
+export type RomNodeData = {
+  addrPinId: string;
+  dataPinId: string;
+  addressBits: 4 | 8;
+  romData: number[];
+  rotation: Rotation;
+};
+
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
@@ -108,6 +116,7 @@ export type DipSwitchNodeType = Node<DipSwitchNodeData, "dipSwitch">;
 export type HexDisplayNodeType = Node<HexDisplayNodeData, "hexDisplay">;
 export type LedBarNodeType = Node<LedBarNodeData, "ledBar">;
 export type TunnelNodeType = Node<TunnelNodeData, "tunnel">;
+export type RomNodeType = Node<RomNodeData, "rom">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
@@ -120,6 +129,7 @@ export type AppNode =
   | HexDisplayNodeType
   | LedBarNodeType
   | TunnelNodeType
+  | RomNodeType
   | ModuleNodeType;
 
 // === Drill-down types ===
@@ -240,6 +250,7 @@ interface CircuitStore {
   tickClocks: () => void;
   setButtonPressed: (nodeId: string, pressed: number) => void;
   setDipSwitchValue: (nodeId: string, value: number) => void;
+  setRomData: (nodeId: string, romData: number[]) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
@@ -399,6 +410,22 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
             data: { label: "T", pinId: generateId(), bits: 1 as BitWidth, direction: (moduleData?.label === "out" ? "out" : "in") as "in" | "out", rotation: 0 },
           };
           break;
+        case "rom": {
+          const addrBits = (bits === 8 ? 8 : 4) as 4 | 8;
+          node = {
+            id,
+            type: "rom",
+            position,
+            data: {
+              addrPinId: generateId(),
+              dataPinId: generateId(),
+              addressBits: addrBits,
+              romData: new Array(1 << addrBits).fill(0) as number[],
+              rotation: 0,
+            },
+          };
+          break;
+        }
         case "module": {
           const mid = moduleId ?? BUILTIN_NAND_MODULE_ID;
           const isNand = mid === BUILTIN_NAND_MODULE_ID;
@@ -587,6 +614,17 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
         if (n.id !== nodeId || n.type !== "dipSwitch") return n;
         const max = (1 << (n.data.bits ?? 8)) - 1;
         return { ...n, data: { ...n.data, value: Math.min(Math.max(0, value), max) } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    })),
+
+  setRomData: (nodeId, romData) =>
+    set((state) => ({
+      ...pushSnapshot(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "rom") return n;
+        return { ...n, data: { ...n.data, romData } };
       }),
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,

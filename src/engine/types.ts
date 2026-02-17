@@ -18,12 +18,14 @@ export interface Pin {
 // === Node on canvas ===
 export interface CircuitNode {
   id: NodeId;
-  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel";
+  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel" | "rom";
   moduleId?: ModuleId;
   variant?: string;
   position: { x: number; y: number };
   rotation: 0 | 90 | 180 | 270;
   pins: Pin[];
+  /** ROM content — only for type === "rom" */
+  romData?: number[];
 }
 
 // === Wire between pins ===

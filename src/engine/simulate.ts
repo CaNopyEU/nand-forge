@@ -21,6 +21,7 @@ export interface InstanceState {
 export const BUILTIN_NAND_MODULE_ID: ModuleId = "builtin:nand";
 export const BUILTIN_SPLITTER_MODULE_ID: ModuleId = "builtin:splitter";
 export const BUILTIN_MERGER_MODULE_ID: ModuleId = "builtin:merger";
+export const BUILTIN_ROM_MODULE_ID: ModuleId = "builtin:rom";
 
 // === Helpers ===
 
@@ -233,6 +234,22 @@ export function evaluateNode(
           }
         }
       }
+      break;
+    }
+
+    case "rom": {
+      const addrPin = node.pins.find((p) => p.direction === "input");
+      const dataPin = node.pins.find((p) => p.direction === "output");
+      if (!addrPin || !dataPin) break;
+      const addrKey = pinKey(node.id, addrPin.id);
+      const upstream = adj.reverse.get(addrKey);
+      const addr = upstream
+        ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
+        : 0;
+      pinValues.set(addrKey, addr);
+      const addrMask = (1 << (addrPin.bits as number)) - 1;
+      const data = (node.romData ?? [])[addr & addrMask] ?? 0;
+      pinValues.set(pinKey(node.id, dataPin.id), data);
       break;
     }
 

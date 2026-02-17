@@ -168,6 +168,18 @@ export function canvasToCircuit(
               ],
         };
       }
+      case "rom":
+        return {
+          id: node.id,
+          type: "rom" as const,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          romData: node.data.romData,
+          pins: [
+            { id: node.data.addrPinId, name: "Addr", direction: "input" as const, bits: node.data.addressBits },
+            { id: node.data.dataPinId, name: "Data", direction: "output" as const, bits: 8 as const },
+          ],
+        };
       case "module":
         return {
           id: node.id,
