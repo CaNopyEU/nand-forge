@@ -8,6 +8,11 @@ import { useCircuitStore, type AppNode } from "./circuit-store.ts";
 
 // === Store ===
 
+export interface RamState {
+  data: number[];
+  lastWriteAddr: number | null;
+}
+
 interface SimulationStore {
   /** All computed pin values, keyed by "nodeId:pinId" */
   pinValues: Record<string, number>;
@@ -17,6 +22,8 @@ interface SimulationStore {
   prevPinValues: Map<string, number>;
   /** Per-instance state for cyclic sub-modules (hierarchical) */
   instanceStates: Map<string, InstanceState>;
+  /** Live RAM contents per RAM node ID */
+  ramStates: Record<string, RamState>;
   /** Whether the circuit is oscillating (did not converge) */
   oscillating: boolean;
   /** Edges that are unstable (oscillating), keyed by edge ID */
@@ -33,6 +40,7 @@ interface SimulationStore {
   recording: boolean;
 
   runSimulation: (nodes: AppNode[], edges: RFEdge[]) => void;
+  clearRamState: (nodeId: string, data: number[]) => void;
   play: () => void;
   pause: () => void;
   step: () => void;
@@ -46,6 +54,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   edgeSignals: {},
   prevPinValues: new Map(),
   instanceStates: new Map(),
+  ramStates: {},
   oscillating: false,
   unstableEdges: {},
   running: false,
@@ -53,6 +62,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   signalHistory: [],
   maxHistoryLength: 128,
   recording: false,
+
+  clearRamState: (nodeId, data) =>
+    set((state) => {
+      const newInstanceStates = new Map(state.instanceStates);
+      newInstanceStates.delete(nodeId); // forces re-init from initialData next tick
+      const newRamStates = { ...state.ramStates, [nodeId]: { data, lastWriteAddr: null } };
+      return { instanceStates: newInstanceStates, ramStates: newRamStates };
+    }),
 
   play: () => set({ running: true }),
   pause: () => set({ running: false }),
@@ -69,7 +86,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const { circuit, inputValues } = canvasToCircuit(nodes, edges);
 
     if (circuit.nodes.length === 0) {
-      set({ pinValues: {}, edgeSignals: {}, oscillating: false, unstableEdges: {}, instanceStates: new Map() });
+      set({ pinValues: {}, edgeSignals: {}, oscillating: false, unstableEdges: {}, instanceStates: new Map(), ramStates: {} });
       return;
     }
 
@@ -113,6 +130,17 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       }
     }
 
+    // Extract RAM states for reactive viewer access
+    const ramStates: Record<string, RamState> = {};
+    for (const [nodeId, iState] of instanceStates) {
+      if (iState.ramData !== undefined) {
+        ramStates[nodeId] = {
+          data: iState.ramData,
+          lastWriteAddr: iState.lastWriteAddr ?? null,
+        };
+      }
+    }
+
     const state = get();
     const nextHistory = state.recording
       ? [...state.signalHistory.slice(-(state.maxHistoryLength - 1)), pinValues]
@@ -123,6 +151,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       edgeSignals,
       prevPinValues: pinMap,
       instanceStates,
+      ramStates,
       oscillating: !stable,
       unstableEdges,
       signalHistory: nextHistory,

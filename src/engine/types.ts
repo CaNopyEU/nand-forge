@@ -18,7 +18,7 @@ export interface Pin {
 // === Node on canvas ===
 export interface CircuitNode {
   id: NodeId;
-  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel" | "rom";
+  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel" | "rom" | "ram";
   moduleId?: ModuleId;
   variant?: string;
   position: { x: number; y: number };
@@ -26,6 +26,8 @@ export interface CircuitNode {
   pins: Pin[];
   /** ROM content — only for type === "rom" */
   romData?: number[];
+  /** RAM initial content — only for type === "ram" */
+  initialData?: number[];
 }
 
 // === Wire between pins ===

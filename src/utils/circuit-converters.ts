@@ -163,6 +163,29 @@ export function circuitNodesToAppNodes(
           },
         };
       }
+      case "ram": {
+        const addrPin  = node.pins.find((p) => p.name === "Addr");
+        const dataInPin = node.pins.find((p) => p.name === "DIn");
+        const wePin    = node.pins.find((p) => p.name === "WE");
+        const clkPin   = node.pins.find((p) => p.name === "CLK");
+        const dataOutPin = node.pins.find((p) => p.direction === "output");
+        const addrBits = (addrPin?.bits ?? 4) as 4 | 8;
+        return {
+          id: node.id,
+          type: "ram" as const,
+          position: node.position,
+          data: {
+            addrPinId:    addrPin?.id   ?? node.id,
+            dataInPinId:  dataInPin?.id ?? node.id,
+            writePinId:   wePin?.id     ?? node.id,
+            clockPinId:   clkPin?.id    ?? node.id,
+            dataOutPinId: dataOutPin?.id ?? node.id,
+            addressBits: addrBits,
+            initialData: node.initialData ?? (new Array(1 << addrBits).fill(0) as number[]),
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      }
       case "module": {
         const mid = node.moduleId ?? "";
         const mod = moduleMap.get(mid);

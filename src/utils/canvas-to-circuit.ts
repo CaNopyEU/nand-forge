@@ -180,6 +180,21 @@ export function canvasToCircuit(
             { id: node.data.dataPinId, name: "Data", direction: "output" as const, bits: 8 as const },
           ],
         };
+      case "ram":
+        return {
+          id: node.id,
+          type: "ram" as const,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          initialData: node.data.initialData,
+          pins: [
+            { id: node.data.addrPinId,   name: "Addr", direction: "input" as const,  bits: node.data.addressBits },
+            { id: node.data.dataInPinId, name: "DIn",  direction: "input" as const,  bits: 8 as const },
+            { id: node.data.writePinId,  name: "WE",   direction: "input" as const,  bits: 1 as const },
+            { id: node.data.clockPinId,  name: "CLK",  direction: "input" as const,  bits: 1 as const },
+            { id: node.data.dataOutPinId, name: "DOut", direction: "output" as const, bits: 8 as const },
+          ],
+        };
       case "module":
         return {
           id: node.id,

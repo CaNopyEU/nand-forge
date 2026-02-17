@@ -31,6 +31,7 @@ import { HexDisplayNode } from "./HexDisplayNode.tsx";
 import { LedBarNode } from "./LedBarNode.tsx";
 import { TunnelNode } from "./TunnelNode.tsx";
 import { RomNode } from "./RomNode.tsx";
+import { RamNode } from "./RamNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
 import { ModulePropertiesDialog } from "../Library/ModulePropertiesDialog.tsx";
@@ -49,6 +50,7 @@ const nodeTypes: NodeTypes = {
   ledBar: LedBarNode,
   tunnel: TunnelNode,
   rom: RomNode,
+  ram: RamNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -273,6 +275,14 @@ function CanvasInner() {
 
   const handleAddRom8 = useCallback(() => {
     addNode("rom", getCenter(), undefined, undefined, 8);
+  }, [getCenter, addNode]);
+
+  const handleAddRam4 = useCallback(() => {
+    addNode("ram", getCenter(), undefined, undefined, 4);
+  }, [getCenter, addNode]);
+
+  const handleAddRam8 = useCallback(() => {
+    addNode("ram", getCenter(), undefined, undefined, 8);
   }, [getCenter, addNode]);
 
   const handleAddMerger = useCallback(() => {
@@ -532,6 +542,18 @@ function CanvasInner() {
                 onClick={handleAddRom8}
               >
                 + ROM 256
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-emerald-300 hover:bg-zinc-600"
+                onClick={handleAddRam4}
+              >
+                + RAM 16
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-emerald-300 hover:bg-zinc-600"
+                onClick={handleAddRam8}
+              >
+                + RAM 256
               </button>
             </div>
           </Panel>

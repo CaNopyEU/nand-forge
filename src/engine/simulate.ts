@@ -14,6 +14,10 @@ import { evaluateCircuitIterative } from "./simulate-iterative.ts";
 export interface InstanceState {
   pinValues: Map<string, number>;
   children: Map<string, InstanceState>;
+  /** Runtime RAM contents — only for RAM nodes */
+  ramData?: number[];
+  /** Last address written this tick — for viewer highlighting */
+  lastWriteAddr?: number | null;
 }
 
 // === Constants ===
@@ -22,6 +26,7 @@ export const BUILTIN_NAND_MODULE_ID: ModuleId = "builtin:nand";
 export const BUILTIN_SPLITTER_MODULE_ID: ModuleId = "builtin:splitter";
 export const BUILTIN_MERGER_MODULE_ID: ModuleId = "builtin:merger";
 export const BUILTIN_ROM_MODULE_ID: ModuleId = "builtin:rom";
+export const BUILTIN_RAM_MODULE_ID: ModuleId = "builtin:ram";
 
 // === Helpers ===
 
@@ -250,6 +255,71 @@ export function evaluateNode(
       const addrMask = (1 << (addrPin.bits as number)) - 1;
       const data = (node.romData ?? [])[addr & addrMask] ?? 0;
       pinValues.set(pinKey(node.id, dataPin.id), data);
+      break;
+    }
+
+    case "ram": {
+      const addrPin = node.pins.find((p) => p.name === "Addr");
+      const dataInPin = node.pins.find((p) => p.name === "DIn");
+      const wePin = node.pins.find((p) => p.name === "WE");
+      const clkPin = node.pins.find((p) => p.name === "CLK");
+      const dataOutPin = node.pins.find((p) => p.direction === "output");
+      if (!addrPin || !dataInPin || !wePin || !clkPin || !dataOutPin) break;
+
+      // Resolve all inputs from upstream
+      const resolveInput = (pin: { id: PinId }): number => {
+        const key = pinKey(node.id, pin.id);
+        const upstream = adj.reverse.get(key);
+        const val = upstream
+          ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
+          : 0;
+        pinValues.set(key, val);
+        return val;
+      };
+
+      const addr = resolveInput(addrPin);
+      const dataIn = resolveInput(dataInPin);
+      const writeEnable = resolveInput(wePin);
+      const clkVal = resolveInput(clkPin);
+
+      // Get previous state (prevClockVal + ramData from last tick)
+      const prevState = instanceStates?.get(node.id);
+      const prevClkVal = prevState?.pinValues.get(pinKey(node.id, clkPin.id)) ?? 0;
+      const addrBits = addrPin.bits as number;
+      const size = 1 << addrBits;
+      const addrMask = size - 1;
+
+      // Initialize ramData from initialData on first run, otherwise use prev state
+      const ramData: number[] = prevState?.ramData
+        ? [...prevState.ramData]
+        : (node.initialData ? [...node.initialData] : new Array(size).fill(0));
+
+      // Rising edge write
+      const risingEdge = prevClkVal === 0 && clkVal === 1;
+      let lastWriteAddr: number | null = prevState?.lastWriteAddr ?? null;
+      if (risingEdge && writeEnable) {
+        const wrAddr = addr & addrMask;
+        ramData[wrAddr] = dataIn & 0xFF;
+        lastWriteAddr = wrAddr;
+      } else {
+        lastWriteAddr = null;
+      }
+
+      // Combinational read
+      const dataOut = ramData[addr & addrMask] ?? 0;
+      pinValues.set(pinKey(node.id, dataOutPin.id), dataOut);
+
+      // Persist state for next tick
+      if (instanceStates) {
+        const newPinValues = new Map<string, number>();
+        newPinValues.set(pinKey(node.id, clkPin.id), clkVal);
+        instanceStates.set(node.id, {
+          pinValues: newPinValues,
+          children: prevState?.children ?? new Map(),
+          ramData,
+          lastWriteAddr,
+        });
+      }
       break;
     }
 

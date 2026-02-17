@@ -93,6 +93,17 @@ export type RomNodeData = {
   rotation: Rotation;
 };
 
+export type RamNodeData = {
+  addrPinId: string;
+  dataInPinId: string;
+  writePinId: string;
+  clockPinId: string;
+  dataOutPinId: string;
+  addressBits: 4 | 8;
+  initialData: number[];
+  rotation: Rotation;
+};
+
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
@@ -117,6 +128,7 @@ export type HexDisplayNodeType = Node<HexDisplayNodeData, "hexDisplay">;
 export type LedBarNodeType = Node<LedBarNodeData, "ledBar">;
 export type TunnelNodeType = Node<TunnelNodeData, "tunnel">;
 export type RomNodeType = Node<RomNodeData, "rom">;
+export type RamNodeType = Node<RamNodeData, "ram">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
@@ -130,6 +142,7 @@ export type AppNode =
   | LedBarNodeType
   | TunnelNodeType
   | RomNodeType
+  | RamNodeType
   | ModuleNodeType;
 
 // === Drill-down types ===
@@ -251,6 +264,7 @@ interface CircuitStore {
   setButtonPressed: (nodeId: string, pressed: number) => void;
   setDipSwitchValue: (nodeId: string, value: number) => void;
   setRomData: (nodeId: string, romData: number[]) => void;
+  setRamInitialData: (nodeId: string, initialData: number[]) => void;
   clearCanvas: () => void;
   setActiveModuleId: (moduleId: string | null) => void;
   loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
@@ -421,6 +435,25 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
               dataPinId: generateId(),
               addressBits: addrBits,
               romData: new Array(1 << addrBits).fill(0) as number[],
+              rotation: 0,
+            },
+          };
+          break;
+        }
+        case "ram": {
+          const addrBits = (bits === 8 ? 8 : 4) as 4 | 8;
+          node = {
+            id,
+            type: "ram",
+            position,
+            data: {
+              addrPinId: generateId(),
+              dataInPinId: generateId(),
+              writePinId: generateId(),
+              clockPinId: generateId(),
+              dataOutPinId: generateId(),
+              addressBits: addrBits,
+              initialData: new Array(1 << addrBits).fill(0) as number[],
               rotation: 0,
             },
           };
@@ -625,6 +658,17 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       nodes: state.nodes.map((n) => {
         if (n.id !== nodeId || n.type !== "rom") return n;
         return { ...n, data: { ...n.data, romData } };
+      }),
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    })),
+
+  setRamInitialData: (nodeId, initialData) =>
+    set((state) => ({
+      ...pushSnapshot(state),
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "ram") return n;
+        return { ...n, data: { ...n.data, initialData } };
       }),
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,

@@ -213,7 +213,32 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 - Canvas: `rom: RomNode` v nodeTypes, 2 tlacidla `+ ROM 16` a `+ ROM 256` (purple tema)
 - Testy: `tests/engine/rom.test.ts` — 5 testov (lookup, out-of-bounds, addr maskovanie, no-input default, 256-entry)
 
-### Iteracia 22 — RAM [PENDING]
+### Iteracia 22 — RAM (Random Access Memory) [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 22.1 | RAM modul koncept (built-in node: addr, DIn, WE, CLK vstupy; DOut vystup) | DONE |
+| 22.2 | RAM built-in (konfigurovatelna velkost: 16x8 alebo 256x8) | DONE |
+| 22.3 | RAM simulacia (rising edge write, kombinacny read, instanceState persistencia) | DONE |
+| 22.4 | RAM content viewer (real-time tabulka, highlight posledneho zapisu a aktualnej adresy) | DONE |
+| 22.5 | RAM content import (import .hex → initialData; Reset/Clear all; Export aktuálneho stavu) | DONE |
+
+**Implementacia:**
+- Engine: `CircuitNode.type` rozsireny o `"ram"`, `initialData?: number[]` field
+- Engine: `InstanceState` rozsireny o `ramData?: number[]` a `lastWriteAddr?: number | null`
+- Engine: `evaluateNode` — `case "ram"`: rising edge detekcia (`prevClk=0 && clk=1`), podmieneny zapis (WE=1), kombinacny read, state persistencia v `instanceStates`
+- Engine: `BUILTIN_RAM_MODULE_ID` konstanta
+- Store (circuit): `RamNodeData` (5 pinIds, addressBits: 4|8, initialData, rotation), `RamNodeType`, `setRamInitialData()` akcia
+- Store (circuit): `addNode("ram", ...)` — 2 varianty: 4-bit (16 entries) a 8-bit (256 entries)
+- Store (simulation): `RamState` typ, `ramStates: Record<string, RamState>` — extrahuje sa po kazdom `runSimulation` z `instanceStates` pre reaktivne UI
+- Store (simulation): `clearRamState(nodeId, data)` — maze instanceState (forced re-init z initialData), injectuje novy stav do `ramStates`
+- Konverzia: `canvas-to-circuit` + `circuit-converters` — obojsmerny handling `"ram"` (zachovanie initialData pri persist/load)
+- Wiring: `getPinBits` rozsireny pre RAM (addr→addressBits, WE/CLK→1, DIn/DOut→8)
+- UI: `RamNode.tsx` — emerald tema, 4 vstupne handles (Addr/DIn/WE/CLK) distribuovane s labelmi, 1 vystupny handle (DOut), live @addr→data display, WR indikator, "View" tlacidlo; vzor z ModuleNode (getHandleDistributionStyle)
+- UI: `RamViewerDialog.tsx` — fixed overlay dialog, real-time tabulka z `ramStates`, highlight: modra=aktualna adresa, zlta=posledny zapis, zelena=non-zero; toolbar: Import/Export/Reset/Clear all
+- Canvas: `ram: RamNode` v nodeTypes, 2 tlacidla `+ RAM 16` a `+ RAM 256` (emerald tema)
+- Testy: `tests/engine/ram.test.ts` — 7 testov (empty init, initialData, rising edge write, no-write WE=0, kombinacny read, 256-entry, lastWriteAddr tracking)
+
 ### Iteracia 23 — Tri-state buffer [PENDING]
 
 ---
@@ -238,3 +263,4 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 19 | 2026-02-14 | — | Drill-down do modulov: double-click, breadcrumb, read-only, live sim |
 | 20 | 2026-02-14 | — | Vizualne customizovanie: farba, ikona, popis, custom sirka modulov |
 | 21 | 2026-02-18 | — | ROM: built-in node, kombinacny lookup, editor, hex import/export |
+| 22 | 2026-02-18 | — | RAM: rising edge write, kombinacny read, real-time viewer, import/export |
