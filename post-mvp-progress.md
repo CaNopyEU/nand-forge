@@ -239,7 +239,42 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 - Canvas: `ram: RamNode` v nodeTypes, 2 tlacidla `+ RAM 16` a `+ RAM 256` (emerald tema)
 - Testy: `tests/engine/ram.test.ts` — 7 testov (empty init, initialData, rising edge write, no-write WE=0, kombinacny read, 256-entry, lastWriteAddr tracking)
 
-### Iteracia 23 — Tri-state buffer [PENDING]
+### Iteracia 23 — Tri-state buffer & zdielana zbernica [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 23.1 | Third state v engine (Z_VALUE = -1, WEAK_1 = -2, WEAK_0 = -3, CONFLICT = -4 sentinels) | DONE |
+| 23.2 | Bus resolution logic (`resolveBus`, array-based `adj.reverse`) | DONE |
+| 23.3 | Tri-state buffer node (D input n-bit + EN input 1-bit → Y output n-bit) | DONE |
+| 23.4 | Multi-bit tri-state (8-bit variant cez bits param) | DONE |
+| 23.5 | Pull-up / Pull-down nodes (weak drivers — WEAK_1 / WEAK_0, seed ako input) | DONE |
+| 23.6 | Tri-state + Pull uzly v canvas toolbare | DONE |
+| 23.7 | Conflict vizualizacia (conflict=red pulsing, Z=purple, `signal > 0` fix) | DONE |
+| 23.8 | Unit testy (resolveBus, Z propagation, bus resolution, conflict, pullup/down, backward compat) | DONE |
+| 23.9 | Backward compatibility — existujuce obvody neovplyvnene | DONE |
+
+**Implementacia:**
+- Engine: `Z_VALUE = -1`, `WEAK_1 = -2`, `WEAK_0 = -3`, `CONFLICT = -4` exportovane konstanty
+- Engine: `resolveBus(values: number[]): number` — rezolucia zbernice: Z ignorovane, strong bije weak, conflict ak >1 roznych strong
+- Engine: `AdjacencyList.reverse` zmenene z `Map<string, {nodeId,pinId}>` na `Map<string, Array<{nodeId,pinId}>>` — podpora viacerych driverov na jednom pine
+- Engine: `resolveInputInternal()` helper — vola `resolveBus` pre vsetky drivers, fallback `?? 0` pre iterativny evaluator compat
+- Engine: vsetky `adj.reverse.get()` pouzitia nahradene cez `resolveInputInternal`
+- Engine: seeding rozsireny o `"pullup" | "pulldown"` (konstantne WEAK_1 / WEAK_0 vystupy)
+- Engine: `case "tristate"` — EN=1 → Y=D, EN=0 → Y=Z_VALUE; `case "pullup"/"pulldown"` — already seeded no-op
+- Engine: `CircuitNode.type` rozsireny o `"tristate" | "pullup" | "pulldown"`
+- `simulate-iterative.ts`: seeding rozsireny o pullup/pulldown
+- Store (circuit): `TristateNodeData` (dataPinId, enablePinId, outputPinId, bits: 1|8, rotation), `PullNodeData` (outputPinId, variant, rotation), oba v `AppNode` unione
+- Store (circuit): `addNode("tristate", ...)` + `addNode("pull", ..., variant)` cases, `variant` param pridany na `addNode`
+- Store (simulation): `conflictEdges`, `zEdges: Record<string, boolean>` — derivovane z pinValues po kazdom ticku
+- `canvas-to-circuit`: `case "tristate"` (3 pins), `case "pull"` (1 pin, type z variant)
+- `circuit-converters`: `case "tristate"`, `case "pullup"/"pulldown"` → AppNode conversions
+- Wiring (`useWiring`): zrusene one-driver constraint (povolene viacere drivers), tristate/pull getPinBits handling
+- `ManhattanEdge.tsx`: conflict→red pulse, Z→purple, `signal > 0` (nie truthy), `formatHex` Z→"Z"/CONFLICT→"!!"
+- UI: `TristateNode.tsx` — violet tema, D+EN vstupne handles, Y vystupny handle, "ON"/"HiZ" stav indikator
+- UI: `PullNode.tsx` — violet tema, "↑R"/"↓R" symbol, len vystupny handle, soft purple color
+- Canvas: `tristate: TristateNode`, `pull: PullNode` v nodeTypes; 4 tlacidla: `+ Tristate`, `+ Tristate 8`, `+ Pull↑`, `+ Pull↓` (violet tema)
+- Testy: `tests/engine/tristate.test.ts` — 18 testov (resolveBus unit, tristate EN on/off, 8-bit, bus one/two drivers agree/conflict/Z, pullup/down, strong beats weak, backward compat)
+- Testy: Vsetky 325 testov prechadzaju, `tsc --noEmit` clean
 
 ---
 
@@ -264,3 +299,4 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 20 | 2026-02-14 | — | Vizualne customizovanie: farba, ikona, popis, custom sirka modulov |
 | 21 | 2026-02-18 | — | ROM: built-in node, kombinacny lookup, editor, hex import/export |
 | 22 | 2026-02-18 | — | RAM: rising edge write, kombinacny read, real-time viewer, import/export |
+| 23 | 2026-02-18 | — | Tri-state buffer, bus resolution, Z/CONFLICT sentinels, pull-up/down, conflict vizualizacia |

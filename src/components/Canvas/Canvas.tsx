@@ -32,6 +32,8 @@ import { LedBarNode } from "./LedBarNode.tsx";
 import { TunnelNode } from "./TunnelNode.tsx";
 import { RomNode } from "./RomNode.tsx";
 import { RamNode } from "./RamNode.tsx";
+import { TristateNode } from "./TristateNode.tsx";
+import { PullNode } from "./PullNode.tsx";
 import { ManhattanEdge } from "./ManhattanEdge.tsx";
 import { EdgeColorPicker } from "./EdgeColorPicker.tsx";
 import { ModulePropertiesDialog } from "../Library/ModulePropertiesDialog.tsx";
@@ -51,6 +53,8 @@ const nodeTypes: NodeTypes = {
   tunnel: TunnelNode,
   rom: RomNode,
   ram: RamNode,
+  tristate: TristateNode,
+  pull: PullNode,
   module: ModuleNode,
 } as NodeTypes;
 
@@ -283,6 +287,22 @@ function CanvasInner() {
 
   const handleAddRam8 = useCallback(() => {
     addNode("ram", getCenter(), undefined, undefined, 8);
+  }, [getCenter, addNode]);
+
+  const handleAddTristate = useCallback(() => {
+    addNode("tristate", getCenter());
+  }, [getCenter, addNode]);
+
+  const handleAddTristate8 = useCallback(() => {
+    addNode("tristate", getCenter(), undefined, undefined, 8);
+  }, [getCenter, addNode]);
+
+  const handleAddPullup = useCallback(() => {
+    addNode("pull", getCenter(), undefined, undefined, undefined, "pullup");
+  }, [getCenter, addNode]);
+
+  const handleAddPulldown = useCallback(() => {
+    addNode("pull", getCenter(), undefined, undefined, undefined, "pulldown");
   }, [getCenter, addNode]);
 
   const handleAddMerger = useCallback(() => {
@@ -554,6 +574,31 @@ function CanvasInner() {
                 onClick={handleAddRam8}
               >
                 + RAM 256
+              </button>
+              <span className="mx-1 text-zinc-600">|</span>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddTristate}
+              >
+                + Tristate
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddTristate8}
+              >
+                + Tristate 8
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddPullup}
+              >
+                + Pull↑
+              </button>
+              <button
+                className="rounded bg-zinc-700 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-600"
+                onClick={handleAddPulldown}
+              >
+                + Pull↓
               </button>
             </div>
           </Panel>

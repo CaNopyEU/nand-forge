@@ -104,6 +104,20 @@ export type RamNodeData = {
   rotation: Rotation;
 };
 
+export type TristateNodeData = {
+  dataPinId: string;
+  enablePinId: string;
+  outputPinId: string;
+  bits: 1 | 8;
+  rotation: Rotation;
+};
+
+export type PullNodeData = {
+  outputPinId: string;
+  variant: "pullup" | "pulldown";
+  rotation: Rotation;
+};
+
 export type ModuleNodeData = {
   label: string;
   moduleId: string;
@@ -129,6 +143,8 @@ export type LedBarNodeType = Node<LedBarNodeData, "ledBar">;
 export type TunnelNodeType = Node<TunnelNodeData, "tunnel">;
 export type RomNodeType = Node<RomNodeData, "rom">;
 export type RamNodeType = Node<RamNodeData, "ram">;
+export type TristateNodeType = Node<TristateNodeData, "tristate">;
+export type PullNodeType = Node<PullNodeData, "pull">;
 export type ModuleNodeType = Node<ModuleNodeData, "module">;
 export type AppNode =
   | InputNodeType
@@ -143,6 +159,8 @@ export type AppNode =
   | TunnelNodeType
   | RomNodeType
   | RamNodeType
+  | TristateNodeType
+  | PullNodeType
   | ModuleNodeType;
 
 // === Drill-down types ===
@@ -250,6 +268,7 @@ interface CircuitStore {
     moduleId?: string,
     moduleData?: { label: string; pins: Pin[] },
     bits?: BitWidth,
+    variant?: string,
   ) => void;
   removeNode: (id: string) => void;
   addEdge: (edge: RFEdge) => void;
@@ -337,7 +356,7 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       };
     }),
 
-  addNode: (type, position, moduleId, moduleData, bits) =>
+  addNode: (type, position, moduleId, moduleData, bits, variant) =>
     set((state) => {
       const id = generateId();
       const bw: BitWidth = bits ?? 1;
@@ -454,6 +473,35 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
               dataOutPinId: generateId(),
               addressBits: addrBits,
               initialData: new Array(1 << addrBits).fill(0) as number[],
+              rotation: 0,
+            },
+          };
+          break;
+        }
+        case "tristate": {
+          const tsBits = (bits === 8 ? 8 : 1) as 1 | 8;
+          node = {
+            id,
+            type: "tristate",
+            position,
+            data: {
+              dataPinId: generateId(),
+              enablePinId: generateId(),
+              outputPinId: generateId(),
+              bits: tsBits,
+              rotation: 0,
+            },
+          };
+          break;
+        }
+        case "pull": {
+          node = {
+            id,
+            type: "pull",
+            position,
+            data: {
+              outputPinId: generateId(),
+              variant: (variant === "pulldown" ? "pulldown" : "pullup") as "pullup" | "pulldown",
               rotation: 0,
             },
           };

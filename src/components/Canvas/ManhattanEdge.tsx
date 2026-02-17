@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { BaseEdge, EdgeLabelRenderer, type Edge, type EdgeProps } from "@xyflow/react";
 import { useSimulationStore } from "../../store/simulation-store.ts";
+import { Z_VALUE, CONFLICT } from "../../engine/simulate.ts";
 
 function lightenColor(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -11,6 +12,8 @@ function lightenColor(hex: string): string {
 }
 
 function formatHex(value: number, bits: number): string {
+  if (value === Z_VALUE) return "Z";
+  if (value === CONFLICT) return "!!";
   const digits = Math.ceil(bits / 4);
   const masked = value & ((1 << bits) - 1);
   return `0x${masked.toString(16).toUpperCase().padStart(digits, "0")}`;
@@ -30,6 +33,8 @@ function ManhattanEdgeComponent({
 }: EdgeProps<ManhattanEdgeType>) {
   const signal = useSimulationStore((s) => s.edgeSignals[id] ?? 0);
   const unstable = useSimulationStore((s) => s.unstableEdges[id] ?? false);
+  const conflict = useSimulationStore((s) => s.conflictEdges[id] ?? false);
+  const isZ = useSimulationStore((s) => s.zEdges[id] ?? false);
 
   const bits = data?.bits ?? 1;
   const isBus = bits > 1;
@@ -42,14 +47,18 @@ function ManhattanEdgeComponent({
 
   const customColor = data?.color;
   let color: string;
-  if (unstable) {
-    color = "#f87171";
+  if (conflict) {
+    color = "#ef4444"; // red — bus conflict
+  } else if (unstable) {
+    color = "#f87171"; // red — oscillating
+  } else if (isZ) {
+    color = "#a855f7"; // purple — high-impedance
   } else if (selected) {
-    color = "#60a5fa";
+    color = "#60a5fa"; // blue — selected
   } else if (customColor) {
-    color = signal ? lightenColor(customColor) : customColor;
+    color = signal > 0 ? lightenColor(customColor) : customColor;
   } else {
-    color = signal ? "#34d399" : "#71717a";
+    color = signal > 0 ? "#34d399" : "#71717a"; // green or gray
   }
 
   const labelX = (sourceX + targetX) / 2;
@@ -64,7 +73,7 @@ function ManhattanEdgeComponent({
           stroke: color,
           strokeWidth: isBus ? (selected ? 4 : 3.5) : (selected ? 2.5 : 2),
           transition: "stroke 0.15s ease",
-          animation: unstable ? "wire-pulse 0.5s infinite" : undefined,
+          animation: (unstable || conflict) ? "wire-pulse 0.5s infinite" : undefined,
         }}
       />
       {isBus && (

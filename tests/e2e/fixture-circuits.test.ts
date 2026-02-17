@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { Module } from "../../src/engine/types.ts";
-import { evaluateCircuit, resolveTunnels } from "../../src/engine/simulate.ts";
+import { evaluateCircuit, resolveTunnels, Z_VALUE, CONFLICT } from "../../src/engine/simulate.ts";
 
 import gatesData from "../../test-fixtures/gates.json";
 import muxDemuxData from "../../test-fixtures/mux-demux.json";
@@ -23,6 +23,7 @@ import busSplitMergeData from "../../test-fixtures/bus-split-merge.json";
 import ioPeripheralsAdvData from "../../test-fixtures/io-peripherals-advanced.json";
 import tunnelAdvData from "../../test-fixtures/tunnel-advanced.json";
 import clockButtonData from "../../test-fixtures/clock-button-sequential.json";
+import tristateData from "../../test-fixtures/tristate-bus.json";
 
 // ============================================================
 // Helpers
@@ -48,6 +49,7 @@ const fixtures: Record<string, FixtureFile> = {
   "io-peripherals-advanced": ioPeripheralsAdvData as unknown as FixtureFile,
   "tunnel-advanced": tunnelAdvData as unknown as FixtureFile,
   "clock-button-sequential": clockButtonData as unknown as FixtureFile,
+  "tristate-bus": tristateData as unknown as FixtureFile,
 };
 
 function loadFixture(name: string): FixtureFile {
@@ -673,8 +675,8 @@ describe("Fixture: io-peripherals-advanced", () => {
       const hex = mod.circuit.nodes.find((n) => n.variant === "hex-display");
       expect(dip).toBeDefined();
       expect(hex).toBeDefined();
-      expect(dip!.pins[0].bits).toBe(4);
-      expect(hex!.pins[0].bits).toBe(4);
+      expect(dip!.pins[0]!.bits).toBe(4);
+      expect(hex!.pins[0]!.bits).toBe(4);
     });
   });
 });
@@ -792,12 +794,12 @@ describe("Fixture: clock-button-sequential", () => {
     it("SET pressed (S=0), RST not pressed (R=1) → Q=1", () => {
       // For NAND SR latch: active-low inputs
       const out = evalModule(modules, "mod-button-sr-control", { bs: 0, br: 1 });
-      expect(out.q).toBe(1);
+      expect(out["q"]).toBe(1);
     });
 
     it("SET not pressed (S=1), RST pressed (R=0) → Q=0", () => {
       const out = evalModule(modules, "mod-button-sr-control", { bs: 1, br: 0 });
-      expect(out.q).toBe(0);
+      expect(out["q"]).toBe(0);
     });
   });
 
@@ -824,13 +826,153 @@ describe("Fixture: clock-button-sequential", () => {
       expect(constNode).toBeDefined();
       expect(buttonNode).toBeDefined();
       // Constant should be VCC (pin name "1")
-      expect(constNode!.pins[0].name).toBe("1");
+      expect(constNode!.pins[0]!.name).toBe("1");
     });
 
     it("button pressed (EN=1) with VCC on D → Q=1", () => {
       // Constant VCC (pin cv, name "1") needs seeded value
       const out = evalModule(modules, "mod-button-toggle", { bp: 1, cv: 1 });
       expect(out).toMatchObject({ q: 1 });
+    });
+  });
+});
+
+// ============================================================
+// Tristate bus fixture
+// ============================================================
+
+describe("Fixture: tristate-bus", () => {
+  const fixture = loadFixture("tristate-bus");
+  const modules = fixture.modules;
+
+  describe("Tristate basic (1-bit)", () => {
+    it("EN=1, D=0 → Y=0 (driven low)", () => {
+      expect(evalModule(modules, "mod-tristate-basic", { d: 0, en: 1 })).toMatchObject({ y: 0 });
+    });
+
+    it("EN=1, D=1 → Y=1 (driven high)", () => {
+      expect(evalModule(modules, "mod-tristate-basic", { d: 1, en: 1 })).toMatchObject({ y: 1 });
+    });
+
+    it("EN=0 → Y=Z (high impedance)", () => {
+      expect(evalModule(modules, "mod-tristate-basic", { d: 1, en: 0 })).toMatchObject({ y: Z_VALUE });
+    });
+  });
+
+  describe("Pull-up alone", () => {
+    it("always outputs 1 (weak high)", () => {
+      expect(evalModule(modules, "mod-pullup-alone", {})).toMatchObject({ y: 1 });
+    });
+  });
+
+  describe("Pull-down alone", () => {
+    it("always outputs 0 (weak low)", () => {
+      expect(evalModule(modules, "mod-pulldown-alone", {})).toMatchObject({ y: 0 });
+    });
+  });
+
+  describe("Tristate + Pull-up (open-drain)", () => {
+    it("EN=0 → pull-up wins → Y=1", () => {
+      // Tristate outputs Z, only WEAK_1 remains on bus
+      expect(evalModule(modules, "mod-tristate-pullup", { d: 0, en: 0 })).toMatchObject({ y: 1 });
+    });
+
+    it("EN=1, D=0 → strong 0 beats weak pull-up → Y=0", () => {
+      expect(evalModule(modules, "mod-tristate-pullup", { d: 0, en: 1 })).toMatchObject({ y: 0 });
+    });
+
+    it("EN=1, D=1 → strong 1, pull-up agrees → Y=1", () => {
+      expect(evalModule(modules, "mod-tristate-pullup", { d: 1, en: 1 })).toMatchObject({ y: 1 });
+    });
+  });
+
+  describe("Shared bus — 2 tri-state drivers", () => {
+    it("only ts1 enabled, D1=0 → Y=0", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 1, d2: 0, en2: 0 })).toMatchObject({ y: 0 });
+    });
+
+    it("only ts1 enabled, D1=1 → Y=1", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 1, en1: 1, d2: 0, en2: 0 })).toMatchObject({ y: 1 });
+    });
+
+    it("only ts2 enabled, D2=0 → Y=0", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 0, d2: 0, en2: 1 })).toMatchObject({ y: 0 });
+    });
+
+    it("only ts2 enabled, D2=1 → Y=1", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 0, d2: 1, en2: 1 })).toMatchObject({ y: 1 });
+    });
+
+    it("both enabled, agree on 1 → Y=1", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 1, en1: 1, d2: 1, en2: 1 })).toMatchObject({ y: 1 });
+    });
+
+    it("both enabled, agree on 0 → Y=0", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 1, d2: 0, en2: 1 })).toMatchObject({ y: 0 });
+    });
+
+    it("both enabled, disagree → Y=CONFLICT", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 1, d2: 1, en2: 1 })).toMatchObject({ y: CONFLICT });
+    });
+
+    it("neither enabled → Y=Z (floating bus)", () => {
+      expect(evalModule(modules, "mod-bus-2drivers", { d1: 0, en1: 0, d2: 0, en2: 0 })).toMatchObject({ y: Z_VALUE });
+    });
+  });
+
+  describe("Shared bus — 2 drivers + pull-down", () => {
+    it("both disabled → pull-down wins → Y=0", () => {
+      expect(evalModule(modules, "mod-bus-2drivers-pulldown", { d1: 0, en1: 0, d2: 0, en2: 0 })).toMatchObject({ y: 0 });
+    });
+
+    it("ts1 enabled, D1=1 → strong 1 beats pull-down → Y=1", () => {
+      expect(evalModule(modules, "mod-bus-2drivers-pulldown", { d1: 1, en1: 1, d2: 0, en2: 0 })).toMatchObject({ y: 1 });
+    });
+
+    it("ts1 enabled, D1=0 → strong 0, pull-down agrees → Y=0", () => {
+      expect(evalModule(modules, "mod-bus-2drivers-pulldown", { d1: 0, en1: 1, d2: 0, en2: 0 })).toMatchObject({ y: 0 });
+    });
+
+    it("both enabled, disagree → Y=CONFLICT (pull-down is weak, ignored)", () => {
+      expect(evalModule(modules, "mod-bus-2drivers-pulldown", { d1: 0, en1: 1, d2: 1, en2: 1 })).toMatchObject({ y: CONFLICT });
+    });
+  });
+
+  describe("Tri-state 8-bit bus driver", () => {
+    it("EN=1, D=0xA5 → Y=0xA5", () => {
+      expect(evalModule(modules, "mod-tristate-8bit", { d: 0xa5, en: 1 })).toMatchObject({ y: 0xa5 });
+    });
+
+    it("EN=1, D=0xFF → Y=0xFF", () => {
+      expect(evalModule(modules, "mod-tristate-8bit", { d: 0xff, en: 1 })).toMatchObject({ y: 0xff });
+    });
+
+    it("EN=1, D=0x00 → Y=0x00", () => {
+      expect(evalModule(modules, "mod-tristate-8bit", { d: 0x00, en: 1 })).toMatchObject({ y: 0x00 });
+    });
+
+    it("EN=0 → Y=Z (8-bit high impedance)", () => {
+      expect(evalModule(modules, "mod-tristate-8bit", { d: 0xa5, en: 0 })).toMatchObject({ y: Z_VALUE });
+    });
+  });
+
+  describe("Bus multiplexer (tristate MUX)", () => {
+    // SEL=1 → tsA enabled (EN=SEL=1), tsB disabled (EN=NAND(1,1)=0) → Y=A
+    it("SEL=1, A=0 → Y=0", () => {
+      expect(evalModule(modules, "mod-bidirectional-mux", { a: 0, b: 1, sel: 1 })).toMatchObject({ y: 0 });
+    });
+
+    it("SEL=1, A=1 → Y=1", () => {
+      expect(evalModule(modules, "mod-bidirectional-mux", { a: 1, b: 0, sel: 1 })).toMatchObject({ y: 1 });
+    });
+
+    // SEL=0 → tsA disabled (EN=0), tsB enabled (EN=NAND(0,0)=1) → Y=B
+    it("SEL=0, B=0 → Y=0", () => {
+      expect(evalModule(modules, "mod-bidirectional-mux", { a: 1, b: 0, sel: 0 })).toMatchObject({ y: 0 });
+    });
+
+    it("SEL=0, B=1 → Y=1", () => {
+      expect(evalModule(modules, "mod-bidirectional-mux", { a: 0, b: 1, sel: 0 })).toMatchObject({ y: 1 });
     });
   });
 });
@@ -844,7 +986,7 @@ describe("Fixture structural integrity", () => {
     "gates", "mux-demux", "decoder", "adder",
     "alu-8bit", "flip-flops", "counter-4bit", "bus-peripherals-demo",
     "io-basics", "bus-split-merge", "io-peripherals-advanced",
-    "tunnel-advanced", "clock-button-sequential",
+    "tunnel-advanced", "clock-button-sequential", "tristate-bus",
   ] as const;
 
   for (const name of fixtureNames) {

@@ -1,0 +1,294 @@
+{
+  "version": 2,
+  "modules": [
+
+    {
+      "id": "mod-tristate-basic",
+      "name": "Tristate Basic",
+      "inputs": [
+        { "id": "d",  "name": "D",  "direction": "input", "bits": 1 },
+        { "id": "en", "name": "EN", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tristate-basic-circuit", "name": "Tristate Basic",
+        "nodes": [
+          { "id": "di",  "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "d",   "name": "D",  "direction": "output", "bits": 1 }] },
+          { "id": "eni", "type": "input",    "position": { "x": 0,   "y": 150 }, "rotation": 0, "pins": [{ "id": "en",  "name": "EN", "direction": "output", "bits": 1 }] },
+          { "id": "ts",  "type": "tristate", "position": { "x": 200, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "tsd", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "tse", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "tsy", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 400, "y": 100 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di",  "fromPinId": "d",   "toNodeId": "ts", "toPinId": "tsd" },
+          { "id": "e2", "fromNodeId": "eni", "fromPinId": "en",  "toNodeId": "ts", "toPinId": "tse" },
+          { "id": "e3", "fromNodeId": "ts",  "fromPinId": "tsy", "toNodeId": "yo", "toPinId": "y"   }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-pullup-alone",
+      "name": "Pull-up Alone",
+      "inputs": [],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "pullup-alone-circuit", "name": "Pull-up Alone",
+        "nodes": [
+          { "id": "pu", "type": "pullup", "position": { "x": 100, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "puy", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "pu", "fromPinId": "puy", "toNodeId": "yo", "toPinId": "y" }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-pulldown-alone",
+      "name": "Pull-down Alone",
+      "inputs": [],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "pulldown-alone-circuit", "name": "Pull-down Alone",
+        "nodes": [
+          { "id": "pd", "type": "pulldown", "position": { "x": 100, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "pdy", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 300, "y": 100 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "pd", "fromPinId": "pdy", "toNodeId": "yo", "toPinId": "y" }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-tristate-pullup",
+      "name": "Tristate + Pull-up (open-drain)",
+      "inputs": [
+        { "id": "d",  "name": "D",  "direction": "input", "bits": 1 },
+        { "id": "en", "name": "EN", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "tristate-pullup-circuit", "name": "Tristate + Pull-up",
+        "nodes": [
+          { "id": "di",  "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "d",    "name": "D",  "direction": "output", "bits": 1 }] },
+          { "id": "eni", "type": "input",    "position": { "x": 0,   "y": 150 }, "rotation": 0, "pins": [{ "id": "en",   "name": "EN", "direction": "output", "bits": 1 }] },
+          { "id": "ts",  "type": "tristate", "position": { "x": 200, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "tpd", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "tpe", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "tpy", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "pu", "type": "pullup", "position": { "x": 200, "y": 200 }, "rotation": 0, "pins": [
+            { "id": "puy", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 400, "y": 100 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di",  "fromPinId": "d",   "toNodeId": "ts", "toPinId": "tpd" },
+          { "id": "e2", "fromNodeId": "eni", "fromPinId": "en",  "toNodeId": "ts", "toPinId": "tpe" },
+          { "id": "e3", "fromNodeId": "ts",  "fromPinId": "tpy", "toNodeId": "yo", "toPinId": "y"   },
+          { "id": "e4", "fromNodeId": "pu",  "fromPinId": "puy", "toNodeId": "yo", "toPinId": "y"   }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-bus-2drivers",
+      "name": "Shared Bus — 2 Tri-state Drivers",
+      "inputs": [
+        { "id": "d1",  "name": "D1",  "direction": "input", "bits": 1 },
+        { "id": "en1", "name": "EN1", "direction": "input", "bits": 1 },
+        { "id": "d2",  "name": "D2",  "direction": "input", "bits": 1 },
+        { "id": "en2", "name": "EN2", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "bus-2drivers-circuit", "name": "2-driver Bus",
+        "nodes": [
+          { "id": "d1i",  "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "d1",  "name": "D1",  "direction": "output", "bits": 1 }] },
+          { "id": "en1i", "type": "input",    "position": { "x": 0,   "y": 100 }, "rotation": 0, "pins": [{ "id": "en1", "name": "EN1", "direction": "output", "bits": 1 }] },
+          { "id": "d2i",  "type": "input",    "position": { "x": 0,   "y": 200 }, "rotation": 0, "pins": [{ "id": "d2",  "name": "D2",  "direction": "output", "bits": 1 }] },
+          { "id": "en2i", "type": "input",    "position": { "x": 0,   "y": 250 }, "rotation": 0, "pins": [{ "id": "en2", "name": "EN2", "direction": "output", "bits": 1 }] },
+          { "id": "ts1",  "type": "tristate", "position": { "x": 200, "y": 75  }, "rotation": 0, "pins": [
+            { "id": "t1d", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "t1e", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "t1y", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "ts2",  "type": "tristate", "position": { "x": 200, "y": 225 }, "rotation": 0, "pins": [
+            { "id": "t2d", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "t2e", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "t2y", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 400, "y": 150 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "d1i",  "fromPinId": "d1",  "toNodeId": "ts1", "toPinId": "t1d" },
+          { "id": "e2", "fromNodeId": "en1i", "fromPinId": "en1", "toNodeId": "ts1", "toPinId": "t1e" },
+          { "id": "e3", "fromNodeId": "d2i",  "fromPinId": "d2",  "toNodeId": "ts2", "toPinId": "t2d" },
+          { "id": "e4", "fromNodeId": "en2i", "fromPinId": "en2", "toNodeId": "ts2", "toPinId": "t2e" },
+          { "id": "e5", "fromNodeId": "ts1",  "fromPinId": "t1y", "toNodeId": "yo",  "toPinId": "y"  },
+          { "id": "e6", "fromNodeId": "ts2",  "fromPinId": "t2y", "toNodeId": "yo",  "toPinId": "y"  }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-bus-2drivers-pulldown",
+      "name": "Shared Bus — 2 Drivers + Pull-down",
+      "inputs": [
+        { "id": "d1",  "name": "D1",  "direction": "input", "bits": 1 },
+        { "id": "en1", "name": "EN1", "direction": "input", "bits": 1 },
+        { "id": "d2",  "name": "D2",  "direction": "input", "bits": 1 },
+        { "id": "en2", "name": "EN2", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "bus-2drivers-pd-circuit", "name": "2-driver Bus + Pull-down",
+        "nodes": [
+          { "id": "d1i",  "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "d1",  "name": "D1",  "direction": "output", "bits": 1 }] },
+          { "id": "en1i", "type": "input",    "position": { "x": 0,   "y": 100 }, "rotation": 0, "pins": [{ "id": "en1", "name": "EN1", "direction": "output", "bits": 1 }] },
+          { "id": "d2i",  "type": "input",    "position": { "x": 0,   "y": 200 }, "rotation": 0, "pins": [{ "id": "d2",  "name": "D2",  "direction": "output", "bits": 1 }] },
+          { "id": "en2i", "type": "input",    "position": { "x": 0,   "y": 250 }, "rotation": 0, "pins": [{ "id": "en2", "name": "EN2", "direction": "output", "bits": 1 }] },
+          { "id": "ts1",  "type": "tristate", "position": { "x": 200, "y": 75  }, "rotation": 0, "pins": [
+            { "id": "b1d", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "b1e", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "b1y", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "ts2",  "type": "tristate", "position": { "x": 200, "y": 225 }, "rotation": 0, "pins": [
+            { "id": "b2d", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "b2e", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "b2y", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "pd", "type": "pulldown", "position": { "x": 200, "y": 350 }, "rotation": 0, "pins": [
+            { "id": "pdy", "name": "Y", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 400, "y": 150 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "d1i",  "fromPinId": "d1",  "toNodeId": "ts1", "toPinId": "b1d" },
+          { "id": "e2", "fromNodeId": "en1i", "fromPinId": "en1", "toNodeId": "ts1", "toPinId": "b1e" },
+          { "id": "e3", "fromNodeId": "d2i",  "fromPinId": "d2",  "toNodeId": "ts2", "toPinId": "b2d" },
+          { "id": "e4", "fromNodeId": "en2i", "fromPinId": "en2", "toNodeId": "ts2", "toPinId": "b2e" },
+          { "id": "e5", "fromNodeId": "ts1",  "fromPinId": "b1y", "toNodeId": "yo",  "toPinId": "y"  },
+          { "id": "e6", "fromNodeId": "ts2",  "fromPinId": "b2y", "toNodeId": "yo",  "toPinId": "y"  },
+          { "id": "e7", "fromNodeId": "pd",   "fromPinId": "pdy", "toNodeId": "yo",  "toPinId": "y"  }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-tristate-8bit",
+      "name": "Tri-state 8-bit Bus Driver",
+      "inputs": [
+        { "id": "d",  "name": "D",  "direction": "input", "bits": 8 },
+        { "id": "en", "name": "EN", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 8 }
+      ],
+      "circuit": {
+        "id": "tristate-8bit-circuit", "name": "Tristate 8-bit",
+        "nodes": [
+          { "id": "di",  "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "d",    "name": "D",  "direction": "output", "bits": 8 }] },
+          { "id": "eni", "type": "input",    "position": { "x": 0,   "y": 150 }, "rotation": 0, "pins": [{ "id": "en",   "name": "EN", "direction": "output", "bits": 1 }] },
+          { "id": "ts",  "type": "tristate", "position": { "x": 200, "y": 100 }, "rotation": 0, "pins": [
+            { "id": "e8d", "name": "D",  "direction": "input",  "bits": 8 },
+            { "id": "e8e", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "e8y", "name": "Y",  "direction": "output", "bits": 8 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 400, "y": 100 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 8 }] }
+        ],
+        "edges": [
+          { "id": "e1", "fromNodeId": "di",  "fromPinId": "d",   "toNodeId": "ts", "toPinId": "e8d" },
+          { "id": "e2", "fromNodeId": "eni", "fromPinId": "en",  "toNodeId": "ts", "toPinId": "e8e" },
+          { "id": "e3", "fromNodeId": "ts",  "fromPinId": "e8y", "toNodeId": "yo", "toPinId": "y"   }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    },
+
+    {
+      "id": "mod-bidirectional-mux",
+      "name": "Bus Multiplexer (SEL selects which driver owns the bus)",
+      "inputs": [
+        { "id": "a",   "name": "A",   "direction": "input", "bits": 1 },
+        { "id": "b",   "name": "B",   "direction": "input", "bits": 1 },
+        { "id": "sel", "name": "SEL", "direction": "input", "bits": 1 }
+      ],
+      "outputs": [
+        { "id": "y", "name": "Y", "direction": "output", "bits": 1 }
+      ],
+      "circuit": {
+        "id": "bus-mux-circuit", "name": "Bus MUX via tristate",
+        "nodes": [
+          { "id": "ai",   "type": "input",    "position": { "x": 0,   "y": 50  }, "rotation": 0, "pins": [{ "id": "a",   "name": "A",   "direction": "output", "bits": 1 }] },
+          { "id": "bi",   "type": "input",    "position": { "x": 0,   "y": 200 }, "rotation": 0, "pins": [{ "id": "b",   "name": "B",   "direction": "output", "bits": 1 }] },
+          { "id": "seli", "type": "input",    "position": { "x": 0,   "y": 350 }, "rotation": 0, "pins": [{ "id": "sel", "name": "SEL", "direction": "output", "bits": 1 }] },
+          { "id": "inv",  "type": "module",   "moduleId": "builtin:nand", "position": { "x": 150, "y": 350 }, "rotation": 0, "pins": [
+            { "id": "inva", "name": "A",   "direction": "input",  "bits": 1 },
+            { "id": "invb", "name": "B",   "direction": "input",  "bits": 1 },
+            { "id": "invo", "name": "Out", "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tsA",  "type": "tristate", "position": { "x": 300, "y": 75  }, "rotation": 0, "pins": [
+            { "id": "mad", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "mae", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "may", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "tsB",  "type": "tristate", "position": { "x": 300, "y": 225 }, "rotation": 0, "pins": [
+            { "id": "mbd", "name": "D",  "direction": "input",  "bits": 1 },
+            { "id": "mbe", "name": "EN", "direction": "input",  "bits": 1 },
+            { "id": "mby", "name": "Y",  "direction": "output", "bits": 1 }
+          ]},
+          { "id": "yo", "type": "output", "position": { "x": 500, "y": 150 }, "rotation": 0, "pins": [{ "id": "y", "name": "Y", "direction": "input", "bits": 1 }] }
+        ],
+        "edges": [
+          { "id": "e1",  "fromNodeId": "ai",   "fromPinId": "a",    "toNodeId": "tsA", "toPinId": "mad" },
+          { "id": "e2",  "fromNodeId": "seli", "fromPinId": "sel",  "toNodeId": "tsA", "toPinId": "mae" },
+          { "id": "e3",  "fromNodeId": "bi",   "fromPinId": "b",    "toNodeId": "tsB", "toPinId": "mbd" },
+          { "id": "e4",  "fromNodeId": "seli", "fromPinId": "sel",  "toNodeId": "inv", "toPinId": "inva" },
+          { "id": "e5",  "fromNodeId": "seli", "fromPinId": "sel",  "toNodeId": "inv", "toPinId": "invb" },
+          { "id": "e6",  "fromNodeId": "inv",  "fromPinId": "invo", "toNodeId": "tsB", "toPinId": "mbe" },
+          { "id": "e7",  "fromNodeId": "tsA",  "fromPinId": "may",  "toNodeId": "yo",  "toPinId": "y"  },
+          { "id": "e8",  "fromNodeId": "tsB",  "fromPinId": "mby",  "toNodeId": "yo",  "toPinId": "y"  }
+        ]
+      },
+      "createdAt": "2026-02-18T00:00:00.000Z",
+      "updatedAt": "2026-02-18T00:00:00.000Z"
+    }
+
+  ],
+  "library": []
+}

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Edge as RFEdge } from "@xyflow/react";
-import { evaluateCircuitFull, pinKey, type InstanceState } from "../engine/simulate.ts";
+import { evaluateCircuitFull, pinKey, Z_VALUE, CONFLICT, type InstanceState } from "../engine/simulate.ts";
 import { evaluateCircuitIterative } from "../engine/simulate-iterative.ts";
 import { canvasToCircuit } from "../utils/canvas-to-circuit.ts";
 import { useModuleStore } from "./module-store.ts";
@@ -28,6 +28,10 @@ interface SimulationStore {
   oscillating: boolean;
   /** Edges that are unstable (oscillating), keyed by edge ID */
   unstableEdges: Record<string, boolean>;
+  /** Edges carrying a bus conflict (multiple strong drivers disagree) */
+  conflictEdges: Record<string, boolean>;
+  /** Edges carrying Z (high-impedance, no active driver) */
+  zEdges: Record<string, boolean>;
   /** Whether the clock is running */
   running: boolean;
   /** Ticks per second */
@@ -57,6 +61,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   ramStates: {},
   oscillating: false,
   unstableEdges: {},
+  conflictEdges: {},
+  zEdges: {},
   running: false,
   tickRate: 2,
   signalHistory: [],
@@ -86,7 +92,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const { circuit, inputValues } = canvasToCircuit(nodes, edges);
 
     if (circuit.nodes.length === 0) {
-      set({ pinValues: {}, edgeSignals: {}, oscillating: false, unstableEdges: {}, instanceStates: new Map(), ramStates: {} });
+      set({ pinValues: {}, edgeSignals: {}, oscillating: false, unstableEdges: {}, conflictEdges: {}, zEdges: {}, instanceStates: new Map(), ramStates: {} });
       return;
     }
 
@@ -117,16 +123,19 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       pinValues[key] = value;
     }
 
-    // Derive edge signals: each edge carries the value of its source output pin
+    // Derive edge signals and state flags from source pin values
     const edgeSignals: Record<string, number> = {};
     const unstableEdges: Record<string, boolean> = {};
+    const conflictEdges: Record<string, boolean> = {};
+    const zEdges: Record<string, boolean> = {};
     for (const edge of edges) {
       if (edge.sourceHandle) {
         const key = pinKey(edge.source, edge.sourceHandle);
-        edgeSignals[edge.id] = pinValues[key] ?? 0;
-        if (unstableKeys.has(key)) {
-          unstableEdges[edge.id] = true;
-        }
+        const val = pinValues[key] ?? 0;
+        edgeSignals[edge.id] = val;
+        if (unstableKeys.has(key)) unstableEdges[edge.id] = true;
+        if (val === CONFLICT) conflictEdges[edge.id] = true;
+        if (val === Z_VALUE) zEdges[edge.id] = true;
       }
     }
 
@@ -154,6 +163,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       ramStates,
       oscillating: !stable,
       unstableEdges,
+      conflictEdges,
+      zEdges,
       signalHistory: nextHistory,
     });
   },

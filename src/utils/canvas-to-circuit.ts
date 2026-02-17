@@ -195,6 +195,28 @@ export function canvasToCircuit(
             { id: node.data.dataOutPinId, name: "DOut", direction: "output" as const, bits: 8 as const },
           ],
         };
+      case "tristate":
+        return {
+          id: node.id,
+          type: "tristate" as const,
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            { id: node.data.dataPinId,   name: "D",  direction: "input" as const,  bits: node.data.bits },
+            { id: node.data.enablePinId, name: "EN", direction: "input" as const,  bits: 1 as const },
+            { id: node.data.outputPinId, name: "Y",  direction: "output" as const, bits: node.data.bits },
+          ],
+        };
+      case "pull":
+        return {
+          id: node.id,
+          type: node.data.variant as "pullup" | "pulldown",
+          position: node.position,
+          rotation: node.data.rotation ?? 0,
+          pins: [
+            { id: node.data.outputPinId, name: "Y", direction: "output" as const, bits: 1 as const },
+          ],
+        };
       case "module":
         return {
           id: node.id,

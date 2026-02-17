@@ -20,6 +20,52 @@ export interface InstanceState {
   lastWriteAddr?: number | null;
 }
 
+// === Wire state sentinels ===
+
+/** High-impedance output (tri-state buffer disabled). Not a driver. */
+export const Z_VALUE = -1;
+/** Weak pull-up driver — wins only when no strong driver is present. */
+export const WEAK_1  = -2;
+/** Weak pull-down driver — wins only when no strong driver is present. */
+export const WEAK_0  = -3;
+/** Bus conflict — multiple strong drivers disagreed. */
+export const CONFLICT = -4;
+
+// === Bus resolution ===
+
+/**
+ * Resolve multiple driver values on a shared bus.
+ *
+ * Rules:
+ *  - Z_VALUE  (-1) does not drive; ignored.
+ *  - Strong drivers (≥ 0) beat weak drivers.
+ *  - If only one unique strong value → that value.
+ *  - If multiple differing strong values → CONFLICT.
+ *  - If only weak drivers (WEAK_1 / WEAK_0) → their concrete equivalent (1 / 0).
+ *  - If only Z → Z_VALUE (floating).
+ */
+export function resolveBus(values: number[]): number {
+  const active = values.filter((v) => v !== Z_VALUE);
+  if (active.length === 0) return Z_VALUE;
+
+  const strong = active.filter((v) => v >= 0);
+  if (strong.length > 0) {
+    const first = strong[0]!;
+    for (const v of strong) {
+      if (v !== first) return CONFLICT;
+    }
+    return first;
+  }
+
+  // Only weak drivers remain
+  const weakConcrete = active.map((v) => (v === WEAK_1 ? 1 : 0));
+  const first = weakConcrete[0]!;
+  for (const v of weakConcrete) {
+    if (v !== first) return CONFLICT;
+  }
+  return first;
+}
+
 // === Constants ===
 
 export const BUILTIN_NAND_MODULE_ID: ModuleId = "builtin:nand";
@@ -100,13 +146,14 @@ export function resolveTunnels(circuit: Circuit): Circuit {
 
 export interface AdjacencyList {
   forward: Map<string, Array<{ nodeId: NodeId; pinId: PinId }>>;
-  reverse: Map<string, { nodeId: NodeId; pinId: PinId }>;
+  /** Array-based: supports multiple drivers per destination (shared bus). */
+  reverse: Map<string, Array<{ nodeId: NodeId; pinId: PinId }>>;
   nodeIds: NodeId[];
 }
 
 export function buildAdjacencyList(circuit: Circuit): AdjacencyList {
   const forward = new Map<string, Array<{ nodeId: NodeId; pinId: PinId }>>();
-  const reverse = new Map<string, { nodeId: NodeId; pinId: PinId }>();
+  const reverse = new Map<string, Array<{ nodeId: NodeId; pinId: PinId }>>();
   const nodeIds = circuit.nodes.map((n) => n.id);
 
   for (const edge of circuit.edges) {
@@ -117,18 +164,44 @@ export function buildAdjacencyList(circuit: Circuit): AdjacencyList {
     if (targets) {
       targets.push({ nodeId: edge.toNodeId, pinId: edge.toPinId });
     } else {
-      forward.set(srcKey, [
-        { nodeId: edge.toNodeId, pinId: edge.toPinId },
-      ]);
+      forward.set(srcKey, [{ nodeId: edge.toNodeId, pinId: edge.toPinId }]);
     }
 
-    reverse.set(dstKey, {
-      nodeId: edge.fromNodeId,
-      pinId: edge.fromPinId,
-    });
+    // Append to array — multiple drivers allowed (bus resolution)
+    const existing = reverse.get(dstKey);
+    if (existing) {
+      existing.push({ nodeId: edge.fromNodeId, pinId: edge.fromPinId });
+    } else {
+      reverse.set(dstKey, [{ nodeId: edge.fromNodeId, pinId: edge.fromPinId }]);
+    }
   }
 
   return { forward, reverse, nodeIds };
+}
+
+// === Input resolution with bus support ===
+
+/**
+ * Resolve all drivers for a given destination pin key.
+ * Handles single-driver (fast path), multi-driver (bus resolution via resolveBus),
+ * and no-driver (returns 0) cases.
+ */
+function resolveInputInternal(
+  adj: AdjacencyList,
+  key: string,
+  pinValues: Map<string, number>,
+): number {
+  const drivers = adj.reverse.get(key);
+  if (!drivers || drivers.length === 0) return 0;
+  // Always go through resolveBus so WEAK_1/WEAK_0 sentinels are converted
+  // to their concrete equivalents (1/0) even for a single driver.
+  // Use ?? 0 (not Z_VALUE) so uncomputed pins in the iterative evaluator
+  // default to 0 (backward-compatible); actual Z_VALUE (-1) entries in the
+  // map are never undefined so they pass through correctly.
+  const vals = drivers.map(
+    (d) => pinValues.get(pinKey(d.nodeId, d.pinId)) ?? 0,
+  );
+  return resolveBus(vals);
 }
 
 // === Topological sort (Kahn's algorithm) ===
@@ -209,14 +282,10 @@ export function evaluateNode(
       const tOutPin = node.pins.find((p) => p.direction === "output");
       if (tInPin) {
         const key = pinKey(node.id, tInPin.id);
-        const upstream = adj.reverse.get(key);
-        if (upstream) {
-          pinValues.set(key, pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0);
-        } else {
-          pinValues.set(key, 0);
-        }
+        const val = resolveInputInternal(adj, key, pinValues);
+        pinValues.set(key, val);
         if (tOutPin) {
-          pinValues.set(pinKey(node.id, tOutPin.id), pinValues.get(key) ?? 0);
+          pinValues.set(pinKey(node.id, tOutPin.id), val);
         }
       }
       break;
@@ -227,16 +296,7 @@ export function evaluateNode(
       for (const pin of node.pins) {
         if (pin.direction === "input") {
           const key = pinKey(node.id, pin.id);
-          const upstream = adj.reverse.get(key);
-          if (upstream) {
-            pinValues.set(
-              key,
-              pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ??
-                0,
-            );
-          } else {
-            pinValues.set(key, 0);
-          }
+          pinValues.set(key, resolveInputInternal(adj, key, pinValues));
         }
       }
       break;
@@ -247,13 +307,11 @@ export function evaluateNode(
       const dataPin = node.pins.find((p) => p.direction === "output");
       if (!addrPin || !dataPin) break;
       const addrKey = pinKey(node.id, addrPin.id);
-      const upstream = adj.reverse.get(addrKey);
-      const addr = upstream
-        ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
-        : 0;
+      const addr = resolveInputInternal(adj, addrKey, pinValues);
       pinValues.set(addrKey, addr);
       const addrMask = (1 << (addrPin.bits as number)) - 1;
-      const data = (node.romData ?? [])[addr & addrMask] ?? 0;
+      const safeAddr = addr >= 0 ? addr : 0;
+      const data = (node.romData ?? [])[safeAddr & addrMask] ?? 0;
       pinValues.set(pinKey(node.id, dataPin.id), data);
       break;
     }
@@ -266,13 +324,11 @@ export function evaluateNode(
       const dataOutPin = node.pins.find((p) => p.direction === "output");
       if (!addrPin || !dataInPin || !wePin || !clkPin || !dataOutPin) break;
 
-      // Resolve all inputs from upstream
+      // Resolve all inputs from upstream (treat Z/CONFLICT as 0 for RAM logic)
       const resolveInput = (pin: { id: PinId }): number => {
         const key = pinKey(node.id, pin.id);
-        const upstream = adj.reverse.get(key);
-        const val = upstream
-          ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
-          : 0;
+        const raw = resolveInputInternal(adj, key, pinValues);
+        const val = raw >= 0 ? raw : 0;
         pinValues.set(key, val);
         return val;
       };
@@ -323,19 +379,41 @@ export function evaluateNode(
       break;
     }
 
+    case "tristate": {
+      // Tri-state buffer: when EN=1 pass data through; when EN=0 output Z (high-impedance)
+      const dataPin   = node.pins.find((p) => p.name === "D");
+      const enablePin = node.pins.find((p) => p.name === "EN");
+      const outPin    = node.pins.find((p) => p.direction === "output");
+      if (!dataPin || !enablePin || !outPin) break;
+      const dataKey   = pinKey(node.id, dataPin.id);
+      const enableKey = pinKey(node.id, enablePin.id);
+      const dataVal   = resolveInputInternal(adj, dataKey, pinValues);
+      const enableVal = resolveInputInternal(adj, enableKey, pinValues);
+      pinValues.set(dataKey, dataVal);
+      pinValues.set(enableKey, enableVal);
+      pinValues.set(pinKey(node.id, outPin.id), enableVal > 0 ? dataVal : Z_VALUE);
+      break;
+    }
+
+    case "pullup":
+    case "pulldown":
+      // Already seeded in evaluateCircuitFull / evaluateCircuitIterative
+      break;
+
     case "module": {
       if (node.moduleId === BUILTIN_SPLITTER_MODULE_ID) {
         // Splitter: one multi-bit input → N 1-bit outputs
         const inputPin = node.pins.find((p) => p.direction === "input")!;
         const inputKey = pinKey(node.id, inputPin.id);
-        const upstream = adj.reverse.get(inputKey);
-        const inputValue = upstream
-          ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
-          : (pinValues.get(inputKey) ?? 0);
+        const drivers = adj.reverse.get(inputKey);
+        const inputValue = (drivers && drivers.length > 0)
+          ? resolveInputInternal(adj, inputKey, pinValues)
+          : (pinValues.get(inputKey) ?? 0); // iterative fallback
         pinValues.set(inputKey, inputValue);
+        const safeInputValue = inputValue >= 0 ? inputValue : 0;
         const outputPins = node.pins.filter((p) => p.direction === "output");
         for (let i = 0; i < outputPins.length; i++) {
-          pinValues.set(pinKey(node.id, outputPins[i]!.id), (inputValue >> i) & 1);
+          pinValues.set(pinKey(node.id, outputPins[i]!.id), (safeInputValue >> i) & 1);
         }
         break;
       }
@@ -345,12 +423,13 @@ export function evaluateNode(
         let result = 0;
         for (let i = 0; i < inputPins.length; i++) {
           const key = pinKey(node.id, inputPins[i]!.id);
-          const upstream = adj.reverse.get(key);
-          const bit = upstream
-            ? (pinValues.get(pinKey(upstream.nodeId, upstream.pinId)) ?? 0)
-            : (pinValues.get(key) ?? 0);
+          const drivers = adj.reverse.get(key);
+          const bit = (drivers && drivers.length > 0)
+            ? resolveInputInternal(adj, key, pinValues)
+            : (pinValues.get(key) ?? 0); // iterative fallback
           pinValues.set(key, bit);
-          result |= ((bit & 1) << i);
+          const safeBit = bit >= 0 ? bit : 0;
+          result |= ((safeBit & 1) << i);
         }
         const outputPin = node.pins.find((p) => p.direction === "output")!;
         pinValues.set(pinKey(node.id, outputPin.id), result);
@@ -365,16 +444,7 @@ export function evaluateNode(
         );
 
         const resolveInput = (pin: { id: PinId }): number => {
-          const key = pinKey(node.id, pin.id);
-          const upstream = adj.reverse.get(key);
-          if (upstream) {
-            return (
-              pinValues.get(
-                pinKey(upstream.nodeId, upstream.pinId),
-              ) ?? 0
-            );
-          }
-          return 0;
+          return resolveInputInternal(adj, pinKey(node.id, pin.id), pinValues);
         };
 
         const a = inputPins[0] ? resolveInput(inputPins[0]) : 0;
@@ -399,14 +469,8 @@ export function evaluateNode(
             const instancePin = instanceInputPins[i];
             const defPin = mod.inputs[i];
             if (!instancePin || !defPin) continue;
-
             const key = pinKey(node.id, instancePin.id);
-            const upstream = adj.reverse.get(key);
-            subInputs[defPin.id] = upstream
-              ? (pinValues.get(
-                  pinKey(upstream.nodeId, upstream.pinId),
-                ) ?? 0)
-              : 0;
+            subInputs[defPin.id] = resolveInputInternal(adj, key, pinValues);
           }
 
           const prevState = instanceStates?.get(node.id);
@@ -462,15 +526,25 @@ export function evaluateCircuitFull(
     nodeMap.set(node.id, node);
   }
 
-  // Seed input/constant nodes
+  // Seed source nodes (inputs, constants, clocks, buttons, pull-ups/downs)
   for (const node of resolved.nodes) {
-    if (node.type === "input" || node.type === "constant" || node.type === "clock" || node.type === "button") {
+    if (
+      node.type === "input" ||
+      node.type === "constant" ||
+      node.type === "clock" ||
+      node.type === "button" ||
+      node.type === "pullup" ||
+      node.type === "pulldown"
+    ) {
       for (const pin of node.pins) {
         if (pin.direction === "output") {
-          pinValues.set(
-            pinKey(node.id, pin.id),
-            inputs[pin.id] ?? 0,
-          );
+          if (node.type === "pullup") {
+            pinValues.set(pinKey(node.id, pin.id), WEAK_1);
+          } else if (node.type === "pulldown") {
+            pinValues.set(pinKey(node.id, pin.id), WEAK_0);
+          } else {
+            pinValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? 0);
+          }
         }
       }
     }

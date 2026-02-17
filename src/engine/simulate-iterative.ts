@@ -1,5 +1,5 @@
 import type { Circuit, Module, PinId } from "./types.ts";
-import { buildAdjacencyList, evaluateNode, pinKey, resolveTunnels, type InstanceState } from "./simulate.ts";
+import { buildAdjacencyList, evaluateNode, pinKey, resolveTunnels, WEAK_1, WEAK_0, type InstanceState } from "./simulate.ts";
 
 // === Constants ===
 
@@ -27,20 +27,25 @@ export function evaluateCircuitIterative(
   const adj = buildAdjacencyList(resolved);
   const currentValues = new Map(prevPinValues);
 
-  // Seed source nodes (input/constant/clock/button) with current inputs
+  // Seed source nodes (input/constant/clock/button/pullup/pulldown) with current inputs
   for (const node of resolved.nodes) {
     if (
       node.type === "input" ||
       node.type === "constant" ||
       node.type === "clock" ||
-      node.type === "button"
+      node.type === "button" ||
+      node.type === "pullup" ||
+      node.type === "pulldown"
     ) {
       for (const pin of node.pins) {
         if (pin.direction === "output") {
-          currentValues.set(
-            pinKey(node.id, pin.id),
-            inputs[pin.id] ?? 0,
-          );
+          if (node.type === "pullup") {
+            currentValues.set(pinKey(node.id, pin.id), WEAK_1);
+          } else if (node.type === "pulldown") {
+            currentValues.set(pinKey(node.id, pin.id), WEAK_0);
+          } else {
+            currentValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? 0);
+          }
         }
       }
     }

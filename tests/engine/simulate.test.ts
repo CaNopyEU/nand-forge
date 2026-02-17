@@ -121,10 +121,9 @@ describe("buildAdjacencyList", () => {
     expect(adj.forward.get("n1:p1")).toEqual([
       { nodeId: "n2", pinId: "p2a" },
     ]);
-    expect(adj.reverse.get("n2:p2a")).toEqual({
-      nodeId: "n1",
-      pinId: "p1",
-    });
+    expect(adj.reverse.get("n2:p2a")).toEqual([
+      { nodeId: "n1", pinId: "p1" },
+    ]);
     expect(adj.nodeIds).toEqual(["n1", "n2"]);
   });
 

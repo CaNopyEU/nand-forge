@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Connection, Edge as RFEdge, IsValidConnection } from "@xyflow/react";
-import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData, type RomNodeData, type RamNodeData } from "../store/circuit-store.ts";
+import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData, type RomNodeData, type RamNodeData, type TristateNodeData } from "../store/circuit-store.ts";
 import { generateId } from "../utils/id.ts";
 import type { BitWidth } from "../engine/types.ts";
 
@@ -31,6 +31,12 @@ function getPinBits(nodes: AppNode[], nodeId: string, pinId: string): BitWidth {
     if (pinId === ramData.clockPinId) return 1 as BitWidth;
     return 8 as BitWidth; // dataIn, dataOut
   }
+  if (node?.type === "tristate") {
+    const tsData = node.data as TristateNodeData;
+    if (pinId === tsData.enablePinId) return 1 as BitWidth;
+    return tsData.bits as BitWidth;
+  }
+  if (node?.type === "pull") return 1 as BitWidth;
   return 1;
 }
 
@@ -40,8 +46,8 @@ function getPinBits(nodes: AppNode[], nodeId: string, pinId: string): BitWidth {
  * Validation rules:
  * 1. No self-connections (source node === target node)
  * 2. No duplicate edges (same source+sourceHandle → target+targetHandle)
- * 3. Each input pin can only have one incoming wire
- * 4. Bit width must match between source and target pins
+ * 3. Bit width must match between source and target pins
+ * Multiple drivers per input are allowed (bus resolution handles them).
  */
 export function useWiring() {
   const addEdge = useCircuitStore((s) => s.addEdge);
@@ -68,13 +74,7 @@ export function useWiring() {
       );
       if (duplicate) return false;
 
-      // 4. Input pin already has a wire → reject (one driver per input)
-      const inputOccupied = edges.some(
-        (e) => e.target === target && e.targetHandle === targetHandle,
-      );
-      if (inputOccupied) return false;
-
-      // 5. Bit width must match
+      // 4. Bit width must match
       const sourceBits = getPinBits(nodes, source, sourceHandle);
       const targetBits = getPinBits(nodes, target, targetHandle);
       if (sourceBits !== targetBits) return false;

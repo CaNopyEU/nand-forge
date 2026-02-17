@@ -18,7 +18,7 @@ export interface Pin {
 // === Node on canvas ===
 export interface CircuitNode {
   id: NodeId;
-  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel" | "rom" | "ram";
+  type: "input" | "output" | "constant" | "probe" | "module" | "clock" | "button" | "tunnel" | "rom" | "ram" | "tristate" | "pullup" | "pulldown";
   moduleId?: ModuleId;
   variant?: string;
   position: { x: number; y: number };

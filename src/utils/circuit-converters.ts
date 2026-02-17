@@ -186,6 +186,38 @@ export function circuitNodesToAppNodes(
           },
         };
       }
+      case "tristate": {
+        const dataPin   = node.pins.find((p) => p.name === "D");
+        const enablePin = node.pins.find((p) => p.name === "EN");
+        const outPin    = node.pins.find((p) => p.direction === "output");
+        const tsBits = (dataPin?.bits ?? 1) as 1 | 8;
+        return {
+          id: node.id,
+          type: "tristate" as const,
+          position: node.position,
+          data: {
+            dataPinId:   dataPin?.id   ?? node.id,
+            enablePinId: enablePin?.id ?? node.id,
+            outputPinId: outPin?.id    ?? node.id,
+            bits: tsBits,
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      }
+      case "pullup":
+      case "pulldown": {
+        const outPin = node.pins.find((p) => p.direction === "output");
+        return {
+          id: node.id,
+          type: "pull" as const,
+          position: node.position,
+          data: {
+            outputPinId: outPin?.id ?? node.id,
+            variant: node.type as "pullup" | "pulldown",
+            rotation: (node.rotation ?? 0) as Rotation,
+          },
+        };
+      }
       case "module": {
         const mid = node.moduleId ?? "";
         const mod = moduleMap.get(mid);
