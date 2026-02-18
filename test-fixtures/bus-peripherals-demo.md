@@ -1,6 +1,6 @@
-# Bus Peripherals Demo (17C)
+# Bus Peripherals Demo
 
-Showcase modules for the 17C bus peripheral features: DIP Switch, Hex Display, LED Bar, and Tunnels.
+Showcase modules for bus peripheral features: DIP Switch, Hex Display, LED Bar, and Tunnels. Verifies that peripheral variant nodes and tunnel pairs survive serialisation round-trips.
 
 ## Modules
 
@@ -10,7 +10,7 @@ Showcase modules for the 17C bus peripheral features: DIP Switch, Hex Display, L
 | Tunnel Bridge | mod-tunnel-bridge | In | Out | Wireless signal routing via tunnel pair |
 | DIP to Hex | mod-dip-demo | (none) | Val[8] | DIP Switch as interactive 8-bit input |
 
-## Module Details
+## Architecture
 
 ### Hex Monitor
 8-bit pass-through with visual outputs. Input signal is fanned out to:
@@ -47,7 +47,7 @@ Use case: test that variant nodes serialize/deserialize correctly.
 1. Import fixture → DIP Switch and Hex Display nodes preserved with correct variants
 2. Set DIP value=0xFF → Hex Display pin receives 0xFF
 
-## Round-trip Verification
+## Use Cases
 
 These modules verify that the following engine node types survive export/import:
 - `type: "input", variant: "dip-switch"` → canvas `dipSwitch`

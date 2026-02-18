@@ -1,6 +1,8 @@
 # Multiplexers
 
-## Module Overview
+MUX circuits built from NAND gates. A 2:1 MUX selects between two inputs based on a select signal; a 4:1 MUX is built from three 2:1 MUXes.
+
+## Modules
 
 | Name | Inputs | Outputs | Sub-modules | Description |
 |------|--------|---------|-------------|-------------|

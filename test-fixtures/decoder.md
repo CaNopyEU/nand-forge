@@ -1,10 +1,8 @@
 # 2-to-4 Line Decoder
 
-## Description
+A 2-to-4 line decoder takes a 2-bit binary input (A1, A0) and activates exactly one of four output lines (Y0–Y3). The output corresponding to the binary value of the input is set to 1; all others are 0. Fundamental building block for address decoding and memory selection.
 
-A 2-to-4 line decoder takes a 2-bit binary input (A1, A0) and activates exactly one of four output lines (Y0-Y3). The output corresponding to the binary value of the input is set to 1; all other outputs are 0. This is a fundamental combinational circuit used in address decoding and memory selection.
-
-## Module Overview
+## Modules
 
 | Name | Inputs | Outputs | Sub-modules | Description |
 |------|--------|---------|-------------|-------------|
@@ -12,7 +10,7 @@ A 2-to-4 line decoder takes a 2-bit binary input (A1, A0) and activates exactly 
 | AND | A, B | Out | 2x NAND | Conjunction: NOT(NAND(A,B)) |
 | 2-to-4 Decoder | A0, A1 | Y0, Y1, Y2, Y3 | 2x NOT, 4x AND | Binary decoder |
 
-## Internal Structure
+## Architecture
 
 The decoder uses two NOT gates to produce the complements of the inputs (NOT_A0, NOT_A1), then four AND gates to generate each output:
 
