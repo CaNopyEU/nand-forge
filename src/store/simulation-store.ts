@@ -44,6 +44,13 @@ interface SimulationStore {
   recording: boolean;
 
   runSimulation: (nodes: AppNode[], edges: RFEdge[]) => void;
+  applyResult: (
+    pinMap: Map<string, number>,
+    instanceStates: Map<string, InstanceState>,
+    stable: boolean,
+    unstableKeys: Set<string>,
+    rfEdges: RFEdge[],
+  ) => void;
   clearRamState: (nodeId: string, data: number[]) => void;
   play: () => void;
   pause: () => void;
@@ -105,7 +112,6 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     try {
       pinMap = evaluateCircuitFull(circuit, inputValues, modules, instanceStates);
     } catch {
-      // Cycle detected — use iterative evaluation with delay model
       const result = evaluateCircuitIterative(
         circuit,
         inputValues,
@@ -118,6 +124,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       unstableKeys = result.unstableKeys;
     }
 
+    get().applyResult(pinMap, instanceStates, stable, unstableKeys, edges);
+  },
+
+  applyResult: (pinMap, instanceStates, stable, unstableKeys, rfEdges) => {
     const pinValues: Record<string, number> = {};
     for (const [key, value] of pinMap) {
       pinValues[key] = value;
@@ -128,7 +138,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const unstableEdges: Record<string, boolean> = {};
     const conflictEdges: Record<string, boolean> = {};
     const zEdges: Record<string, boolean> = {};
-    for (const edge of edges) {
+    for (const edge of rfEdges) {
       if (edge.sourceHandle) {
         const key = pinKey(edge.source, edge.sourceHandle);
         const val = pinValues[key] ?? 0;
