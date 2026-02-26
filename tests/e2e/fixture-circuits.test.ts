@@ -235,84 +235,283 @@ describe("Fixture: alu-8bit", () => {
   const fixture = loadFixture("alu-8bit");
   const modules = fixture.modules;
 
+  // Opcode helpers: { op0, op1, op2 }
+  const AND = { op0: 0, op1: 0, op2: 0 };
+  const OR  = { op0: 1, op1: 0, op2: 0 };
+  const XOR = { op0: 0, op1: 1, op2: 0 };
+  const NOT = { op0: 1, op1: 1, op2: 0 };
+  const ADD = { op0: 0, op1: 0, op2: 1 };
+  const SUB = { op0: 1, op1: 0, op2: 1 };
+  const SHL = { op0: 0, op1: 1, op2: 1 };
+  const SHR = { op0: 1, op1: 1, op2: 1 };
+
+  // Helper: evaluate ALU slice with defaults for unused inputs
+  const slice = (inputs: Record<string, number>) =>
+    evalModule(modules, "mod-alu-slice", { cin: 0, shiftin: 0, ...inputs });
+
+  // Helper: evaluate 8-bit ALU
+  const alu = (a: number, b: number, op: Record<string, number>) =>
+    evalModule(modules, "mod-alu8", { a, b, ...op });
+
+  describe("NOR8", () => {
+    it("all zeros → 1", () => {
+      const out = evalModule(modules, "mod-nor8", { d0: 0, d1: 0, d2: 0, d3: 0, d4: 0, d5: 0, d6: 0, d7: 0 });
+      expect(out).toMatchObject({ out: 1 });
+    });
+
+    it("any one set → 0", () => {
+      const out = evalModule(modules, "mod-nor8", { d0: 0, d1: 0, d2: 0, d3: 1, d4: 0, d5: 0, d6: 0, d7: 0 });
+      expect(out).toMatchObject({ out: 0 });
+    });
+
+    it("all ones → 0", () => {
+      const out = evalModule(modules, "mod-nor8", { d0: 1, d1: 1, d2: 1, d3: 1, d4: 1, d5: 1, d6: 1, d7: 1 });
+      expect(out).toMatchObject({ out: 0 });
+    });
+  });
+
   describe("ALU Slice (1-bit)", () => {
     it("AND: 1 & 1 = 1", () => {
-      const out = evalModule(modules, "mod-alu-slice", { a: 1, b: 1, cin: 0, op0: 0, op1: 0 });
-      expect(out).toMatchObject({ r: 1 });
+      expect(slice({ a: 1, b: 1, ...AND })).toMatchObject({ r: 1 });
+    });
+
+    it("AND: 1 & 0 = 0", () => {
+      expect(slice({ a: 1, b: 0, ...AND })).toMatchObject({ r: 0 });
     });
 
     it("OR: 1 | 0 = 1", () => {
-      const out = evalModule(modules, "mod-alu-slice", { a: 1, b: 0, cin: 0, op0: 1, op1: 0 });
-      expect(out).toMatchObject({ r: 1 });
+      expect(slice({ a: 1, b: 0, ...OR })).toMatchObject({ r: 1 });
+    });
+
+    it("OR: 0 | 0 = 0", () => {
+      expect(slice({ a: 0, b: 0, ...OR })).toMatchObject({ r: 0 });
     });
 
     it("XOR: 1 ^ 1 = 0", () => {
-      const out = evalModule(modules, "mod-alu-slice", { a: 1, b: 1, cin: 0, op0: 0, op1: 1 });
-      expect(out).toMatchObject({ r: 0 });
+      expect(slice({ a: 1, b: 1, ...XOR })).toMatchObject({ r: 0 });
+    });
+
+    it("XOR: 1 ^ 0 = 1", () => {
+      expect(slice({ a: 1, b: 0, ...XOR })).toMatchObject({ r: 1 });
+    });
+
+    it("NOT: ~1 = 0", () => {
+      expect(slice({ a: 1, b: 0, ...NOT })).toMatchObject({ r: 0 });
+    });
+
+    it("NOT: ~0 = 1", () => {
+      expect(slice({ a: 0, b: 0, ...NOT })).toMatchObject({ r: 1 });
     });
 
     it("ADD: 1 + 1 + 0 = 0 carry 1", () => {
-      const out = evalModule(modules, "mod-alu-slice", { a: 1, b: 1, cin: 0, op0: 1, op1: 1 });
-      expect(out).toMatchObject({ r: 0, cout: 1 });
+      expect(slice({ a: 1, b: 1, ...ADD })).toMatchObject({ r: 0, cout: 1 });
+    });
+
+    it("ADD: 1 + 0 + 1 = 0 carry 1", () => {
+      expect(slice({ a: 1, b: 0, cin: 1, ...ADD })).toMatchObject({ r: 0, cout: 1 });
+    });
+
+    it("SUB slice: A=1, B=0, Cin=1 → B_eff=1, FA(1,1,1)=1 carry 1", () => {
+      expect(slice({ a: 1, b: 0, cin: 1, ...SUB })).toMatchObject({ r: 1, cout: 1 });
+    });
+
+    it("Shift: shiftin=1, op=SHL → R=1 (passes through)", () => {
+      expect(slice({ a: 0, b: 0, shiftin: 1, ...SHL })).toMatchObject({ r: 1 });
     });
   });
 
-  describe("8-bit ALU — AND (Op=00)", () => {
-    // Note: Cout always reflects the Full Adder carry (A+B), not the AND result
+  describe("8-bit ALU — AND (Op=000)", () => {
     it("0xFF AND 0x0F = 0x0F", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xff, b: 0x0f, op0: 0, op1: 0 });
-      expect(out["r"]).toBe(0x0f);
+      expect(alu(0xff, 0x0f, AND)["r"]).toBe(0x0f);
     });
 
     it("0xA5 AND 0x5A = 0x00", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xa5, b: 0x5a, op0: 0, op1: 0 });
+      const out = alu(0xa5, 0x5a, AND);
       expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
+    });
+
+    it("0xFF AND 0xFF = 0xFF", () => {
+      expect(alu(0xff, 0xff, AND)["r"]).toBe(0xff);
     });
   });
 
-  describe("8-bit ALU — OR (Op=01)", () => {
+  describe("8-bit ALU — OR (Op=001)", () => {
     it("0xA0 OR 0x05 = 0xA5", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xa0, b: 0x05, op0: 1, op1: 0 });
-      expect(out["r"]).toBe(0xa5);
+      expect(alu(0xa0, 0x05, OR)["r"]).toBe(0xa5);
     });
 
-    it("0x00 OR 0x00 = 0x00", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0x00, b: 0x00, op0: 1, op1: 0 });
+    it("0x00 OR 0x00 = 0x00, Zero=1", () => {
+      const out = alu(0x00, 0x00, OR);
       expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
     });
   });
 
-  describe("8-bit ALU — XOR (Op=10)", () => {
-    it("0xFF XOR 0xFF = 0x00", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xff, b: 0xff, op0: 0, op1: 1 });
+  describe("8-bit ALU — XOR (Op=010)", () => {
+    it("0xFF XOR 0xFF = 0x00, Zero=1", () => {
+      const out = alu(0xff, 0xff, XOR);
       expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
     });
 
-    it("0xAA XOR 0x55 = 0xFF", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xaa, b: 0x55, op0: 0, op1: 1 });
+    it("0xAA XOR 0x55 = 0xFF, Neg=1", () => {
+      const out = alu(0xaa, 0x55, XOR);
       expect(out["r"]).toBe(0xff);
+      expect(out["neg"]).toBe(1);
     });
   });
 
-  describe("8-bit ALU — ADD (Op=11)", () => {
+  describe("8-bit ALU — NOT (Op=011)", () => {
+    it("NOT 0xA5 = 0x5A", () => {
+      expect(alu(0xa5, 0x00, NOT)["r"]).toBe(0x5a);
+    });
+
+    it("NOT 0x00 = 0xFF, Neg=1", () => {
+      const out = alu(0x00, 0x00, NOT);
+      expect(out["r"]).toBe(0xff);
+      expect(out["neg"]).toBe(1);
+    });
+
+    it("NOT 0xFF = 0x00, Zero=1", () => {
+      const out = alu(0xff, 0x00, NOT);
+      expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
+    });
+  });
+
+  describe("8-bit ALU — ADD (Op=100)", () => {
+    it("5 + 3 = 8", () => {
+      const out = alu(5, 3, ADD);
+      expect(out).toMatchObject({ r: 8, carry: 0, zero: 0, neg: 0 });
+    });
+
     it("0x37 + 0x85 = 0xBC, no carry", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0x37, b: 0x85, op0: 1, op1: 1 });
-      expect(out).toMatchObject({ r: 0xbc, cout: 0 });
+      expect(alu(0x37, 0x85, ADD)).toMatchObject({ r: 0xbc, carry: 0 });
     });
 
-    it("0xFF + 0x01 = 0x00, carry", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0xff, b: 0x01, op0: 1, op1: 1 });
-      expect(out).toMatchObject({ r: 0x00, cout: 1 });
+    it("0xFF + 0x01 = 0x00, Carry=1, Zero=1", () => {
+      const out = alu(0xff, 0x01, ADD);
+      expect(out).toMatchObject({ r: 0x00, carry: 1, zero: 1 });
     });
 
-    it("0x00 + 0x00 = 0x00", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0x00, b: 0x00, op0: 1, op1: 1 });
-      expect(out).toMatchObject({ r: 0x00, cout: 0 });
+    it("0x00 + 0x00 = 0x00, Zero=1", () => {
+      const out = alu(0x00, 0x00, ADD);
+      expect(out).toMatchObject({ r: 0x00, carry: 0, zero: 1 });
     });
 
-    it("0x80 + 0x80 = 0x00, carry", () => {
-      const out = evalModule(modules, "mod-alu8", { a: 0x80, b: 0x80, op0: 1, op1: 1 });
-      expect(out).toMatchObject({ r: 0x00, cout: 1 });
+    it("0x80 + 0x80 = 0x00, Carry=1, Zero=1", () => {
+      expect(alu(0x80, 0x80, ADD)).toMatchObject({ r: 0x00, carry: 1, zero: 1 });
+    });
+
+    it("0x7F + 0x01 = 0x80, Neg=1", () => {
+      expect(alu(0x7f, 0x01, ADD)).toMatchObject({ r: 0x80, neg: 1 });
+    });
+  });
+
+  describe("8-bit ALU — SUB (Op=101)", () => {
+    it("5 - 3 = 2, Carry=1", () => {
+      expect(alu(5, 3, SUB)).toMatchObject({ r: 2, carry: 1, zero: 0, neg: 0 });
+    });
+
+    it("3 - 5 = 0xFE (-2), Carry=0, Neg=1", () => {
+      expect(alu(3, 5, SUB)).toMatchObject({ r: 0xfe, carry: 0, neg: 1 });
+    });
+
+    it("0 - 1 = 0xFF, Carry=0, Neg=1", () => {
+      expect(alu(0, 1, SUB)).toMatchObject({ r: 0xff, carry: 0, neg: 1 });
+    });
+
+    it("0 - 0 = 0, Carry=1, Zero=1", () => {
+      expect(alu(0, 0, SUB)).toMatchObject({ r: 0x00, carry: 1, zero: 1 });
+    });
+
+    it("0xFF - 0xFF = 0, Carry=1, Zero=1", () => {
+      expect(alu(0xff, 0xff, SUB)).toMatchObject({ r: 0x00, carry: 1, zero: 1 });
+    });
+
+    it("0x80 - 0x01 = 0x7F, Carry=1", () => {
+      expect(alu(0x80, 0x01, SUB)).toMatchObject({ r: 0x7f, carry: 1 });
+    });
+  });
+
+  describe("8-bit ALU — SHL (Op=110)", () => {
+    it("0x01 << 1 = 0x02", () => {
+      expect(alu(0x01, 0x00, SHL)["r"]).toBe(0x02);
+    });
+
+    it("0x80 << 1 = 0x00, Zero=1", () => {
+      const out = alu(0x80, 0x00, SHL);
+      expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
+    });
+
+    it("0xFF << 1 = 0xFE, Neg=1", () => {
+      const out = alu(0xff, 0x00, SHL);
+      expect(out["r"]).toBe(0xfe);
+      expect(out["neg"]).toBe(1);
+    });
+
+    it("0x55 << 1 = 0xAA, Neg=1", () => {
+      expect(alu(0x55, 0x00, SHL)["r"]).toBe(0xaa);
+    });
+
+    it("0x00 << 1 = 0x00, Zero=1", () => {
+      expect(alu(0x00, 0x00, SHL)).toMatchObject({ r: 0x00, zero: 1 });
+    });
+  });
+
+  describe("8-bit ALU — SHR (Op=111)", () => {
+    it("0x80 >> 1 = 0x40", () => {
+      expect(alu(0x80, 0x00, SHR)["r"]).toBe(0x40);
+    });
+
+    it("0x01 >> 1 = 0x00, Zero=1", () => {
+      const out = alu(0x01, 0x00, SHR);
+      expect(out["r"]).toBe(0x00);
+      expect(out["zero"]).toBe(1);
+    });
+
+    it("0xFF >> 1 = 0x7F", () => {
+      expect(alu(0xff, 0x00, SHR)["r"]).toBe(0x7f);
+    });
+
+    it("0xAA >> 1 = 0x55", () => {
+      expect(alu(0xaa, 0x00, SHR)["r"]).toBe(0x55);
+    });
+
+    it("0x00 >> 1 = 0x00, Zero=1", () => {
+      expect(alu(0x00, 0x00, SHR)).toMatchObject({ r: 0x00, zero: 1 });
+    });
+  });
+
+  describe("Flags — edge cases", () => {
+    it("Zero flag: ADD 0+0 → Zero=1", () => {
+      expect(alu(0, 0, ADD)["zero"]).toBe(1);
+    });
+
+    it("Zero flag: AND 0xA5 & 0x5A → Zero=1", () => {
+      expect(alu(0xa5, 0x5a, AND)["zero"]).toBe(1);
+    });
+
+    it("Neg flag: ADD 0x7F+1 → Neg=1 (result 0x80)", () => {
+      expect(alu(0x7f, 0x01, ADD)["neg"]).toBe(1);
+    });
+
+    it("Neg flag: NOT 0x00 → Neg=1 (result 0xFF)", () => {
+      expect(alu(0x00, 0x00, NOT)["neg"]).toBe(1);
+    });
+
+    it("Carry flag: ADD overflow → Carry=1", () => {
+      expect(alu(0xff, 0x01, ADD)["carry"]).toBe(1);
+    });
+
+    it("Carry flag: SUB no borrow → Carry=1", () => {
+      expect(alu(5, 3, SUB)["carry"]).toBe(1);
+    });
+
+    it("Carry flag: SUB with borrow → Carry=0", () => {
+      expect(alu(3, 5, SUB)["carry"]).toBe(0);
     });
   });
 });
