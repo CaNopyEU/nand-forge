@@ -278,7 +278,7 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-## Intermezzo — Hardening & Refaktoring [IN PROGRESS]
+## Intermezzo — Hardening & Refaktoring [DONE]
 
 ### Iteracia H1 — Node type registry + dekompozicia engine [DONE]
 
@@ -321,23 +321,39 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 - CLAUDE.md: opravene truth table cache → recursive evaluation, WEAK_1/WEAK_0 poradie, simulate.ts popis, aktualizovana "Add new node type" sekcia (registry pattern), Key Files popis
 - Vsetky 356 testov prechadzaju, `tsc --noEmit` clean
 
-### Iteracia H3 — Web Worker pre simulaciu [PENDING]
+### Iteracia H3 — Web Worker pre simulaciu [DONE]
 
 | # | Task | Status |
 |---|---|---|
-| H3.1 | Worker protocol (message typy, serializable state) | TODO |
-| H3.2 | Simulacny worker (simulation.worker.ts, ciste engine importy) | TODO |
-| H3.3 | Simulation store integrácia (async runSimulation, sync fallback) | TODO |
-| H3.4 | Worker lifecycle (init/terminate, debounce, cancel pending) | TODO |
+| H3.1 | Worker protocol (message typy, serializable state) | DONE |
+| H3.2 | Simulacny worker (simulation.worker.ts, ciste engine importy) | DONE |
+| H3.3 | Simulation store integrácia (async runSimulation, sync fallback) | DONE |
+| H3.4 | Worker lifecycle (init/terminate, debounce, cancel pending) | DONE |
 
-### Iteracia H4 — Testy pre aplikacnu vrstvu [PENDING]
+**Implementacia:**
+- Engine: `worker-protocol.ts` — `SimulateRequest`, `SimulateResponse`, `ErrorResponse` message typy
+- Worker: `src/workers/simulation.worker.ts` — čisté engine importy, `evaluateCircuitFull` s fallbackom na iteratívny evaluátor
+- Hook: `useSimulationWorker.ts` — worker lifecycle (create/terminate), monotónny `requestId` pre stale response detekciu, graceful fallback ak worker nedostupný
+- Hook: `useSimulation.ts` — async worker path (postSimulate → onResult callback), sync fallback, drill-down overlay z hierarchických instanceStates
+- Store: `simulation-store.ts` — nová `applyResult()` metóda (Map→Record konverzia, edge signal derivácia, RAM state extrakcia)
+- Testy: `worker-protocol.test.ts` — 5 testov (protocol shape validácia, NAND evaluácia, instanceStates pass-through)
+- Všetkých 361 testov prechádza, `tsc --noEmit` clean
+
+### Iteracia H4 — Testy pre aplikacnu vrstvu [DONE]
 
 | # | Task | Status |
 |---|---|---|
-| H4.1 | circuit-store testy (CRUD, undo/redo, drill-down, rotation) | TODO |
-| H4.2 | canvasToCircuit testy (per-type konverzia, round-trip) | TODO |
-| H4.3 | persistence testy (save/load, v1→v2, backward compat, corrupted JSON) | TODO |
-| H4.4 | library-store testy (folder CRUD, move, sync) | TODO |
+| H4.1 | circuit-store testy (CRUD, undo/redo, drill-down, rotation) | DONE |
+| H4.2 | canvasToCircuit testy (per-type konverzia, round-trip) | DONE |
+| H4.3 | persistence testy (save/load, v1→v2, backward compat, corrupted JSON) | DONE |
+| H4.4 | library-store testy (folder CRUD, move, sync) | DONE |
+
+**Implementacia:**
+- `tests/store/library-store.test.ts` — 22 testov: addFolder (root, nested, defaults), renameFolder (root, nested, non-existent), deleteFolder (promote children, nested, non-existent), toggleCollapse, addModuleRef, moveModuleToFolder (root→folder, folder→root, folder→folder, index insert, same-container adjust, locked guard), syncModules (add, remove, mixed, idempotent)
+- `tests/utils/canvas-to-circuit.test.ts` — 31 testov: node conversion pre vsetkych 15 AppNode typov (circuitInput, circuitOutput, constant, probe, clock, button, dipSwitch, hexDisplay, ledBar, tunnel in/out, rom, ram, tristate, pull up/down, module), edge conversion (RF→engine, skip bez handles, preserve color), inputValues extraction (5 input typov + output no-op), round-trip (input, output, module, rom, tunnel)
+- `tests/utils/persistence.test.ts` — 21 testov: saveModules/loadModules (roundtrip, empty, corrupted, non-array), saveCanvasState/loadCanvasState (roundtrip, null, corrupted, boolean→number migrácia value+pressed), saveLibraryTree/loadLibraryTree (roundtrip, null, corrupted, non-array), importFromJson (v2, v1, invalid JSON, non-object, missing modules, missing id, missing circuit.nodes/edges)
+- `tests/store/circuit-store.test.ts` — 37 testov: addNode (10 typov + simulationVersion bump + isDirty + snapshot), removeNode (node+edges, version bump), toggleInputValue, setInputValue (set + clamp), rotateNode (4 kroky cycle), tickClocks (toggle + version), undo/redo (basic, redo, empty no-op, multi-step, MAX_HISTORY cap), clearCanvas/loadCircuit, drillDown (load module + no-op pre NAND/splitter/merger), navigateToLevel (restore root + no-op), enterEditMode
+- Celkovo 111 novych testov, 472 total, 0 chyb, `npm run build` clean
 
 ---
 
@@ -364,4 +380,5 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 22 | 2026-02-18 | — | RAM: rising edge write, kombinacny read, real-time viewer, import/export |
 | 23 | 2026-02-18 | — | Tri-state buffer, bus resolution, Z/CONFLICT sentinels, pull-up/down, conflict vizualizacia |
 | H1 | 2026-02-26 | 49703db | Node type registry, evaluateNode/canvasToCircuit/circuitToAppNodes dekompozicia, builtin konstanty centralizacia |
-| H2 | 2026-02-26 | — | Circuit-store dekompozicia (891→398), Error Boundary, explicit cycle detection, CLAUDE.md sync |
+| H2 | 2026-02-26 | ae8b63e | Circuit-store dekompozicia (891→398), Error Boundary, explicit cycle detection, CLAUDE.md sync |
+| H3 | 2026-02-26 | 30bbdcc | Web Worker simulacia, async pipeline, stale response handling, graceful fallback |
