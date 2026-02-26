@@ -43,6 +43,8 @@ export function evaluateCircuitIterative(
             currentValues.set(pinKey(node.id, pin.id), WEAK_1);
           } else if (node.type === "pulldown") {
             currentValues.set(pinKey(node.id, pin.id), WEAK_0);
+          } else if (node.type === "constant") {
+            currentValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? (parseInt(pin.name) || 0));
           } else {
             currentValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? 0);
           }

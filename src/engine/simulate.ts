@@ -306,6 +306,10 @@ export function evaluateCircuitFull(
             pinValues.set(pinKey(node.id, pin.id), WEAK_1);
           } else if (node.type === "pulldown") {
             pinValues.set(pinKey(node.id, pin.id), WEAK_0);
+          } else if (node.type === "constant") {
+            // Constant value is encoded in pin name ("0" or "1").
+            // Use inputs as override (for top-level canvasToCircuit), fall back to pin name.
+            pinValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? (parseInt(pin.name) || 0));
           } else {
             pinValues.set(pinKey(node.id, pin.id), inputs[pin.id] ?? 0);
           }

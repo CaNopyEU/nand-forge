@@ -8,7 +8,8 @@
 
 import { describe, expect, it } from "vitest";
 import type { Module } from "../../src/engine/types.ts";
-import { evaluateCircuit, resolveTunnels, Z_VALUE, CONFLICT } from "../../src/engine/simulate.ts";
+import { evaluateCircuit, evaluateCircuitWithState, resolveTunnels, Z_VALUE, CONFLICT } from "../../src/engine/simulate.ts";
+import type { InstanceState } from "../../src/engine/simulate.ts";
 
 import gatesData from "../../test-fixtures/gates.json";
 import muxDemuxData from "../../test-fixtures/mux-demux.json";
@@ -24,6 +25,7 @@ import ioPeripheralsAdvData from "../../test-fixtures/io-peripherals-advanced.js
 import tunnelAdvData from "../../test-fixtures/tunnel-advanced.json";
 import clockButtonData from "../../test-fixtures/clock-button-sequential.json";
 import tristateData from "../../test-fixtures/tristate-bus.json";
+import cpuComponentsData from "../../test-fixtures/cpu-components.json";
 
 // ============================================================
 // Helpers
@@ -50,6 +52,7 @@ const fixtures: Record<string, FixtureFile> = {
   "tunnel-advanced": tunnelAdvData as unknown as FixtureFile,
   "clock-button-sequential": clockButtonData as unknown as FixtureFile,
   "tristate-bus": tristateData as unknown as FixtureFile,
+  "cpu-components": cpuComponentsData as unknown as FixtureFile,
 };
 
 function loadFixture(name: string): FixtureFile {
@@ -1177,6 +1180,367 @@ describe("Fixture: tristate-bus", () => {
 });
 
 // ============================================================
+// CPU Components fixture
+// ============================================================
+
+describe("Fixture: cpu-components", () => {
+  const fixture = loadFixture("cpu-components");
+  const modules = fixture.modules;
+
+  // Helper: evaluate with persistent instance state (sequential circuits)
+  function evalWithState(
+    moduleId: string,
+    inputs: Record<string, number>,
+    instanceStates: Map<string, InstanceState>,
+  ): Record<string, number> {
+    const mod = findModule(modules, moduleId);
+    const { outputs } = evaluateCircuitWithState(
+      mod.circuit, inputs, modules, undefined, instanceStates,
+    );
+    return outputs;
+  }
+
+  // ---- mod-inc8 (combinational) ----
+
+  describe("8-bit Incrementer (mod-inc8)", () => {
+    it("0 → 1", () => {
+      expect(evalModule(modules, "mod-inc8", { a: 0 })).toMatchObject({ s: 1, cout: 0 });
+    });
+
+    it("1 → 2", () => {
+      expect(evalModule(modules, "mod-inc8", { a: 1 })).toMatchObject({ s: 2, cout: 0 });
+    });
+
+    it("127 → 128", () => {
+      expect(evalModule(modules, "mod-inc8", { a: 127 })).toMatchObject({ s: 128, cout: 0 });
+    });
+
+    it("254 → 255", () => {
+      expect(evalModule(modules, "mod-inc8", { a: 254 })).toMatchObject({ s: 255, cout: 0 });
+    });
+
+    it("255 → 0 (overflow wrap)", () => {
+      expect(evalModule(modules, "mod-inc8", { a: 255 })).toMatchObject({ s: 0, cout: 1 });
+    });
+  });
+
+  // ---- mod-mux8-2 (combinational) ----
+
+  describe("8-bit MUX 2:1 (mod-mux8-2)", () => {
+    it("S=0 selects A", () => {
+      expect(evalModule(modules, "mod-mux8-2", { a: 0xAB, b: 0xCD, s: 0 })).toMatchObject({ y: 0xAB });
+    });
+
+    it("S=1 selects B", () => {
+      expect(evalModule(modules, "mod-mux8-2", { a: 0xAB, b: 0xCD, s: 1 })).toMatchObject({ y: 0xCD });
+    });
+
+    it("S=0, A=0x00 → Y=0x00", () => {
+      expect(evalModule(modules, "mod-mux8-2", { a: 0x00, b: 0xFF, s: 0 })).toMatchObject({ y: 0x00 });
+    });
+
+    it("S=1, B=0xFF → Y=0xFF", () => {
+      expect(evalModule(modules, "mod-mux8-2", { a: 0x00, b: 0xFF, s: 1 })).toMatchObject({ y: 0xFF });
+    });
+  });
+
+  // ---- mod-reg8 (sequential) ----
+
+  describe("8-bit Register (mod-reg8)", () => {
+    it("load value on rising edge (EN=1)", () => {
+      const st = new Map<string, InstanceState>();
+
+      // CLK=0 (low): present data
+      evalWithState("mod-reg8", { d: 0x42, clk: 0, en: 1 }, st);
+      // CLK=1 (rising edge): capture
+      const r = evalWithState("mod-reg8", { d: 0x42, clk: 1, en: 1 }, st);
+      expect(r["q"]).toBe(0x42);
+    });
+
+    it("hold value when EN=0", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Load 0xAA
+      evalWithState("mod-reg8", { d: 0xAA, clk: 0, en: 1 }, st);
+      evalWithState("mod-reg8", { d: 0xAA, clk: 1, en: 1 }, st);
+
+      // Try to load 0x55 with EN=0 — should hold 0xAA
+      evalWithState("mod-reg8", { d: 0x55, clk: 0, en: 0 }, st);
+      const r = evalWithState("mod-reg8", { d: 0x55, clk: 1, en: 0 }, st);
+      expect(r["q"]).toBe(0xAA);
+    });
+
+    it("overwrite with new value", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Load 0x11
+      evalWithState("mod-reg8", { d: 0x11, clk: 0, en: 1 }, st);
+      evalWithState("mod-reg8", { d: 0x11, clk: 1, en: 1 }, st);
+
+      // Load 0x22
+      evalWithState("mod-reg8", { d: 0x22, clk: 0, en: 1 }, st);
+      const r = evalWithState("mod-reg8", { d: 0x22, clk: 1, en: 1 }, st);
+      expect(r["q"]).toBe(0x22);
+    });
+  });
+
+  // ---- mod-pc (sequential) ----
+
+  describe("Program Counter (mod-pc)", () => {
+    it("reset sets PC to 0", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Reset=1, clock edge
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 1, addrin: 0 }, st);
+      const r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 1, addrin: 0 }, st);
+      expect(r["pc"]).toBe(0);
+    });
+
+    it("auto-increment 0→1→2→3", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Reset first
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 1, addrin: 0 }, st);
+      evalWithState("mod-pc", { clk: 1, load: 0, rst: 1, addrin: 0 }, st);
+
+      // Tick 1: 0→1
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 0, addrin: 0 }, st);
+      let r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 0, addrin: 0 }, st);
+      expect(r["pc"]).toBe(1);
+
+      // Tick 2: 1→2
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 0, addrin: 0 }, st);
+      r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 0, addrin: 0 }, st);
+      expect(r["pc"]).toBe(2);
+
+      // Tick 3: 2→3
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 0, addrin: 0 }, st);
+      r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 0, addrin: 0 }, st);
+      expect(r["pc"]).toBe(3);
+    });
+
+    it("load jump address", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Reset
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 1, addrin: 0 }, st);
+      evalWithState("mod-pc", { clk: 1, load: 0, rst: 1, addrin: 0 }, st);
+
+      // Load address 0x42
+      evalWithState("mod-pc", { clk: 0, load: 1, rst: 0, addrin: 0x42 }, st);
+      const r = evalWithState("mod-pc", { clk: 1, load: 1, rst: 0, addrin: 0x42 }, st);
+      expect(r["pc"]).toBe(0x42);
+    });
+
+    it("increment after jump", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Reset
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 1, addrin: 0 }, st);
+      evalWithState("mod-pc", { clk: 1, load: 0, rst: 1, addrin: 0 }, st);
+
+      // Jump to 0x10
+      evalWithState("mod-pc", { clk: 0, load: 1, rst: 0, addrin: 0x10 }, st);
+      evalWithState("mod-pc", { clk: 1, load: 1, rst: 0, addrin: 0x10 }, st);
+
+      // Increment: 0x10 → 0x11
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 0, addrin: 0 }, st);
+      const r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 0, addrin: 0 }, st);
+      expect(r["pc"]).toBe(0x11);
+    });
+
+    it("reset priority over load", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Both reset and load active — reset should win
+      evalWithState("mod-pc", { clk: 0, load: 1, rst: 1, addrin: 0xFF }, st);
+      const r = evalWithState("mod-pc", { clk: 1, load: 1, rst: 1, addrin: 0xFF }, st);
+      expect(r["pc"]).toBe(0);
+    });
+
+    it("wrap-around 255→0", () => {
+      const st = new Map<string, InstanceState>();
+
+      // Jump to 0xFF
+      evalWithState("mod-pc", { clk: 0, load: 1, rst: 0, addrin: 0xFF }, st);
+      evalWithState("mod-pc", { clk: 1, load: 1, rst: 0, addrin: 0xFF }, st);
+
+      // Increment: 0xFF → 0x00 (wrap)
+      evalWithState("mod-pc", { clk: 0, load: 0, rst: 0, addrin: 0 }, st);
+      const r = evalWithState("mod-pc", { clk: 1, load: 0, rst: 0, addrin: 0 }, st);
+      expect(r["pc"]).toBe(0);
+    });
+  });
+
+  // ---- Decoder ROM (combinational) ----
+
+  describe("Instruction Decoder ROM", () => {
+    // The decoder is a ROM node pre-programmed with control signals.
+    // We test the decoder ROM data table directly against expected control words.
+
+    const decoderRom = [
+      0x00, 0x81, 0x84, 0x02, 0x80, 0xE0, 0xE8, 0xC0,
+      0xC8, 0xD0, 0xD8, 0xF0, 0xF8, 0x00, 0x00, 0x00,
+    ];
+
+    // Helper to extract control signal fields from control word
+    function decodeControl(word: number) {
+      return {
+        reg_write: (word >> 7) & 1,
+        alu_en:    (word >> 6) & 1,
+        alu_op:    (word >> 3) & 7,
+        mem_read:  (word >> 2) & 1,
+        mem_write: (word >> 1) & 1,
+        imm_sel:   (word >> 0) & 1,
+      };
+    }
+
+    it("0x0 NOP — no signals active", () => {
+      expect(decodeControl(decoderRom[0]!)).toMatchObject({
+        reg_write: 0, alu_en: 0, mem_read: 0, mem_write: 0, imm_sel: 0,
+      });
+    });
+
+    it("0x1 LDI — reg_write + imm_sel", () => {
+      expect(decodeControl(decoderRom[1]!)).toMatchObject({
+        reg_write: 1, alu_en: 0, mem_read: 0, mem_write: 0, imm_sel: 1,
+      });
+    });
+
+    it("0x2 LD — reg_write + mem_read", () => {
+      expect(decodeControl(decoderRom[2]!)).toMatchObject({
+        reg_write: 1, alu_en: 0, mem_read: 1, mem_write: 0, imm_sel: 0,
+      });
+    });
+
+    it("0x3 ST — mem_write only", () => {
+      expect(decodeControl(decoderRom[3]!)).toMatchObject({
+        reg_write: 0, alu_en: 0, mem_read: 0, mem_write: 1, imm_sel: 0,
+      });
+    });
+
+    it("0x4 MOV — reg_write only", () => {
+      expect(decodeControl(decoderRom[4]!)).toMatchObject({
+        reg_write: 1, alu_en: 0, mem_read: 0, mem_write: 0, imm_sel: 0,
+      });
+    });
+
+    it("0x5 ADD — reg_write + alu_en, alu_op=100", () => {
+      expect(decodeControl(decoderRom[5]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b100, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0x6 SUB — reg_write + alu_en, alu_op=101", () => {
+      expect(decodeControl(decoderRom[6]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b101, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0x7 AND — reg_write + alu_en, alu_op=000", () => {
+      expect(decodeControl(decoderRom[7]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b000, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0x8 OR — reg_write + alu_en, alu_op=001", () => {
+      expect(decodeControl(decoderRom[8]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b001, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0x9 XOR — reg_write + alu_en, alu_op=010", () => {
+      expect(decodeControl(decoderRom[9]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b010, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xA NOT — reg_write + alu_en, alu_op=011", () => {
+      expect(decodeControl(decoderRom[10]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b011, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xB SHL — reg_write + alu_en, alu_op=110", () => {
+      expect(decodeControl(decoderRom[11]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b110, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xC SHR — reg_write + alu_en, alu_op=111", () => {
+      expect(decodeControl(decoderRom[12]!)).toMatchObject({
+        reg_write: 1, alu_en: 1, alu_op: 0b111, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xD JMP — no data-path signals (control unit decodes jump)", () => {
+      expect(decodeControl(decoderRom[13]!)).toMatchObject({
+        reg_write: 0, alu_en: 0, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xE JZ — no data-path signals (control unit decodes jump)", () => {
+      expect(decodeControl(decoderRom[14]!)).toMatchObject({
+        reg_write: 0, alu_en: 0, mem_read: 0, mem_write: 0,
+      });
+    });
+
+    it("0xF HALT — no data-path signals (control unit decodes halt)", () => {
+      expect(decodeControl(decoderRom[15]!)).toMatchObject({
+        reg_write: 0, alu_en: 0, mem_read: 0, mem_write: 0,
+      });
+    });
+  });
+
+  // ---- Decoder via ROM node (engine integration) ----
+
+  describe("Decoder ROM via engine", () => {
+    it("ROM lookup matches decoder table for all 16 opcodes", () => {
+      const expectedRom = [
+        0x00, 0x81, 0x84, 0x02, 0x80, 0xE0, 0xE8, 0xC0,
+        0xC8, 0xD0, 0xD8, 0xF0, 0xF8, 0x00, 0x00, 0x00,
+      ];
+
+      // Build a small test circuit: ROM with decoder data, 4-bit addr input, 8-bit data output
+      const romCircuit = {
+        id: "decoder-rom-test",
+        name: "Decoder ROM Test",
+        nodes: [
+          {
+            id: "addr_in", type: "input" as const,
+            position: { x: 0, y: 0 }, rotation: 0 as const,
+            pins: [{ id: "addr", name: "Addr", direction: "output" as const, bits: 4 as const }],
+          },
+          {
+            id: "rom1", type: "rom" as const,
+            position: { x: 200, y: 0 }, rotation: 0 as const,
+            pins: [
+              { id: "ra", name: "Addr", direction: "input" as const, bits: 4 as const },
+              { id: "rd", name: "Data", direction: "output" as const, bits: 8 as const },
+            ],
+            romData: expectedRom,
+          },
+          {
+            id: "data_out", type: "output" as const,
+            position: { x: 400, y: 0 }, rotation: 0 as const,
+            pins: [{ id: "data", name: "Data", direction: "input" as const, bits: 8 as const }],
+          },
+        ],
+        edges: [
+          { id: "e1", fromNodeId: "addr_in", fromPinId: "addr", toNodeId: "rom1", toPinId: "ra" },
+          { id: "e2", fromNodeId: "rom1", fromPinId: "rd", toNodeId: "data_out", toPinId: "data" },
+        ],
+      };
+
+      for (let opcode = 0; opcode < 16; opcode++) {
+        const result = evaluateCircuit(romCircuit, { addr: opcode }, modules);
+        expect(result["data"]).toBe(expectedRom[opcode]);
+      }
+    });
+  });
+});
+
+// ============================================================
 // Fixture structural checks
 // ============================================================
 
@@ -1186,6 +1550,7 @@ describe("Fixture structural integrity", () => {
     "alu-8bit", "flip-flops", "counter-4bit", "bus-peripherals-demo",
     "io-basics", "bus-split-merge", "io-peripherals-advanced",
     "tunnel-advanced", "clock-button-sequential", "tristate-bus",
+    "cpu-components",
   ] as const;
 
   for (const name of fixtureNames) {

@@ -357,7 +357,38 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-## Faza D — CPU [PENDING]
+## Faza D — CPU [IN PROGRESS]
+
+### Iteracia 24 — 8-operacny ALU s flags [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 24.1 | ALU Slice v2 (8 operacii: AND/OR/XOR/NOT/ADD/SUB/SHL/SHR) | DONE |
+| 24.2 | ALU 8-bit v2 (8× slice + NOR8 zero flag + carry + neg) | DONE |
+| 24.3 | Fixture builder (`build-alu-fixture.ts` → `alu-8bit.json`) | DONE |
+| 24.4 | Testy (NOR8, ALU slice, 8-bit full operations + flags) | DONE |
+
+### Iteracia 25 — Program Counter & Instruction Decoder [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| 25.1 | ISA specifikacia (`test-fixtures/cpu-isa.md`) — NAND-8 architecture | DONE |
+| 25.2 | CPU fixture helpers (`cpu-fixture-helpers.ts`) — mod-reg8, mod-inc8, mod-mux8-2 | DONE |
+| 25.3 | Program Counter modul (`mod-pc`) — auto-increment, load, reset | DONE |
+| 25.4 | Decoder ROM data tabulka (16 opcodes → 8-bit control word) | DONE |
+| 25.5 | Fixture builder (`build-cpu-fixture.ts` → `cpu-components.json`) | DONE |
+| 25.6 | Testy (~30 novych: inc8, mux8-2, reg8, PC, decoder ROM) | DONE |
+
+**Implementacia:**
+- ISA: NAND-8 — dual-ROM Harvard fetch, 4 registre (R0–R3), 16 instrukcii, 8-bit adresy
+- Instrukcie: NOP/LDI/LD/ST/MOV/ADD/SUB/AND/OR/XOR/NOT/SHL/SHR/JMP/JZ/HALT
+- Decoder: opcode (4-bit) → 8-bit control word (reg_write, alu_en, alu_op[2:0], mem_read, mem_write, imm_sel)
+- Nove moduly: `mod-reg8` (8× DFF + 8× MUX2 pre EN), `mod-inc8` (8× FA, B=0, Cin=1), `mod-mux8-2` (8× MUX2)
+- `mod-pc`: Reset > Load > Increment priorita, sync rising-edge, 8-bit wrap-around
+- Bugfix: constant node seeding v `evaluateCircuitFull` a `evaluateCircuitIterative` — konstanty vo vnorených moduloch teraz správne čítajú hodnotu z `pin.name` (predtým constant-1 nody dostávali 0 kvôli `inputs[pin.id] ?? 0` fallbacku)
+- Fixture: 14 modulov (flip-flop deps + ALU primitives + CPU moduly), 6021 riadkov JSON
+- Testy: 30 novych (5 inc8, 4 mux8-2, 3 reg8, 7 PC, 16 decoder, 1 ROM engine integration), 550 total, 0 chýb
+
 ## Faza E — Programovanie [PENDING]
 ## Faza F — I/O & Periferie [PENDING]
 ## Faza G — Platforma & Komunita [PENDING]
@@ -382,3 +413,6 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | H1 | 2026-02-26 | 49703db | Node type registry, evaluateNode/canvasToCircuit/circuitToAppNodes dekompozicia, builtin konstanty centralizacia |
 | H2 | 2026-02-26 | ae8b63e | Circuit-store dekompozicia (891→398), Error Boundary, explicit cycle detection, CLAUDE.md sync |
 | H3 | 2026-02-26 | 30bbdcc | Web Worker simulacia, async pipeline, stale response handling, graceful fallback |
+| H4 | 2026-02-26 | — | Testy pre aplikacnu vrstvu: circuit-store, canvasToCircuit, persistence, library-store |
+| 24 | 2026-02-26 | af67e86 | 8-operacny ALU s flags (AND/OR/XOR/NOT/ADD/SUB/SHL/SHR + carry/zero/neg) |
+| 25 | 2026-02-26 | — | Program Counter, Instruction Decoder, ISA spec, constant node bugfix |
