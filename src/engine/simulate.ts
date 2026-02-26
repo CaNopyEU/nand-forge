@@ -7,6 +7,7 @@ import type {
   PinId,
 } from "./types.ts";
 import { evaluateCircuitIterative } from "./simulate-iterative.ts";
+import { hasCycle } from "./validate.ts";
 import {
   Z_VALUE,
   WEAK_1,
@@ -276,6 +277,9 @@ export function evaluateCircuitFull(
   instanceStates?: Map<string, InstanceState>,
 ): Map<string, number> {
   const resolved = resolveTunnels(circuit);
+  if (hasCycle(resolved)) {
+    throw new Error("Circuit contains a cycle");
+  }
   const adj = buildAdjacencyList(resolved);
   const order = topologicalSort(resolved);
   const pinValues = new Map<string, number>();

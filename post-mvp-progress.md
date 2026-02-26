@@ -278,26 +278,48 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
-## Intermezzo — Hardening & Refaktoring [PENDING]
+## Intermezzo — Hardening & Refaktoring [IN PROGRESS]
 
-### Iteracia H1 — Node type registry + dekompozicia engine [PENDING]
-
-| # | Task | Status |
-|---|---|---|
-| H1.1 | Node type registry (centralizovany dispatch, eliminuje shotgun surgery) | TODO |
-| H1.2 | Dekompozicia evaluateNode (giant switch → dispatch cez registry) | TODO |
-| H1.3 | Dekompozicia canvasToCircuit (per-type konverzne handlery) | TODO |
-| H1.4 | Dekompozicia circuitToAppNodes (per-type spätne handlery) | TODO |
-| H1.5 | Centralizacia builtin ID konstant (jeden registry modul) | TODO |
-
-### Iteracia H2 — Dekompozicia circuit-store + Error Boundary [PENDING]
+### Iteracia H1 — Node type registry + dekompozicia engine [DONE]
 
 | # | Task | Status |
 |---|---|---|
-| H2.1 | Circuit store slices (core CRUD, undo/redo, drill-down, ROM/RAM) | TODO |
-| H2.2 | React Error Boundary (okolo Canvas + simulacie) | TODO |
-| H2.3 | Explicit cycle detection (nahradit try/catch za hasCycle()) | TODO |
-| H2.4 | Dokumentacia sync (CLAUDE.md — odstranit truth-table.ts, aktualizovat) | TODO |
+| H1.1 | Node type registry (centralizovany dispatch, eliminuje shotgun surgery) | DONE |
+| H1.2 | Dekompozicia evaluateNode (giant switch → dispatch cez registry) | DONE |
+| H1.3 | Dekompozicia canvasToCircuit (per-type konverzne handlery) | DONE |
+| H1.4 | Dekompozicia circuitToAppNodes (per-type spätne handlery) | DONE |
+| H1.5 | Centralizacia builtin ID konstant (jeden registry modul) | DONE |
+
+**Implementacia:**
+- Engine: `node-registry.ts` — centralizovany `evaluateNodeDispatch()`, Record<NodeType, NodeEvaluator>
+- Engine: `evaluators/` — 6 suborov: `seeded.ts`, `passthrough.ts`, `tristate.ts`, `memory.ts`, `module.ts`, `nand.ts`
+- Engine: `constants.ts` — vsetky `BUILTIN_*_MODULE_ID` + wire state sentinely (Z_VALUE, WEAK_1, WEAK_0, CONFLICT)
+- Utils: `node-converters.ts` — centralizovany registry pre canvas↔engine konverziu
+- Utils: `converters/` — 6 suborov: `simple-io.ts`, `bus-io.ts`, `tunnel.ts`, `tristate-pull.ts`, `memory.ts`, `module.ts`
+- `simulate.ts` 629→389 riadkov (-58%), `canvas-to-circuit.ts` 267→42 (-84%), `circuit-converters.ts` 264→32 (-88%)
+- `useWiring.ts` — `getPinBits` presunuty do `node-converters.ts` registry (111→73 riadkov)
+- Vsetky 356 testov prechadzaju, `tsc --noEmit` clean
+
+### Iteracia H2 — Dekompozicia circuit-store + Error Boundary [DONE]
+
+| # | Task | Status |
+|---|---|---|
+| H2.1 | Circuit store slices (types, helpers, node-factory, slim store) | DONE |
+| H2.2 | React Error Boundary (okolo Canvas) | DONE |
+| H2.3 | Explicit cycle detection (hasCycle() pred topologicalSort) | DONE |
+| H2.4 | Dokumentacia sync (CLAUDE.md — opravene nepresnosti, aktualizovane sekcie) | DONE |
+
+**Implementacia:**
+- Store: `circuit-store.ts` 891→398 riadkov (-55%), rozdeleny na 4 subory:
+  - `circuit-store-types.ts` (228 riadkov) — vsetky NodeData typy, NodeType aliasy, AppNode union, DrilldownFrame/RootContext, Snapshot, CircuitStore interface
+  - `circuit-store-helpers.ts` (68 riadkov) — MAX_HISTORY, pushSnapshot(), extractInterface()
+  - `circuit-store-node-factory.ts` (206 riadkov) — createNode() (giant switch z addNode extrahovaný)
+  - `circuit-store.ts` (398 riadkov) — Zustand store s akciami, re-exporty pre backward kompatibilitu
+- Re-exporty: `export type * from "./circuit-store-types.ts"` + `export { extractInterface }` — 0 zmien v 41 konzumentoch
+- Engine: `hasCycle()` check v `evaluateCircuitFull()` pred `topologicalSort()` — explicitna cycle detekcia
+- UI: `ErrorBoundary.tsx` class component wrapping `<Canvas />` v App.tsx
+- CLAUDE.md: opravene truth table cache → recursive evaluation, WEAK_1/WEAK_0 poradie, simulate.ts popis, aktualizovana "Add new node type" sekcia (registry pattern), Key Files popis
+- Vsetky 356 testov prechadzaju, `tsc --noEmit` clean
 
 ### Iteracia H3 — Web Worker pre simulaciu [PENDING]
 
@@ -341,3 +363,5 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 | 21 | 2026-02-18 | — | ROM: built-in node, kombinacny lookup, editor, hex import/export |
 | 22 | 2026-02-18 | — | RAM: rising edge write, kombinacny read, real-time viewer, import/export |
 | 23 | 2026-02-18 | — | Tri-state buffer, bus resolution, Z/CONFLICT sentinels, pull-up/down, conflict vizualizacia |
+| H1 | 2026-02-26 | 49703db | Node type registry, evaluateNode/canvasToCircuit/circuitToAppNodes dekompozicia, builtin konstanty centralizacia |
+| H2 | 2026-02-26 | — | Circuit-store dekompozicia (891→398), Error Boundary, explicit cycle detection, CLAUDE.md sync |

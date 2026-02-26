@@ -3,6 +3,7 @@ import { Toolbar } from "./components/Toolbar/Toolbar.tsx";
 import { LibraryPanel } from "./components/Library/LibraryPanel.tsx";
 import { StatusBar } from "./components/StatusBar/StatusBar.tsx";
 import { Toast } from "./components/shared/Toast.tsx";
+import { ErrorBoundary } from "./components/shared/ErrorBoundary.tsx";
 
 export default function App() {
   return (
@@ -16,7 +17,9 @@ export default function App() {
 
         {/* Canvas */}
         <div className="flex-1">
-          <Canvas />
+          <ErrorBoundary>
+            <Canvas />
+          </ErrorBoundary>
         </div>
       </div>
 

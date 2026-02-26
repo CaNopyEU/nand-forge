@@ -111,9 +111,9 @@ test-fixtures/  → Pre-built circuit JSON files for e2e tests
 ### Design Rules
 - **NAND-first**: Only built-in gate is NAND (`builtin:nand`). All logic built from NAND by users
 - **Reference modules** (not snapshots): Module changes cascade to all instances
-- **Truth table cache**: ≤16 inputs → O(1) lookup table, >16 → recursive simulation
+- **Recursive sub-module evaluation**: Module instances evaluated recursively with hierarchical instance state
 - **Hierarchical instance state**: `InstanceState { pinValues, children }` — flat map causes collision with identical sub-modules
-- **Tri-state signals**: `Z_VALUE=-1`, `WEAK_0=-2`, `WEAK_1=-3`, `CONFLICT=-4`
+- **Tri-state signals**: `Z_VALUE=-1`, `WEAK_1=-2`, `WEAK_0=-3`, `CONFLICT=-4`
 
 ### Performance
 - `nodeTypes`/`edgeTypes` defined **outside** components (stable reference)
@@ -168,11 +168,11 @@ const MyNode = memo(({ data, id }: NodeProps<MyNodeType>) => {
 
 ### Add new node type
 1. Add type literal to `CircuitNode.type` union in `engine/types.ts`
-2. Create `src/components/Canvas/FooNode.tsx` (copy existing node pattern)
-3. Register in `nodeTypes` map in `Canvas.tsx`
-4. Handle in `canvasToCircuit()` + `circuitToAppNodes()`
-5. Add to toolbar if user-placeable
-6. Add `getPinBits` case in `useWiring.ts`
+2. Create evaluator in `src/engine/evaluators/` + register in `node-registry.ts`
+3. Create converter in `src/utils/converters/` + register in `node-converters.ts`
+4. Create `src/components/Canvas/FooNode.tsx` (copy existing node pattern)
+5. Register in `nodeTypes` map in `Canvas.tsx`
+6. Add to toolbar if user-placeable
 7. Add engine test in `tests/engine/`
 
 ### Add test
@@ -182,8 +182,8 @@ Tests run in node env (no DOM). Use factory helpers from existing tests.
 
 ## Key Files (read order)
 1. `src/engine/types.ts` — Core data model
-2. `src/engine/simulate.ts` — Evaluation logic (topological sort, truth table, bus resolution)
-3. `src/store/circuit-store.ts` — Canvas state, undo/redo, drill-down
+2. `src/engine/simulate.ts` — Evaluation logic (topological sort, bus resolution, tunnel resolution)
+3. `src/store/circuit-store.ts` — Canvas state, undo/redo, drill-down (types in `circuit-store-types.ts`, helpers in `circuit-store-helpers.ts`, node factory in `circuit-store-node-factory.ts`)
 4. `src/store/module-store.ts` — Module CRUD, cascading updates, save analysis
 5. `src/store/simulation-store.ts` — Pin values, instance states, tick loop
 6. `src/components/Canvas/Canvas.tsx` — Main UI orchestration

@@ -2,300 +2,19 @@ import { create } from "zustand";
 import {
   applyNodeChanges,
   applyEdgeChanges,
-  type Edge as RFEdge,
-  type Node,
   type NodeChange,
-  type EdgeChange,
-  type XYPosition,
 } from "@xyflow/react";
-import type { BitWidth, Pin } from "../engine/types.ts";
-import { generateId } from "../utils/id.ts";
 import { BUILTIN_NAND_MODULE_ID, BUILTIN_SPLITTER_MODULE_ID, BUILTIN_MERGER_MODULE_ID } from "../engine/simulate.ts";
 import { getModuleById, useModuleStore } from "./module-store.ts";
 import { circuitNodesToAppNodes, circuitEdgesToRFEdges } from "../utils/circuit-converters.ts";
 import { type Rotation, nextRotation } from "../utils/layout.ts";
+import type { AppNode, CircuitStore, DrilldownFrame } from "./circuit-store-types.ts";
+import { pushSnapshot } from "./circuit-store-helpers.ts";
+import { createNode } from "./circuit-store-node-factory.ts";
 
-// === Node data types ===
-
-export type InputNodeData = {
-  label: string;
-  pinId: string;
-  value: number;
-  bits: BitWidth;
-  rotation: Rotation;
-};
-
-export type OutputNodeData = {
-  label: string;
-  pinId: string;
-  bits: BitWidth;
-  rotation: Rotation;
-};
-
-export type ConstantNodeData = {
-  label: string;
-  pinId: string;
-  value: number;
-  rotation: Rotation;
-};
-
-export type ProbeNodeData = {
-  pinId: string;
-  rotation: Rotation;
-};
-
-export type ClockNodeData = {
-  pinId: string;
-  value: number;
-  rotation: Rotation;
-};
-
-export type ButtonNodeData = {
-  label: string;
-  pinId: string;
-  pressed: number;
-  rotation: Rotation;
-};
-
-export type DipSwitchNodeData = {
-  label: string;
-  pinId: string;
-  value: number;
-  bits: BitWidth;
-  rotation: Rotation;
-};
-
-export type HexDisplayNodeData = {
-  pinId: string;
-  bits: BitWidth;
-  rotation: Rotation;
-};
-
-export type LedBarNodeData = {
-  pinId: string;
-  bits: BitWidth;
-  rotation: Rotation;
-};
-
-export type TunnelNodeData = {
-  label: string;
-  pinId: string;
-  bits: BitWidth;
-  direction: "in" | "out";
-  rotation: Rotation;
-};
-
-export type RomNodeData = {
-  addrPinId: string;
-  dataPinId: string;
-  addressBits: 4 | 8;
-  romData: number[];
-  rotation: Rotation;
-};
-
-export type RamNodeData = {
-  addrPinId: string;
-  dataInPinId: string;
-  writePinId: string;
-  clockPinId: string;
-  dataOutPinId: string;
-  addressBits: 4 | 8;
-  initialData: number[];
-  rotation: Rotation;
-};
-
-export type TristateNodeData = {
-  dataPinId: string;
-  enablePinId: string;
-  outputPinId: string;
-  bits: 1 | 8;
-  rotation: Rotation;
-};
-
-export type PullNodeData = {
-  outputPinId: string;
-  variant: "pullup" | "pulldown";
-  rotation: Rotation;
-};
-
-export type ModuleNodeData = {
-  label: string;
-  moduleId: string;
-  pins: Pin[];
-  rotation: Rotation;
-  color?: string;
-  icon?: string;
-  description?: string;
-  customWidth?: number;
-};
-
-// === App node types ===
-
-export type InputNodeType = Node<InputNodeData, "circuitInput">;
-export type OutputNodeType = Node<OutputNodeData, "circuitOutput">;
-export type ConstantNodeType = Node<ConstantNodeData, "constant">;
-export type ProbeNodeType = Node<ProbeNodeData, "probe">;
-export type ClockNodeType = Node<ClockNodeData, "clock">;
-export type ButtonNodeType = Node<ButtonNodeData, "button">;
-export type DipSwitchNodeType = Node<DipSwitchNodeData, "dipSwitch">;
-export type HexDisplayNodeType = Node<HexDisplayNodeData, "hexDisplay">;
-export type LedBarNodeType = Node<LedBarNodeData, "ledBar">;
-export type TunnelNodeType = Node<TunnelNodeData, "tunnel">;
-export type RomNodeType = Node<RomNodeData, "rom">;
-export type RamNodeType = Node<RamNodeData, "ram">;
-export type TristateNodeType = Node<TristateNodeData, "tristate">;
-export type PullNodeType = Node<PullNodeData, "pull">;
-export type ModuleNodeType = Node<ModuleNodeData, "module">;
-export type AppNode =
-  | InputNodeType
-  | OutputNodeType
-  | ConstantNodeType
-  | ProbeNodeType
-  | ClockNodeType
-  | ButtonNodeType
-  | DipSwitchNodeType
-  | HexDisplayNodeType
-  | LedBarNodeType
-  | TunnelNodeType
-  | RomNodeType
-  | RamNodeType
-  | TristateNodeType
-  | PullNodeType
-  | ModuleNodeType;
-
-// === Drill-down types ===
-
-export interface DrilldownFrame {
-  moduleId: string;
-  instanceNodeId: string;
-  label: string;
-}
-
-export interface DrilldownRootContext {
-  moduleId: string | null;
-  nodes: AppNode[];
-  edges: RFEdge[];
-  isDirty: boolean;
-}
-
-// === Helpers ===
-
-export function extractInterface(
-  nodes: AppNode[],
-  existingOrder?: { inputIds: string[]; outputIds: string[] },
-): { inputs: Pin[]; outputs: Pin[] } {
-  // Sort input/output nodes by Y position (top to bottom) for consistent pin order
-  const inputNodes = nodes
-    .filter((n) => n.type === "circuitInput")
-    .sort((a, b) => (a.position.y ?? 0) - (b.position.y ?? 0));
-  const outputNodes = nodes
-    .filter((n) => n.type === "circuitOutput")
-    .sort((a, b) => (a.position.y ?? 0) - (b.position.y ?? 0));
-
-  const inputs: Pin[] = inputNodes.map((node) => ({
-    id: node.data.pinId,
-    name: node.data.label,
-    direction: "input" as const,
-    bits: (node.data as InputNodeData).bits ?? 1,
-  }));
-  const outputs: Pin[] = outputNodes.map((node) => ({
-    id: node.data.pinId,
-    name: node.data.label,
-    direction: "output" as const,
-    bits: (node.data as OutputNodeData).bits ?? 1,
-  }));
-
-  if (existingOrder) {
-    const sortByOrder = (pins: Pin[], order: string[]): Pin[] => {
-      const indexMap = new Map(order.map((id, i) => [id, i]));
-      const ordered: Pin[] = [];
-      const remaining: Pin[] = [];
-      for (const pin of pins) {
-        const idx = indexMap.get(pin.id);
-        if (idx !== undefined) {
-          ordered[idx] = pin;
-        } else {
-          remaining.push(pin);
-        }
-      }
-      return [...ordered.filter(Boolean), ...remaining];
-    };
-    return {
-      inputs: sortByOrder(inputs, existingOrder.inputIds),
-      outputs: sortByOrder(outputs, existingOrder.outputIds),
-    };
-  }
-
-  return { inputs, outputs };
-}
-
-// === History ===
-
-type Snapshot = { nodes: AppNode[]; edges: RFEdge[] };
-
-const MAX_HISTORY = 50;
-
-function pushSnapshot(state: { nodes: AppNode[]; edges: RFEdge[]; past: Snapshot[] }): {
-  past: Snapshot[];
-  future: Snapshot[];
-} {
-  return {
-    past: [...state.past.slice(-(MAX_HISTORY - 1)), { nodes: state.nodes, edges: state.edges }],
-    future: [],
-  };
-}
-
-// === Store ===
-
-interface CircuitStore {
-  nodes: AppNode[];
-  edges: RFEdge[];
-  activeModuleId: string | null;
-  simulationVersion: number;
-  isDirty: boolean;
-  past: Snapshot[];
-  future: Snapshot[];
-  stampModuleId: string | null;
-  drilldownStack: DrilldownFrame[];
-  drilldownRoot: DrilldownRootContext | null;
-  readOnly: boolean;
-
-  onNodesChange: (changes: NodeChange<AppNode>[]) => void;
-  onEdgesChange: (changes: EdgeChange<RFEdge>[]) => void;
-  addNode: (
-    type: AppNode["type"],
-    position: XYPosition,
-    moduleId?: string,
-    moduleData?: { label: string; pins: Pin[] },
-    bits?: BitWidth,
-    variant?: string,
-  ) => void;
-  removeNode: (id: string) => void;
-  addEdge: (edge: RFEdge) => void;
-  removeEdge: (id: string) => void;
-  toggleInputValue: (nodeId: string) => void;
-  setInputValue: (nodeId: string, value: number) => void;
-  toggleConstantValue: (nodeId: string) => void;
-  rotateNode: (nodeId: string) => void;
-  updateNodeLabel: (nodeId: string, label: string) => void;
-  setEdgeColor: (edgeId: string, color: string | undefined) => void;
-  tickClocks: () => void;
-  setButtonPressed: (nodeId: string, pressed: number) => void;
-  setDipSwitchValue: (nodeId: string, value: number) => void;
-  setRomData: (nodeId: string, romData: number[]) => void;
-  setRamInitialData: (nodeId: string, initialData: number[]) => void;
-  clearCanvas: () => void;
-  setActiveModuleId: (moduleId: string | null) => void;
-  loadCircuit: (nodes: AppNode[], edges: RFEdge[]) => void;
-  markClean: () => void;
-  undo: () => void;
-  redo: () => void;
-  takeSnapshot: () => void;
-  setStampModuleId: (moduleId: string | null) => void;
-  drillDown: (instanceNodeId: string) => void;
-  navigateToLevel: (level: number) => void;
-  enterEditMode: () => void;
-}
+// Re-export for backward compatibility
+export type * from "./circuit-store-types.ts";
+export { extractInterface } from "./circuit-store-helpers.ts";
 
 export const useCircuitStore = create<CircuitStore>((set, get) => ({
   nodes: [],
@@ -357,203 +76,12 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
     }),
 
   addNode: (type, position, moduleId, moduleData, bits, variant) =>
-    set((state) => {
-      const id = generateId();
-      const bw: BitWidth = bits ?? 1;
-
-      let node: AppNode;
-      switch (type) {
-        case "circuitInput":
-          node = {
-            id,
-            type: "circuitInput",
-            position,
-            data: { label: "Input", pinId: generateId(), value: 0, bits: bw, rotation: 0 },
-          };
-          break;
-        case "circuitOutput":
-          node = {
-            id,
-            type: "circuitOutput",
-            position,
-            data: { label: "Output", pinId: generateId(), bits: bw, rotation: 0 },
-          };
-          break;
-        case "constant":
-          node = {
-            id,
-            type: "constant",
-            position,
-            data: { label: "0", pinId: generateId(), value: 0, rotation: 0 },
-          };
-          break;
-        case "probe":
-          node = {
-            id,
-            type: "probe",
-            position,
-            data: { pinId: generateId(), rotation: 0 },
-          };
-          break;
-        case "clock":
-          node = {
-            id,
-            type: "clock",
-            position,
-            data: { pinId: generateId(), value: 0, rotation: 0 },
-          };
-          break;
-        case "button":
-          node = {
-            id,
-            type: "button",
-            position,
-            data: { label: "BTN", pinId: generateId(), pressed: 0, rotation: 0 },
-          };
-          break;
-        case "dipSwitch":
-          node = {
-            id,
-            type: "dipSwitch",
-            position,
-            data: { label: "DIP", pinId: generateId(), value: 0, bits: 8 as BitWidth, rotation: 0 },
-          };
-          break;
-        case "hexDisplay":
-          node = {
-            id,
-            type: "hexDisplay",
-            position,
-            data: { pinId: generateId(), bits: 8 as BitWidth, rotation: 0 },
-          };
-          break;
-        case "ledBar":
-          node = {
-            id,
-            type: "ledBar",
-            position,
-            data: { pinId: generateId(), bits: 8 as BitWidth, rotation: 0 },
-          };
-          break;
-        case "tunnel":
-          node = {
-            id,
-            type: "tunnel",
-            position,
-            data: { label: "T", pinId: generateId(), bits: 1 as BitWidth, direction: (moduleData?.label === "out" ? "out" : "in") as "in" | "out", rotation: 0 },
-          };
-          break;
-        case "rom": {
-          const addrBits = (bits === 8 ? 8 : 4) as 4 | 8;
-          node = {
-            id,
-            type: "rom",
-            position,
-            data: {
-              addrPinId: generateId(),
-              dataPinId: generateId(),
-              addressBits: addrBits,
-              romData: new Array(1 << addrBits).fill(0) as number[],
-              rotation: 0,
-            },
-          };
-          break;
-        }
-        case "ram": {
-          const addrBits = (bits === 8 ? 8 : 4) as 4 | 8;
-          node = {
-            id,
-            type: "ram",
-            position,
-            data: {
-              addrPinId: generateId(),
-              dataInPinId: generateId(),
-              writePinId: generateId(),
-              clockPinId: generateId(),
-              dataOutPinId: generateId(),
-              addressBits: addrBits,
-              initialData: new Array(1 << addrBits).fill(0) as number[],
-              rotation: 0,
-            },
-          };
-          break;
-        }
-        case "tristate": {
-          const tsBits = (bits === 8 ? 8 : 1) as 1 | 8;
-          node = {
-            id,
-            type: "tristate",
-            position,
-            data: {
-              dataPinId: generateId(),
-              enablePinId: generateId(),
-              outputPinId: generateId(),
-              bits: tsBits,
-              rotation: 0,
-            },
-          };
-          break;
-        }
-        case "pull": {
-          node = {
-            id,
-            type: "pull",
-            position,
-            data: {
-              outputPinId: generateId(),
-              variant: (variant === "pulldown" ? "pulldown" : "pullup") as "pullup" | "pulldown",
-              rotation: 0,
-            },
-          };
-          break;
-        }
-        case "module": {
-          const mid = moduleId ?? BUILTIN_NAND_MODULE_ID;
-          const isNand = mid === BUILTIN_NAND_MODULE_ID;
-          // Use provided moduleData or fall back to NAND defaults
-          const pins: Pin[] = moduleData
-            ? moduleData.pins.map((p) => ({ ...p, id: generateId() }))
-            : isNand
-              ? [
-                  { id: generateId(), name: "A", direction: "input", bits: 1 },
-                  { id: generateId(), name: "B", direction: "input", bits: 1 },
-                  {
-                    id: generateId(),
-                    name: "Out",
-                    direction: "output",
-                    bits: 1,
-                  },
-                ]
-              : [];
-          const label = moduleData ? moduleData.label : isNand ? "NAND" : "Module";
-          // Copy visual properties from module definition
-          const modDef = getModuleById(mid);
-          node = {
-            id,
-            type: "module",
-            position,
-            data: {
-              label,
-              moduleId: mid,
-              pins,
-              rotation: 0,
-              ...(modDef?.color ? { color: modDef.color } : {}),
-              ...(modDef?.icon ? { icon: modDef.icon } : {}),
-              ...(modDef?.description ? { description: modDef.description } : {}),
-              ...(modDef?.customWidth ? { customWidth: modDef.customWidth } : {}),
-            },
-          };
-          break;
-        }
-      }
-
-      return {
-        ...pushSnapshot(state),
-        nodes: [...state.nodes, node],
-        simulationVersion: state.simulationVersion + 1,
-        isDirty: true,
-      };
-    }),
+    set((state) => ({
+      ...pushSnapshot(state),
+      nodes: [...state.nodes, createNode(type, position, moduleId, moduleData, bits, variant)],
+      simulationVersion: state.simulationVersion + 1,
+      isDirty: true,
+    })),
 
   removeNode: (id) =>
     set((state) => ({
@@ -563,7 +91,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   addEdge: (edge) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -571,7 +98,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   removeEdge: (id) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -590,7 +116,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   setInputValue: (nodeId, value) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -603,7 +128,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   toggleConstantValue: (nodeId) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -632,7 +156,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       }),
       isDirty: true,
     })),
-
   updateNodeLabel: (nodeId, label) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -643,7 +166,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       ),
       isDirty: true,
     })),
-
   setEdgeColor: (edgeId, color) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -687,7 +209,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       }),
       simulationVersion: state.simulationVersion + 1,
     })),
-
   setDipSwitchValue: (nodeId, value) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -699,7 +220,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   setRomData: (nodeId, romData) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -710,7 +230,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: true,
     })),
-
   setRamInitialData: (nodeId, initialData) =>
     set((state) => ({
       ...pushSnapshot(state),
@@ -731,10 +250,8 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: false,
     })),
-
   setActiveModuleId: (moduleId) =>
     set({ activeModuleId: moduleId }),
-
   loadCircuit: (nodes, edges) =>
     set((state) => ({
       nodes,
@@ -744,7 +261,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       simulationVersion: state.simulationVersion + 1,
       isDirty: false,
     })),
-
   markClean: () =>
     set({ isDirty: false }),
 
@@ -761,7 +277,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       isDirty: true,
     });
   },
-
   redo: () => {
     const state = get();
     if (state.future.length === 0) return;
@@ -778,7 +293,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
 
   takeSnapshot: () =>
     set((state) => pushSnapshot(state)),
-
   setStampModuleId: (moduleId) =>
     set({ stampModuleId: moduleId }),
 
@@ -788,7 +302,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
     if (!node || node.type !== "module") return;
 
     const moduleId = node.data.moduleId;
-    // Built-in modules have no internal circuit
     if (
       moduleId === BUILTIN_NAND_MODULE_ID ||
       moduleId === BUILTIN_SPLITTER_MODULE_ID ||
@@ -797,8 +310,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
 
     const mod = getModuleById(moduleId);
     if (!mod) return;
-
-    // Save root context on first drill
     const drilldownRoot = state.drilldownRoot ?? {
       moduleId: state.activeModuleId,
       nodes: state.nodes,
@@ -834,7 +345,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
     if (!state.drilldownRoot) return;
 
     if (level === 0) {
-      // Restore root context
       set({
         nodes: state.drilldownRoot.nodes,
         edges: state.drilldownRoot.edges,
@@ -849,8 +359,6 @@ export const useCircuitStore = create<CircuitStore>((set, get) => ({
       });
       return;
     }
-
-    // Navigate to an intermediate level
     const targetFrame = state.drilldownStack[level - 1];
     if (!targetFrame) return;
 
