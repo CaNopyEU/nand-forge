@@ -1,44 +1,8 @@
 import { useCallback } from "react";
 import type { Connection, Edge as RFEdge, IsValidConnection } from "@xyflow/react";
-import { useCircuitStore, type AppNode, type InputNodeData, type OutputNodeData, type DipSwitchNodeData, type HexDisplayNodeData, type LedBarNodeData, type TunnelNodeData, type RomNodeData, type RamNodeData, type TristateNodeData } from "../store/circuit-store.ts";
+import { useCircuitStore } from "../store/circuit-store.ts";
 import { generateId } from "../utils/id.ts";
-import type { BitWidth } from "../engine/types.ts";
-
-/**
- * Get bit width for a pin on a node.
- * Module nodes carry pin metadata; Input/Output nodes carry bits in data.
- */
-function getPinBits(nodes: AppNode[], nodeId: string, pinId: string): BitWidth {
-  const node = nodes.find((n) => n.id === nodeId);
-  if (node?.type === "module") {
-    return node.data.pins.find((p) => p.id === pinId)?.bits ?? 1;
-  }
-  if (node?.type === "circuitInput") return (node.data as InputNodeData).bits ?? 1;
-  if (node?.type === "circuitOutput") return (node.data as OutputNodeData).bits ?? 1;
-  if (node?.type === "dipSwitch") return (node.data as DipSwitchNodeData).bits ?? 8;
-  if (node?.type === "hexDisplay") return (node.data as HexDisplayNodeData).bits ?? 8;
-  if (node?.type === "ledBar") return (node.data as LedBarNodeData).bits ?? 8;
-  if (node?.type === "tunnel") return (node.data as TunnelNodeData).bits ?? 1;
-  if (node?.type === "rom") {
-    const romData = node.data as RomNodeData;
-    if (pinId === romData.addrPinId) return romData.addressBits;
-    return 8 as BitWidth;
-  }
-  if (node?.type === "ram") {
-    const ramData = node.data as RamNodeData;
-    if (pinId === ramData.addrPinId) return ramData.addressBits;
-    if (pinId === ramData.writePinId) return 1 as BitWidth;
-    if (pinId === ramData.clockPinId) return 1 as BitWidth;
-    return 8 as BitWidth; // dataIn, dataOut
-  }
-  if (node?.type === "tristate") {
-    const tsData = node.data as TristateNodeData;
-    if (pinId === tsData.enablePinId) return 1 as BitWidth;
-    return tsData.bits as BitWidth;
-  }
-  if (node?.type === "pull") return 1 as BitWidth;
-  return 1;
-}
+import { getPinBits } from "../utils/node-converters.ts";
 
 /**
  * Wiring hook — provides onConnect handler and isValidConnection checker.
@@ -107,4 +71,3 @@ export function useWiring() {
 
   return { onConnect, isValidConnection };
 }
-
