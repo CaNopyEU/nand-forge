@@ -278,6 +278,47 @@ Tracking subor pre post-MVP iteracie. Roadmap: [`post-mvp-roadmap.md`](post-mvp-
 
 ---
 
+## Intermezzo — Hardening & Refaktoring [PENDING]
+
+### Iteracia H1 — Node type registry + dekompozicia engine [PENDING]
+
+| # | Task | Status |
+|---|---|---|
+| H1.1 | Node type registry (centralizovany dispatch, eliminuje shotgun surgery) | TODO |
+| H1.2 | Dekompozicia evaluateNode (giant switch → dispatch cez registry) | TODO |
+| H1.3 | Dekompozicia canvasToCircuit (per-type konverzne handlery) | TODO |
+| H1.4 | Dekompozicia circuitToAppNodes (per-type spätne handlery) | TODO |
+| H1.5 | Centralizacia builtin ID konstant (jeden registry modul) | TODO |
+
+### Iteracia H2 — Dekompozicia circuit-store + Error Boundary [PENDING]
+
+| # | Task | Status |
+|---|---|---|
+| H2.1 | Circuit store slices (core CRUD, undo/redo, drill-down, ROM/RAM) | TODO |
+| H2.2 | React Error Boundary (okolo Canvas + simulacie) | TODO |
+| H2.3 | Explicit cycle detection (nahradit try/catch za hasCycle()) | TODO |
+| H2.4 | Dokumentacia sync (CLAUDE.md — odstranit truth-table.ts, aktualizovat) | TODO |
+
+### Iteracia H3 — Web Worker pre simulaciu [PENDING]
+
+| # | Task | Status |
+|---|---|---|
+| H3.1 | Worker protocol (message typy, serializable state) | TODO |
+| H3.2 | Simulacny worker (simulation.worker.ts, ciste engine importy) | TODO |
+| H3.3 | Simulation store integrácia (async runSimulation, sync fallback) | TODO |
+| H3.4 | Worker lifecycle (init/terminate, debounce, cancel pending) | TODO |
+
+### Iteracia H4 — Testy pre aplikacnu vrstvu [PENDING]
+
+| # | Task | Status |
+|---|---|---|
+| H4.1 | circuit-store testy (CRUD, undo/redo, drill-down, rotation) | TODO |
+| H4.2 | canvasToCircuit testy (per-type konverzia, round-trip) | TODO |
+| H4.3 | persistence testy (save/load, v1→v2, backward compat, corrupted JSON) | TODO |
+| H4.4 | library-store testy (folder CRUD, move, sync) | TODO |
+
+---
+
 ## Faza D — CPU [PENDING]
 ## Faza E — Programovanie [PENDING]
 ## Faza F — I/O & Periferie [PENDING]

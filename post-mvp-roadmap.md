@@ -170,9 +170,57 @@ Post-MVP Faza G: Platforma & Komunita
 
 ---
 
+## Intermezzo — Hardening & Refaktoring (pred Phase D)
+
+**Predpoklad:** Fazy A–C hotove (iteracie 14–23).
+**Odomkne:** Skalovatelu architekturu pre CPU-level obvody (tisice uzlov, hlboka hierarchia).
+
+> Phase D pridava 4+ novych node typov a hlboko vnorene obvody.
+> Bez tohto hardeningu by kazdy novy node typ vyzadoval zmeny v 5–6 suboroch (shotgun surgery),
+> simulacia by blokovala UI, a chybajuce testy by umoznili tichu regresiu.
+
+### Iteracia H1 — Node type registry + dekompozicia engine
+
+| # | Task | Popis |
+|---|---|---|
+| H1.1 | Node type registry | Centralizovany registry: kazdy node typ registruje `evaluate`, `canvasToCircuit`, `circuitToAppNode`, `getPinBits` handlery. Jeden subor = jeden node typ. Eliminuje shotgun surgery (5-6 suborov pri pridani noveho typu). |
+| H1.2 | Dekompozicia evaluateNode | Giant switch (13 cases) v `simulate.ts` → dispatch cez registry. Per-type evaluatory vo vlastnych suboroch. |
+| H1.3 | Dekompozicia canvasToCircuit | Per-type konverzne handlery z registry namiesto monolitickeho switchu v `canvas-to-circuit.ts`. |
+| H1.4 | Dekompozicia circuitToAppNodes | Per-type spätne konverzne handlery z registry namiesto monolitickeho switchu v `circuit-converters.ts`. |
+| H1.5 | Centralizacia builtin ID konstant | `BUILTIN_NAND_MODULE_ID`, `BUILTIN_SPLITTER_MODULE_ID`, atd. → jeden registry/constants modul. |
+
+### Iteracia H2 — Dekompozicia circuit-store + Error Boundary
+
+| # | Task | Popis |
+|---|---|---|
+| H2.1 | Circuit store slices | Rozdelit 891-riadkovy `circuit-store.ts` na: core CRUD (nodes/edges), undo/redo slice, drill-down slice, ROM/RAM editing slice. Zustand slices pattern. |
+| H2.2 | React Error Boundary | Error Boundary okolo Canvas + simulacie. Graceful recovery s "Reset" tlacidlom namiesto bieleho screenu. Zachyti stack overflow z hlboko vnorenych modulov. |
+| H2.3 | Explicit cycle detection | Nahradit try/catch control flow v `evaluateCircuitFull` za explicit `hasCycle()` check (uz existuje vo `validate.ts`). |
+| H2.4 | Dokumentacia sync | Opravit CLAUDE.md — odstranit neexistujuci `truth-table.ts` z key files. Aktualizovat architektura sekciu. |
+
+### Iteracia H3 — Web Worker pre simulaciu
+
+| # | Task | Popis |
+|---|---|---|
+| H3.1 | Worker protocol | Definicia message protokolu: main thread posiela `{ circuit, moduleMap, instanceStates }`, worker vracia `{ pinValues, edgeSignals, instanceStates, oscillating }`. |
+| H3.2 | Simulacny worker | `simulation.worker.ts` — importuje len engine (ziadne React/Zustand/DOM zavislosti). Vite worker setup. |
+| H3.3 | Simulation store integrácia | `runSimulation()` deleguje na worker (async). Fallback na synchronny mode ak worker nie je dostupny. |
+| H3.4 | Worker lifecycle | Init/terminate worker pri mount/unmount. Debounce rapid ticks. Cancel pending evaluacie pri novom ticku. |
+
+### Iteracia H4 — Testy pre aplikacnu vrstvu
+
+| # | Task | Popis |
+|---|---|---|
+| H4.1 | circuit-store testy | Unit testy: addNode/removeNode pre kazdy typ, undo/redo (push/pop/limit), drill-down navigacia (push/pop/breadcrumb), rotation. |
+| H4.2 | canvasToCircuit testy | Unit testy pre kazdy node typ: canvas → engine konverzia, round-trip (canvas → engine → canvas). |
+| H4.3 | persistence testy | Unit testy: save/load roundtrip, v1→v2 migracia, boolean→number backward compat, corrupted JSON handling. |
+| H4.4 | library-store testy | Unit testy: folder CRUD, move module, sync s module-store. |
+
+---
+
 ## Faza D — CPU
 
-**Predpoklad:** Fazy A–C (vsetko vyssie) + tri-state buffer.
+**Predpoklad:** Fazy A–C + Intermezzo (hardening).
 **Odomkne:** Plne funkcny procesor schopny vykonavat program.
 
 ### Iteracia 24 — ALU (ak este nebol postaveny)
@@ -316,6 +364,7 @@ Post-MVP Faza G: Platforma & Komunita
 | **A** | 14–16 | Sekvencne obvody | Flip-Flopy, Registre, Counter |
 | **B** | 17–20 | Multi-bit bus, UX | Pohodlna praca s 8/16-bit, Undo/Redo |
 | **C** | 21–23 | Pamat + Tri-state buffer | RAM, ROM, zdielana zbernica |
+| **Intermezzo** | H1–H4 | Hardening & Refaktoring | Skalovatelna architektura pre CPU |
 | **D** | 24–26 | CPU | Funkcny 8-bit procesor |
 | **E** | 27–29 | Programovanie | Assembler, Debugger |
 | **F** | 30–32 | I/O & Periferie | Display, Klavesnica, UART |
@@ -328,6 +377,7 @@ Post-MVP Faza G: Platforma & Komunita
 | **Kombinacny builder** | 13 (MVP) | Postavit ALU z NAND gates |
 | **Sekvencny builder** | 16 | Postavit registre, countery, state machines |
 | **Pamatovy builder** | 23 | Postavit kompletnu pamatovu hierarchiu so zdielanou zbernicou |
+| **Production-ready engine** | H4 | Skalovatelna architektura, Web Worker, test coverage |
 | **Funkcny CPU** | 26 | Postavit 8-bit CPU ktory vykonava program z ROM |
 | **Programovatelny CPU** | 29 | Pisat assembly, debugovat, step-by-step |
 | **Kompletny system** | 32 | CPU s displayom, klavesnicou, terminalom |
